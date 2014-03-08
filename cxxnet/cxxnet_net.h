@@ -34,38 +34,40 @@ namespace cxxnet {
          * \brief Forward propagation from in_node to out_node
          * \param is_train the propagation is training or dropout
          */
-        virtual void Forwardprop(bool is_train) = 0;
+        virtual void Forward(bool is_train) = 0;
         /*!
          * \brief Back propagation from out_node to in_node, generate the gradient, out_node already stores gradient value
          * \param is_firstlayer if true, then the layer will not propagate gradient back to its input node
          */
         virtual void Backprop(bool is_firstlayer) = 0;
+    public:
+        // interface code that not needed to be implemented by all nodes
         /*!
          * \brief Get updaters for the layer
          * \param specified updater type 
          * \param updaters the laeyer will push_back into updaters 
          */
-        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) = 0;
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {}
         /*!
          * \brief Set param for the layer from string
          * \param name parameter name
          * \param val string for configuration
          */
-        virtual void SetParam(const char *name, const char* val) = 0;
+        virtual void SetParam(const char *name, const char* val) {}
         /*!
          * \brief intialized model parameters
          */        
-        virtual void InitModel(void) = 0;
+        virtual void InitModel(void) {}
         /*!
          * \brief Save model into binary file
          * \param fo output stream
          */
-        virtual void SaveModel(mshadow::utils::IStream &fo) const = 0;
+        virtual void SaveModel(mshadow::utils::IStream &fo) const {}
         /*!
          * \brief Load model from binary file
          * \param fi input stream
          */
-        virtual void LoadModel(mshadow::utils::IStream &fi)= 0;
+        virtual void LoadModel(mshadow::utils::IStream &fi) {}
     }; 
 }; // namespace cxxnet
 
@@ -113,4 +115,4 @@ namespace cxxnet {
 #include "cxxnet_updater-inl.hpp"
 #include "cxxnet_layer-inl.hpp"
 
-#endif // CXXNET_LAYER_H
+#endif // CXXNET_NET_H

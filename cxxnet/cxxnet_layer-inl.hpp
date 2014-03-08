@@ -31,16 +31,6 @@ namespace cxxnet{
 };
 
 namespace cxxnet {
-    /*! \brief rule out some unecessary implementations */
-    class DummyLayer: public ILayer{
-    public:
-        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){}
-        virtual void SetParam(const char *name, const char* val){}
-        virtual void InitModel(void){}
-        virtual void SaveModel(mshadow::utils::IStream &fo) const{}
-        virtual void LoadModel(mshadow::utils::IStream &fi){}        
-    };
-
     // simple fully connected layer that connects two nodes
     template<typename xpu>
     class FullConnectLayer : public ILayer{
@@ -55,7 +45,7 @@ namespace cxxnet {
         }            
         virtual ~FullConnectLayer( void ){            
         }
-        virtual void Forwardprop(bool is_train) {
+        virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
             out_.mat()  = dot( in_.mat(), wmat_ );
             out_.mat() += repmat( bias_, nbatch );
@@ -117,13 +107,13 @@ namespace cxxnet {
     // For softmax, we do not need to store weight/bias, only use softmax as a kinda of transformation
     // we can use full layer -> softmax layer
     template<typename xpu>
-    class SoftmaxLayer: public DummyLayer{
+    class SoftmaxLayer: public ILayer{
     public:
         SoftmaxLayer( Node<xpu> &in, Node<xpu> &out )
             :out_(out){
             Assert( &in == &out, "BUG" );
         }
-        virtual void Forwardprop(bool is_train){
+        virtual void Forward(bool is_train){
             // TODO
             // SOFTMAX transformation here
         }
