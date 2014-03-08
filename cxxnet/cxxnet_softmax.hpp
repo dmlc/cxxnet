@@ -21,8 +21,10 @@ public:
                           Node<device, dim> out) {
         in_node_ = in;
         out_node_ = out;
+        // Alloc W, b
     }
     ~SoftmaxLayer() {
+        // Dealloc W, b
     }
 
     void Forwardprop(bool is_train) {
@@ -36,6 +38,8 @@ public:
 private:
     Node<device, dim> in_node_;
     Node<device, dim> out_node_;
+    mshadow::Tensor<device, 2> W_;
+    mshadow::Tensor<device, 1> b_;
 }; // class SoftmaxLayer
 
 }; // namespace cxxnet
