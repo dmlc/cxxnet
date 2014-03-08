@@ -14,17 +14,22 @@
 #include "mshadow/tensor_io.h"
 
 namespace cxxnet {
-    // all the interfaces
-    /*! \brief update algorithm that defines parameter updates */
+    /*! \brief interface of a updater */
     class IUpdater{
     public:
+        /*!\brief virtual destructor */
+        virtual ~IUpdater( void ){}
         /*! \brief update parameter */
         virtual void Update( void ) = 0;
+        /*!\ brief set parameters that could be spefic to this updater */
+        virtual void SetParam( const char *name, const char *val ) = 0;
     };
 
     /*! \brief interface of layer */
     class ILayer {
     public:
+        /*!\brief virtual destructor */
+        virtual ~ILayer( void ){}
         /*!
          * \brief Forward propagation from in_node to out_node
          * \param is_train the propagation is training or dropout
@@ -37,9 +42,10 @@ namespace cxxnet {
         virtual void Backprop(bool is_firstlayer) = 0;
         /*!
          * \brief Get updaters for the layer
-         * \param updaters updater for the whole network
+         * \param specified updater type 
+         * \param updaters the laeyer will push_back into updaters 
          */
-        virtual void GetUpdaters(std::vector<IUpdater*> &updaters) = 0;
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) = 0;
         /*!
          * \brief Set param for the layer from string
          * \param name parameter name
@@ -49,7 +55,7 @@ namespace cxxnet {
         /*!
          * \brief intialized model parameters
          */        
-        virtual void InitModel( void ) = 0;
+        virtual void InitModel(void) = 0;
         /*!
          * \brief Save model into binary file
          * \param fo output stream
@@ -75,45 +81,36 @@ namespace cxxnet {
             return data[0][0];
         }        
     }; // struct Node 
-
-    /*! \brief potential parameters for each layer */
-    struct LayerParam{
-        /*! \brief learning rate */
-        float eta;
-        /*! \brief mometum */
-        float momentum;
-        /*! \brief initialization sd for weight */
-        float init_sigma;
-        /*! \brief updater */        
-        std::string updater;
-        /*!
-         * \brief Set param for the layer from string
-         * \param name parameter name
-         * \param val string for configuration
-         */
-        virtual void SetParam(const char *name, const char* val) {
-            if( !strcmp( name, "eta") )           eta = (float)atof(val);
-            if( !strcmp( name, "learning_rate") ) eta = (float)atof(val);
-            if( !strcmp( name, "momentum") )      momentum = (float)atof(val);
-            if( !strcmp( name, "updater") )       updater = val;            
-        }
-    };
 }; // namespace cxxnet
 
 namespace cxxnet {
     /*! 
      * \brief factory: create an upadater algorithm of given type
-     *        to be decided, maybe need other abstraction
-     * \param lparam parameter of each layer
+     * \param type indicate the type of updater
+     * \param rnd random number generator
      * \param weight network weight
      * \param grad network gradient 
+     * \param tag some tags used to identify the weight, for example: "bias", "wmat", "mask", default ""
      */
     template<typename xpu, int dim>
-    inline IUpdater* CreateUpdater( LayerParam &lparam, 
+    inline IUpdater* CreateUpdater( const char *type,
+                                    mshadow::Random<xpu> &rnd, 
                                     mshadow::Tensor<xpu,dim> &weight, 
-                                    const mshadow::Tensor<xpu,dim> &grad );    
+                                    mshadow::Tensor<xpu,dim> &wgrad,
+                                    const char *tag );
+
+    /*! 
+     * \brief factory: create an upadater algorithm of given type
+     * \param type indicate the type of a layer
+     * \param rnd random number generator
+     * \param in input node
+     * \param out output node
+     */
+    template<typename xpu>
+    inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu>& in, Node<xpu>& out );
 };  // namespace cxxnet
 
+#include "cxxnet_updater-inl.hpp"
 #include "cxxnet_layer-inl.hpp"
 
 #endif // CXXNET_LAYER_H

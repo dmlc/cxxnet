@@ -8,5 +8,7 @@ int main( void ){
     in.data = mshadow::NewCTensor( mshadow::Shape4(1,1,4,2) , 1.0f );
     out.data = in.data;
     FullConnectLayer<cpu> layer( rnd, in, out);
+    ILayer *l = CreateLayer( "fullc", rnd, in, out );
+    delete l;
     return 0;
 }
