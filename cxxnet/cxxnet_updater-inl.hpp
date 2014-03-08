@@ -1,14 +1,12 @@
 #ifndef CXXNET_UPDATER_INL_HPP
 #define CXXNET_UPDATER_INL_HPP
 #pragma once
-
 /*!
  * \file cxxnet_updater-inl.hpp
  * \brief implementation of updaters
  * \author Tianqi Chen
  */
 #include "cxxnet_net.h"
-#include "mshadow/tensor_container.h"
 
 namespace cxxnet{
     // expr is needed to use expression
