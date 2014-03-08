@@ -47,6 +47,10 @@ namespace cxxnet {
          */
         virtual void SetParam(const char *name, const char* val) = 0;
         /*!
+         * \brief intialized model parameters
+         */        
+        virtual void InitModel( void ) = 0;
+        /*!
          * \brief Save model into binary file
          * \param fo output stream
          */
