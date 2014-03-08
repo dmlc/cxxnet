@@ -113,4 +113,4 @@ namespace cxxnet {
 #include "cxxnet_updater-inl.hpp"
 #include "cxxnet_layer-inl.hpp"
 
-#endif // CXXNET_LAYER_H
+#endif // CXXNET_NET_H
