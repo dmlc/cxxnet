@@ -27,6 +27,14 @@ public:
     inline mshadow::Tensor<device, dim> GetInputTensor() { return in_data_; }
     /*! \brief get output tensor */
     inline mshadow::Tensor<device, dim> GetOutputTensor() { return out_data_; }
+    /*! \brief get shape of input */
+    inline mshadow::Shape<dim> GetShape() { return in_data_.shape;}
+    /*! \brief assign the reference */
+    inline Node& operator=(const Node &b) {
+        this->in_data_ = b.in_data_;
+        this->out_data_ = b.in_data_;
+        return this;
+    }
 private:
     mshadow::Tensor in_data_;
     mshadow::Tensor out_data_;

@@ -16,11 +16,11 @@ public:
      * \brief Forward propagation from in_node to out_node
      * \param is_train the propagation is training or dropout
      */
-    virtual Forwardprop(bool is_train) = 0;
+    virtual void Forwardprop(bool is_train) = 0;
     /*!
      * \brief Back propagation from out_node to in_node, generate the gradient
      */
-    virtual Backprop() = 0;
+    virtual void Backprop() = 0;
     /*!
      * \brief Get updaters for the layer
      * \param updaters updater for the whole network
@@ -36,12 +36,12 @@ public:
      * \brief Save model into binary file
      * \param fo output stream
      */
-    virtual SaveModel(mshadow::utils::Stream &fo) const = 0;
+    virtual void SaveModel(mshadow::utils::Stream &fo) const = 0;
     /*!
      * \brief Load model from binary file
      * \param fi input stream
      */
-    virtual LoadModel(mshadow::utils::Stream &fi) const = 0;
+    virtual void LoadModel(mshadow::utils::Stream &fi) const = 0;
 }; // namespace cxxnet
 
 #endif // CXXNET_LAYER_H
