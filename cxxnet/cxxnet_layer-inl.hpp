@@ -19,8 +19,8 @@ namespace cxxnet{
     template<typename xpu>
     class FullConnectLayer{
     public:
-        FullConnectLayer( Node<xpu> &in, Node<xpu> &out )
-            :in_(in), out_(out){ 
+        FullConnectLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
+            :rnd_(rnd), in_(in), out_(out){ 
             Assert( in_.data.shape[1] == out_.data.shape[1], "input output batch mismatch" );
             wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
             gwmat_.Resize( wmat_.shape );
@@ -51,8 +51,9 @@ namespace cxxnet{
         virtual void SetParam(const char *name, const char* val){
             //TODO
         }
-        virtual void InitModel(void){
-            // TODO: how to add random here
+        virtual void InitModel(void){            
+            rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
+            bias_ = 0.0f;
             gwmat_ = 0.0f; gbias_ = 0.0f;
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
@@ -71,7 +72,11 @@ namespace cxxnet{
             gwmat_.LoadBinary( fi );
             gbias_.LoadBinary( fi );
         }
-    private:        
+    private:
+        /*! \brief parameters that potentially be useful */
+        LayerParam param_;
+        /*! \brief random number generator */
+        mshadow::Random<xpu> &rnd_;
         /*! \brief input node */
         Node<xpu> &in_; 
         /*! \brief output node */
@@ -88,4 +93,3 @@ namespace cxxnet{
 }; // namespace cxxnet
 
 #endif // CXXNET_LAYER_INL_HPP
-

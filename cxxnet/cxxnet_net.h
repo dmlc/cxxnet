@@ -8,7 +8,7 @@
  * \author Tianqi Chen, Bing Xu
  */
 #include <vector>
-
+#include <string>
 #include "cxxnet.h"
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_io.h"
@@ -73,23 +73,46 @@ namespace cxxnet {
         /*! \brief matrix view of the node */
         inline mshadow::Tensor<xpu,2> mat( void ){
             return data[0][0];
-        }
-        
+        }        
     }; // struct Node 
-};
+
+    /*! \brief potential parameters for each layer */
+    struct LayerParam{
+        /*! \brief learning rate */
+        float eta;
+        /*! \brief mometum */
+        float momentum;
+        /*! \brief initialization sd for weight */
+        float init_sigma;
+        /*! \brief updater */        
+        std::string updater;
+        /*!
+         * \brief Set param for the layer from string
+         * \param name parameter name
+         * \param val string for configuration
+         */
+        virtual void SetParam(const char *name, const char* val) {
+            if( !strcmp( name, "eta") )           eta = (float)atof(val);
+            if( !strcmp( name, "learning_rate") ) eta = (float)atof(val);
+            if( !strcmp( name, "momentum") )      momentum = (float)atof(val);
+            if( !strcmp( name, "updater") )       updater = val;            
+        }
+    };
+}; // namespace cxxnet
+
 namespace cxxnet {
     /*! 
      * \brief factory: create an upadater algorithm of given type
      *        to be decided, maybe need other abstraction
-     * \param utype type of updater
+     * \param lparam parameter of each layer
      * \param weight network weight
      * \param grad network gradient 
      */
     template<typename xpu, int dim>
-    inline IUpdater* CreateUpdater( int utype, 
+    inline IUpdater* CreateUpdater( LayerParam &lparam, 
                                     mshadow::Tensor<xpu,dim> &weight, 
                                     const mshadow::Tensor<xpu,dim> &grad );    
-};
+};  // namespace cxxnet
 
 #include "cxxnet_layer-inl.hpp"
 
