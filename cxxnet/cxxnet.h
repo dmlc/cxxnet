@@ -6,16 +6,16 @@
  * \brief Base definition for cxxnet
  * \author Bing Xu
  */
-
 #include "mshadow/tensor.h"
-#include "cxxnet_node.h"
 
+/*! \brief namespace of cxxnet */
 namespace cxxnet {
-
-typedef mshadow::cpu cpu;
-typedef mshadow::gpu gpu;
-
+    typedef mshadow::cpu cpu;
+    typedef mshadow::gpu gpu;
+    typedef mshadow::index_t index_t;
+    typedef mshadow::real_t  real_t;
 };
 
+#include "cxxnet_net.h"
 
 #endif // CXXNET_H
