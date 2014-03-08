@@ -30,5 +30,7 @@ public:
 private:
     mshadow::Tensor in_data_;
     mshadow::Tensor out_data_;
-};
+}; // class Node
+
+}; // namepsace cxxnet
 #endif // CXXNET_NODE_H
