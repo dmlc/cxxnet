@@ -51,6 +51,10 @@ namespace cxxnet{
         virtual void SetParam(const char *name, const char* val){
             //TODO
         }
+        virtual void InitModel(void){
+            // TODO: how to add random here
+            gwmat_ = 0.0f; gbias_ = 0.0f;
+        }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
             wmat_.SaveBinary( fo );
             bias_.SaveBinary( fo );
