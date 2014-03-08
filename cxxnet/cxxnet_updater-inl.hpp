@@ -84,4 +84,4 @@ namespace cxxnet{
         return NULL;
     }    
 }; // namespace cxxnet;
-#endif
+#endif // CXXNET_UPDATER_INL_HPP
