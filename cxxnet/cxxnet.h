@@ -1,5 +1,7 @@
 #ifndef CXXNET_H
 #define CXXNET_H
+#pragma once#ifndef CXXNET_H
+#define CXXNET_H
 #pragma once
 /*!
  * \file cxxnet.h
@@ -14,6 +16,10 @@ namespace cxxnet {
     typedef mshadow::gpu gpu;
     typedef mshadow::index_t index_t;
     typedef mshadow::real_t  real_t;
+};
+
+namespace cxxnet {
+
 };
 
 #include "cxxnet_net.h"
