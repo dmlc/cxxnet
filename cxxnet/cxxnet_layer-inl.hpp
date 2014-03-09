@@ -55,8 +55,7 @@ namespace cxxnet {
             real_t scale = 1.0f / nbatch;            
             // accumulates gradient, instead of set gradient
             gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
-            // TODO sum
-            // gbias_ += sum_row( out_.mat() );
+            gbias_ += scale * sum_rows( out_.mat() );
             // backprop
             if( is_firstlayer ){
                 in_.mat() = dot( out_.mat(), wmat_.T() );
@@ -114,8 +113,7 @@ namespace cxxnet {
             Assert( &in == &out, "BUG" );
         }
         virtual void Forward(bool is_train){
-            // TODO
-            // SOFTMAX transformation here
+            mshadow::Softmax( out_.mat(), out_.mat() );            
         }
         virtual void Backprop(bool is_firstlayer){
             // TODO, or maybe do nothing, let cxxnet operate on node
