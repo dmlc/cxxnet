@@ -41,7 +41,7 @@ namespace cxxnet {
          */
         virtual void Backprop(bool is_firstlayer) = 0;
     public:
-        // interface code that not needed to be implemented by all nodes
+        // interface code that not needed to be implemented by all nodes        
         /*!
          * \brief Get updaters for the layer
          * \param specified updater type 
@@ -81,8 +81,8 @@ namespace cxxnet {
         /*! \brief matrix view of the node */
         inline mshadow::Tensor<xpu,2> mat( void ){
             return data[0][0];
-        }        
-    }; // struct Node 
+        }
+    }; // struct Node         
 }; // namespace cxxnet
 
 namespace cxxnet {
@@ -100,7 +100,14 @@ namespace cxxnet {
                                     mshadow::Tensor<xpu,dim> &weight, 
                                     mshadow::Tensor<xpu,dim> &wgrad,
                                     const char *tag );
+}; // namespace cxxnet
 
+namespace cxxnet {
+    /*! \brief namespace for type of layer */
+    namespace layer_type{
+        const int kFullConnect = 0;
+        const int kSoftmax     = 1;
+    };
     /*! 
      * \brief factory: create an upadater algorithm of given type
      * \param type indicate the type of a layer
@@ -110,6 +117,11 @@ namespace cxxnet {
      */
     template<typename xpu>
     inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu>& in, Node<xpu>& out );
+    /*! 
+     * \brief factory: create an upadater algorithm of given type
+     * \param type indicate the type of a layer
+     */
+    inline int GetLayerType( const char *type );
 };  // namespace cxxnet
 
 #include "cxxnet_updater-inl.hpp"
