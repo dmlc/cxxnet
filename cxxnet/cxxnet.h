@@ -6,7 +6,9 @@
  * \brief Base definition for cxxnet
  * \author Bing Xu
  */
+#include <vector>
 #include "mshadow/tensor.h"
+#include "mshadow/tensor_io.h"
 
 /*! \brief namespace of cxxnet */
 namespace cxxnet {
@@ -29,12 +31,14 @@ namespace cxxnet {
         // load model from stream
         virtual void LoadModel( mshadow::utils::IStream &fi ) = 0;
         // update model parameter
-        virtual void Update( const std::vectpr<int> &labels, const Tensor<cpu,4> &batch ) = 0;
+        virtual void Update ( const std::vector<int> &labels, const mshadow::Tensor<cpu,4> &batch ) = 0;
         // predict labels
-        virtual void Predict( const std::vector<int> &labels, const Tensor<cpu,4> &batch ) = 0;
+        virtual void Predict( const std::vector<int> &labels, const mshadow::Tensor<cpu,4> &batch ) = 0;
     };
 };
 
-#include "cxxnet_net.h"
-
+namespace cxxnet {
+    // todo 
+    INetTrainer* CreateNet( int net_type );
+};
 #endif // CXXNET_H

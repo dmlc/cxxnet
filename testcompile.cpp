@@ -1,5 +1,6 @@
 #include <cstdio>
 #include "cxxnet/cxxnet.h"
+#include "cxxnet/cxxnet_net.h"
 using namespace cxxnet;
 
 int main( void ){
