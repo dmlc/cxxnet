@@ -8,16 +8,17 @@
  */
 
 #include "cxxnet_net.h"
+#include "utils/cxxnet_op.h"
 #include "mshadow/tensor_container.h"
 
 namespace cxxnet{
     // expr is needed to use expression
     using namespace mshadow::expr;
     using namespace mshadow::utils;
-    
+
     /*! \brief potential parameters for each layer */
     struct LayerParam{
-        /*! \brief number of hidden layers */       
+        /*! \brief number of hidden layers */
         int num_hidden;
         /*! \brief initialization sd for weight */
         float init_sigma;
@@ -44,9 +45,9 @@ namespace cxxnet {
     public:
         FullConnectLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
             :rnd_(rnd), in_(in), out_(out){
-            
-        }            
-        virtual ~FullConnectLayer( void ){            
+
+        }
+        virtual ~FullConnectLayer( void ){
         }
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
@@ -55,7 +56,7 @@ namespace cxxnet {
         }
         virtual void Backprop(bool is_firstlayer){
             index_t nbatch = in_.data.shape[1];
-            real_t scale = 1.0f / nbatch;            
+            real_t scale = 1.0f / nbatch;
             // accumulates gradient, instead of set gradient
             gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
             gbias_ += scale * sum_rows( out_.mat() );
@@ -77,11 +78,11 @@ namespace cxxnet {
             param_.SetParam( name, val );
         }
         virtual void InitModel(void){
-            // resize to correct shape 
+            // resize to correct shape
             wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
             gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
-            gbias_.Resize( bias_.shape ); 
+            gbias_.Resize( bias_.shape );
             // random initalize
             rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
@@ -106,7 +107,7 @@ namespace cxxnet {
         /*! \brief random number generator */
         mshadow::Random<xpu> &rnd_;
         /*! \brief input node */
-        Node<xpu> &in_; 
+        Node<xpu> &in_;
         /*! \brief output node */
         Node<xpu> &out_;
         /*! \brief weight matrix */
@@ -129,7 +130,7 @@ namespace cxxnet {
             Assert( &in == &out, "softmax layer must self loop e.g layer[1->1] = softmax" );
         }
         virtual void Forward(bool is_train){
-            mshadow::Softmax( out_.mat(), out_.mat() );            
+            mshadow::Softmax( out_.mat(), out_.mat() );
         }
         virtual void Backprop(bool is_firstlayer){
             // do nothing
@@ -163,4 +164,91 @@ namespace cxxnet{
         return CreateLayer( GetLayerType(type), rnd, in, out );
     }
 };
+
+
+namespace cxxnet {
+    template<typename xpu>
+    class RectifiedLinearLayer : public ILayer{
+    public:
+        RectifiedLinearLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
+            :rnd_(rnd), in_(in), out_(out){
+
+        }
+        virtual ~RectifiedLinearLayer( void ){
+        }
+        virtual void Forward(bool is_train) {
+            index_t nbatch = in_.data.shape[1];
+            out_.mat()  = dot( in_.mat(), wmat_ );
+            out_.mat() += repmat( bias_, nbatch );
+            out_.mat() = mshadow::expr::F<op::relu>(out_.mat());
+        }
+        virtual void Backprop(bool is_firstlayer){
+            index_t nbatch = in_.data.shape[1];
+            real_t scale = 1.0f / nbatch;
+            // accumulates gradient, instead of set gradient
+            gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
+            gbias_ += scale * sum_rows( out_.mat() );
+            // backprop
+            if( is_firstlayer ){
+                in_.mat() = dot( out_.mat(), wmat_.T() );
+            }
+        }
+        virtual void AdjustNodeShape( void ){
+            Assert( in_.is_mat(), "input need to be a matrix" );
+            Assert( param_.num_hidden > 0, "must set nhidden correctly" );
+            out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], param_.num_hidden );
+        }
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
+            updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
+            updaters.push_back( CreateUpdater( updater, rnd_, bias_, gbias_, "bias" ) );
+        }
+        virtual void SetParam(const char *name, const char* val){
+            param_.SetParam( name, val );
+        }
+        virtual void InitModel(void){
+            // resize to correct shape
+            wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
+            gwmat_.Resize( wmat_.shape );
+            bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
+            gbias_.Resize( bias_.shape );
+            // random initalize
+            rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
+            bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
+        }
+        virtual void SaveModel(mshadow::utils::IStream &fo) const{
+            fo.Write( &param_, sizeof(LayerParam) );
+            wmat_.SaveBinary( fo );
+            bias_.SaveBinary( fo );
+            gwmat_.SaveBinary( fo );
+            gbias_.SaveBinary( fo );
+        }
+        virtual void LoadModel(mshadow::utils::IStream &fi){
+            Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
+            wmat_.LoadBinary( fi );
+            bias_.LoadBinary( fi );
+            gwmat_.LoadBinary( fi );
+            gbias_.LoadBinary( fi );
+        }
+    private:
+        /*! \brief parameters that potentially be useful */
+        LayerParam param_;
+        /*! \brief random number generator */
+        mshadow::Random<xpu> &rnd_;
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+        /*! \brief weight matrix */
+        mshadow::TensorContainer<xpu,2> wmat_;
+        /*! \brief bias */
+        mshadow::TensorContainer<xpu,1> bias_;
+        /*! \brief accumulates the gradient of weight matrix */
+        mshadow::TensorContainer<xpu,2> gwmat_;
+        /*! \brief accumulates the gradient of bias */
+        mshadow::TensorContainer<xpu,1> gbias_;
+    };
+
+
+
+}; // namespace cxxnet
 #endif // CXXNET_LAYER_INL_HPP

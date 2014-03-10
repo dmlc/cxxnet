@@ -3,7 +3,7 @@
 #pragma once
 /*!
  * \file cxxnet_net.h
- * \brief Abstruct definition for layer interface, 
+ * \brief Abstruct definition for layer interface,
  *        data type, everything used to construct a network
  * \author Tianqi Chen, Bing Xu
  */
@@ -42,14 +42,14 @@ namespace cxxnet {
         virtual void Backprop(bool is_firstlayer) = 0;
     public:
         // interface code that not needed to be implemented by all nodes
-        /*! 
+        /*!
          * \brief adjust output node shape, according to current layers' configuration
          */
         virtual void AdjustNodeShape( void ){}
         /*!
          * \brief Get updaters for the layer
-         * \param specified updater type 
-         * \param updaters the laeyer will push_back into updaters 
+         * \param specified updater type
+         * \param updaters the laeyer will push_back into updaters
          */
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {}
         /*!
@@ -60,7 +60,7 @@ namespace cxxnet {
         virtual void SetParam(const char *name, const char* val) {}
         /*!
          * \brief intialized model parameters
-         */        
+         */
         virtual void InitModel(void) {}
         /*!
          * \brief Save model into binary file
@@ -72,7 +72,7 @@ namespace cxxnet {
          * \param fi input stream
          */
         virtual void LoadModel(mshadow::utils::IStream &fi) {}
-    }; 
+    };
 }; // namespace cxxnet
 
 namespace cxxnet {
@@ -90,22 +90,22 @@ namespace cxxnet {
         inline bool is_mat( void ) const{
             return data.shape[2] == 1 && data.shape[3] == 1;
         }
-    }; // struct Node         
+    }; // struct Node
 }; // namespace cxxnet
 
 namespace cxxnet {
-    /*! 
+    /*!
      * \brief factory: create an upadater algorithm of given type
      * \param type indicate the type of updater
      * \param rnd random number generator
      * \param weight network weight
-     * \param grad network gradient 
+     * \param grad network gradient
      * \param tag some tags used to identify the weight, for example: "bias", "wmat", "mask", default ""
      */
     template<typename xpu, int dim>
     inline IUpdater* CreateUpdater( const char *type,
-                                    mshadow::Random<xpu> &rnd, 
-                                    mshadow::Tensor<xpu,dim> &weight, 
+                                    mshadow::Random<xpu> &rnd,
+                                    mshadow::Tensor<xpu,dim> &weight,
                                     mshadow::Tensor<xpu,dim> &wgrad,
                                     const char *tag );
 }; // namespace cxxnet
@@ -115,8 +115,9 @@ namespace cxxnet {
     namespace layer_type{
         const int kFullConnect = 0;
         const int kSoftmax     = 1;
+        const int kRectifiedLinear = 2;
     };
-    /*! 
+    /*!
      * \brief factory: create an upadater algorithm of given type
      * \param type indicate the type of a layer
      * \param rnd random number generator
@@ -125,7 +126,7 @@ namespace cxxnet {
      */
     template<typename xpu>
     inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu>& in, Node<xpu>& out );
-    /*! 
+    /*!
      * \brief factory: create an upadater algorithm of given type
      * \param type indicate the type of a layer
      */
