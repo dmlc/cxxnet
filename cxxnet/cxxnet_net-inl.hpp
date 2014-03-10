@@ -355,15 +355,13 @@ namespace cxxnet {
         inline void SetLoss( const std::vector<float> &labels ){
             Assert( temp.shape[1] == labels.size() );
             switch( loss_type ){
-            case 0: {
-                // softmax
+            case 0: { // softmax
                 for( size_t i = 0; i < labels.size(); ++ i ){
                     temp[ i ][ (int)labels[i] ] -= 1.0f;
                 }
                 break;
             }
-            case 1:{
-                // regression
+            case 1:{ // regression
                 Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
                 for( size_t i = 0; i < labels.size(); ++ i ){
                     temp[ i ][0] -= labels[i];
