@@ -17,6 +17,8 @@ namespace cxxnet{
     
     /*! \brief potential parameters for each layer */
     struct LayerParam{
+        /*! \brief number of hidden layers */       
+        int num_hidden;
         /*! \brief initialization sd for weight */
         float init_sigma;
         /*!
@@ -37,11 +39,7 @@ namespace cxxnet {
     public:
         FullConnectLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
             :rnd_(rnd), in_(in), out_(out){
-            Assert( in_.data.shape[1] == out_.data.shape[1], "input output batch mismatch" );
-            wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
-            gwmat_.Resize( wmat_.shape );
-            bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
-            gbias_.Resize( gbias_.shape );
+            
         }            
         virtual ~FullConnectLayer( void ){            
         }
@@ -61,6 +59,10 @@ namespace cxxnet {
                 in_.mat() = dot( out_.mat(), wmat_.T() );
             }
         }
+        virtual void AdjustNodeShape( void ){
+            Assert( in_.is_mat(), "input need to be a matrix" );
+            out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], param_.num_hidden );
+        }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
             updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
             updaters.push_back( CreateUpdater( updater, rnd_, bias_, gbias_, "bias" ) );
@@ -68,17 +70,25 @@ namespace cxxnet {
         virtual void SetParam(const char *name, const char* val){
             param_.SetParam( name, val );
         }
-        virtual void InitModel(void){            
+        virtual void InitModel(void){
+            // resize to correct shape 
+            wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
+            gwmat_.Resize( wmat_.shape );
+            bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
+            gbias_.Resize( gbias_.shape ); 
+            // random initalize
             rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
+            fo.Write( &param_, sizeof(LayerParam) );
             wmat_.SaveBinary( fo );
             bias_.SaveBinary( fo );
             gwmat_.SaveBinary( fo );
             gbias_.SaveBinary( fo );
         }
         virtual void LoadModel(mshadow::utils::IStream &fi){
+            Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
             wmat_.LoadBinary( fi );
             bias_.LoadBinary( fi );
             gwmat_.LoadBinary( fi );
@@ -116,8 +126,7 @@ namespace cxxnet {
             mshadow::Softmax( out_.mat(), out_.mat() );            
         }
         virtual void Backprop(bool is_firstlayer){
-            // TODO, or maybe do nothing, let cxxnet operate on node
-            // minus gradient
+            // do nothing
         }
     private:
         /*! \brief only transform on out */

@@ -41,7 +41,11 @@ namespace cxxnet {
          */
         virtual void Backprop(bool is_firstlayer) = 0;
     public:
-        // interface code that not needed to be implemented by all nodes        
+        // interface code that not needed to be implemented by all nodes
+        /*! 
+         * \brief adjust output node shape, according to current layers' configuration
+         */
+        virtual void AdjustNodeShape( void ){}
         /*!
          * \brief Get updaters for the layer
          * \param specified updater type 
@@ -81,6 +85,10 @@ namespace cxxnet {
         /*! \brief matrix view of the node */
         inline mshadow::Tensor<xpu,2> mat( void ){
             return data[0][0];
+        }
+        /*! \brief whether it holds a matrix data */
+        inline bool is_mat( void ) const{
+            return data.shape[2] == 1 && data.shape[3] == 1;
         }
     }; // struct Node         
 }; // namespace cxxnet

@@ -10,8 +10,11 @@
 #include "cxxnet_net.h"
 
 namespace cxxnet {    
+    using namespace mshadow::utils;
+    using namespace mshadow::expr;
+
     /*! \brief data structure that contains general shape of network */
-    struct NetModel{
+    struct NetMetaModel{
     public:
         /*! \brief general model parameter */
         struct Param{
@@ -21,12 +24,23 @@ namespace cxxnet {
             int num_layers;
             /*! \brief input shape, not including batch dimension */
             mshadow::Shape<3> shape_in;
+            /*! \brief whether the network is initialized */
+            int init_end;
             /*! \brief reserved flag, used to extend data structure */
             int reserved_flag;
             /*! \brief constructor, reserved flag */
             Param( void ){ 
+                init_end = 0;
                 reserved_flag = 0;
             } 
+            /*! \brief get input shape, given number of batches */
+            mshadow::Shape<4> GetShapeIn( index_t nbatch ) const{
+                if( shape_in[2] == 1 && shape_in[1] == 1 ){
+                    return mshadow::Shape4( 1, 1, nbatch, shape_in[0] );
+                }else{
+                    return mshadow::Shape4( nbatch, shape_in[2], shape_in[1], shape_in[0] );
+                }
+            }
         };
         /*! \brief information about each layer */
         struct LayerInfo{
@@ -36,6 +50,9 @@ namespace cxxnet {
             int nindex_in;
             /*! \brief output node index */
             int nindex_out;
+            inline bool operator==( const LayerInfo &b ) const{
+                return type == b.type && nindex_in == b.nindex_in && nindex_out == b.nindex_out;
+            }
         };
     public:
         /*! \brief model parameter */
@@ -45,21 +62,138 @@ namespace cxxnet {
     public:
         /*! \brief set model parameters */
         inline void SetParam( const char *name, const char *val ){
-            if( layers.size() != 0 ) return;
-            if( !strcmp( name, "input_shape") ){
+            if( param.init_end != 0 ) return;
+            if( !strcmp( name, "input_shape") ){                
                 unsigned x, y, z;
-                utils::Assert( sscanf( val, "%u,%u,%u", &z,&y,&x ) ==3, 
+                Assert( sscanf( val, "%u,%u,%u", &z,&y,&x ) ==3, 
                                "input_shape must be three consecutive integers without space example: 1,1,200 " );
-                param.shape_in[0] = x; param.shape_in[1] = y; param.shape_in[2] = y; 
+                param.shape_in[0] = x; param.shape_in[1] = y; param.shape_in[2] = z; 
             }
         }
         /*! \brief guess parameters, from current setting */
-        inline void InitParams( void ){
+        inline void InitModel( void ){
             param.num_layers = static_cast<int>( layers.size() );
             for( size_t i = 0; i < layers.size(); ++ i ){
-                param.num_nodes = std::max( layers[i].nindex_out + 1, param.num_nodes) ;
+                param.num_nodes = std::max( layers[i].nindex_out + 1, param.num_nodes );
+            }
+            param.init_end = 1;
+        }
+        virtual void SaveModel( mshadow::utils::IStream &fo ) const {
+            fo.Write( &param, sizeof( Param ) );
+            fo.Write( &layers[0], sizeof(LayerInfo) * layers.size() );
+        }
+        virtual void LoadModel( mshadow::utils::IStream &fi ) {
+            Assert( fi.Read( &param, sizeof( Param ) ) != 0 );
+            layers.resize( param.num_layers );
+            if( layers.size() != 0 ){
+                Assert( fi.Read( &layers[0], sizeof(LayerInfo) * layers.size() ) != 0 );
             }
         }
+    };
+
+    /*! \brief helper class to config networks */
+    struct NetConfigHelper{
+    public:
+        NetConfigHelper( NetMetaModel &meta ):meta(meta){
+            this->netcfg_mode = 0;
+            this->updater_type = "sgd";
+            this->batch_size   = 100;
+        }
+        // set parameters
+        inline void SetParam( const char *name, const char *val ){
+            meta.SetParam( name, val );
+            if( !strcmp( name, "batch_size" ) ) batch_size = atoi( val );
+            if( !strcmp( name, "netconfig" ) && !strcmp( val, "start") ) netcfg_mode = 1;
+            if( !strcmp( name, "netconfig" ) && !strcmp( val, "end") )   netcfg_mode = 0;
+
+            if( netcfg_mode == 0 ) return;
+            if( !strncmp( name, "layer[", 6 ) ){
+                if( meta.param.init_end == 0 ){
+                    meta.layers.push_back( this->GetLayerInfo( name, val ) );
+                    meta.param.num_layers = static_cast<int>( meta.layers.size() );
+                }
+                netcfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
+            }
+        }
+        template<typename xpu>
+        inline void ConfigLayers( std::vector< Node<xpu> >& nodes,
+                                  std::vector<ILayer*>& layers, 
+                                  std::vector<IUpdater*>& updaters, bool init_model ){
+            // default configuration
+            int layer_index = -1;            
+            std::vector< std::pair< const char *, const char *> > defcfg;
+            for( size_t i = 0; i < netcfg.size(); ++i ){
+                const char* name = netcfg[i].first.c_str();
+                const char* val  = netcfg[i].second.c_str();
+                if( !strncmp( name, "layer[", 6 ) ){
+                    ++ layer_index;
+                    NetMetaModel::LayerInfo inf = this->GetLayerInfo( name, val );       
+                    Assert( inf == meta.layers[layer_index], "config setting mismatch" );
+                    // set global parameters
+                    for( size_t j = 0; j < defcfg.size(); ++ j ){
+                        layers[ layer_index ]->SetParam( defcfg[j].first, defcfg[j].second );
+                    }
+                }else{
+                    if( layer_index >= 0 ){
+                        layers[ layer_index ]->SetParam( name, val );
+                    }else{
+                        defcfg.push_back( std::make_pair( name, val ) );                    
+                    }
+                }
+            }
+
+            // adjust node Shape
+            nodes[0].data.shape = meta.param.GetShapeIn( batch_size );
+            for( size_t i = 0; i < layers.size(); ++i ){
+                layers[i]->AdjustNodeShape();
+                if( init_model ) layers[i]->InitModel();
+            }
+            // configure updaters             
+            layer_index = 0;
+            size_t ustart = 0;
+
+            for( size_t i = 0; i < netcfg.size(); ++i ){
+                const char* name = netcfg[i].first.c_str();
+                const char* val  = netcfg[i].second.c_str();                
+                if( !strncmp( name, "layer[", 6 ) ){
+                    ++ layer_index;
+                    ustart = updaters.size();
+                    layers[ layer_index ]->GetUpdaters( updater_type.c_str(), updaters );
+                    for( size_t j = ustart; j < defcfg.size(); ++ j ){
+                        for( size_t k = 0; k < defcfg.size(); ++ k ){
+                            updaters[ k ]->SetParam( defcfg[k].first, defcfg[k].second );
+                        }             
+                    }
+                }else{
+                    if( layer_index >= 0 ){
+                        for( size_t j = ustart; j < updaters.size(); ++ j ){
+                            updaters[j]->SetParam( name, val );
+                        }
+                    }
+                }
+            }
+        }
+    private:
+        inline NetMetaModel::LayerInfo GetLayerInfo( const char *name, const char *val ){
+            int a, b;
+            char ltype[256],tag[256];
+            Assert( sscanf( name, "layer[%d->%d]", &a, &b ) == 2, "invalid config format, correct example: layer[1->2]" );
+            Assert( sscanf( val , "%[^:]:%s", ltype, tag ) >= 1, "invalid config format" );
+            NetMetaModel::LayerInfo inf;
+            inf.nindex_in = a; inf.nindex_out = b;            
+            inf.type = GetLayerType( ltype );
+            return inf;
+        }
+    private:
+        NetMetaModel &meta;
+        // type of updater
+        std::string updater_type;
+        // configures about network
+        std::vector< std::pair< std::string, std::string > > netcfg;
+        // number of batch size
+        int batch_size;
+        // whether in net config mode
+        int netcfg_mode;        
     };
 
     /*! 
@@ -68,6 +202,11 @@ namespace cxxnet {
      */
     template<typename xpu>
     struct NeuralNet{
+    public:
+        /*! \brief meta information about network */
+        NetMetaModel meta;
+        /*! \brief configure helper */
+        NetConfigHelper cfg;
         /*! \brief nodes in the neural net */
         std::vector< Node<xpu> > nodes;
         /*! \brief layers in the neural net */
@@ -76,35 +215,56 @@ namespace cxxnet {
         std::vector<IUpdater*>   updaters;
         /*! \brief random number generator */        
         mshadow::Random<xpu>     rnd;
+    public:
+        /*! \brief constructor */
+        NeuralNet( void ): cfg( meta ),rnd(0){}
+        /*! \brief destructor */
         ~NeuralNet( void ){
-        }
-        /*! \brief set parameters */
-        inline void FreeSpace( void ){
-            for( size_t i = 0; i < nodes.size(); ++ i ){
-                mshadow::FreeSpace( nodes[i].data );
-            } 
-            for( size_t i = 0; i < layers.size(); ++ i ){
-                delete layers[i];
-            }
-            for( size_t i = 0; i < updaters.size(); ++ i ){
-                delete updaters[i];
-            }
-            nodes.clear(); layers.clear(); updaters.clear();
+            this->FreeSpace();
         }
         /*! \brief input node */
-        inline Node& in( void ){
+        inline Node<xpu>& in( void ){
             return nodes[0];
         }
         /*! \brief output node */
-        inline Node& out( void ){
+        inline Node<xpu>& out( void ){
             return nodes[0];
         }
+        /*! \brief set parameter */
+        inline void SetParam( const char *name, const char *val ){
+            if( !strcmp( name, "seed") ) rnd.Seed( atoi( val ) );
+            cfg.SetParam( name, val );
+        }
+        /*! \brief intialize model parameters */
         inline void InitModel( void ) {
+            this->FreeSpace();
+            meta.InitModel();
+            for( int i = 0; i < meta.param.num_layers; ++ i ){
+                const NetMetaModel::LayerInfo &info = meta.layers[i];
+                layers[i] = CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] );
+            }
+            cfg.ConfigLayers( nodes, layers, updaters, true );
+            this->InitNodes();
         }
+        /*! \brief save model to file */
         inline void SaveModel( mshadow::utils::IStream &fo ) const {
-            
+            meta.SaveModel( fo );
+            for( int i = 0; i < meta.param.num_layers; ++ i ){
+                layers[i]->SaveModel( fo );
+            }
         }
-        virtual void LoadModel( mshadow::utils::IStream &fi ) {
+        /*! \brief load model from stream */
+        inline void LoadModel( mshadow::utils::IStream &fi ) {
+            this->FreeSpace();
+            meta.LoadModel( fi );
+            nodes.resize( meta.param.num_nodes, Node<xpu>() );
+            for( int i = 0; i < meta.param.num_layers; ++ i ){
+                const NetMetaModel::LayerInfo &info = meta.layers[i];
+                layers[i] = CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] );
+                layers[i]->LoadModel( fi );
+            }
+            cfg.ConfigLayers( nodes, layers, updaters, false );
+            this->InitNodes();
         }
         /*! 
          * \brief forward prop 
@@ -127,71 +287,100 @@ namespace cxxnet {
                 updaters[i]->Update();
             }
         }
+    private:
+        /*! \brief intialize the node space */
+        inline void InitNodes( void ){
+            for( size_t i = 0; i < nodes.size(); ++ i ){
+                mshadow::AllocSpace( nodes[i].data );
+            }             
+        }
+        /*! \brief set parameters */
+        inline void FreeSpace( void ){
+            for( size_t i = 0; i < nodes.size(); ++ i ){
+                mshadow::FreeSpace( nodes[i].data );
+            } 
+            for( size_t i = 0; i < layers.size(); ++ i ){
+                delete layers[i];
+            }
+            for( size_t i = 0; i < updaters.size(); ++ i ){
+                delete updaters[i];
+            }
+            nodes.clear(); layers.clear(); updaters.clear();
+        }
     };
     
-    /*! \brief */
+    /*! \brief implementation of neural network trainer */
     template<typename xpu>
-    class NeuralNet {
+    class CXXNetTrainer : public INetTrainer{
     public:
-        /*! \brief constuctor for NeuralNet
-         *  \param param configure string for the network
-         *  \param input input batch node
-         *  \param target target batch node
-         */
-        explicit NeuralNet(const char* param, Node<xpu> &input, Node<xpu> &target) {
-            rnd = mshadow::Random<xpu>(1);
-            // Init hidden layers
-            // set data
-            // run
-            num_layers_ = layers.size();
+        CXXNetTrainer( void ){
+            loss_type = 0;
         }
-        void InitNetwork<cpu>(const char *param) {
-            // Get layer info
-            // Get node info
-            // Node<cpu> in, out;
-            // in.data = mshadow::NewCTensor( mshadow::Shape4(h,l,c, batch) , 1.0f );
-            // out.data = mshadow::NewCTensor (in.data.shape);
-            // ILayer *layer = CreateLayer(type, rnd, in, out);
-            // layers.push_back(layer);
+        virtual ~CXXNetTrainer( void ){}
+        virtual void SetParam( const char *name, const char *val ){
+            if( !strcmp( name, "loss" ) ) loss_type = atoi( val );
+            net.SetParam( name, val );
         }
-        void InitNetwork<gpu>(const char *param) {
-            // Get layer info
-            // Get node info
-            // Node<gpu> in, out;
-            // in.data = mshadow::NewGTensor( mshadow::Shape4(h,l,c, batch) , 1.0f );
-            // out.data = mshadow::NewGTensor (in.data.shape);
-            // ILayer *layer = CreateLayer(type, rnd, in, out);
-            // Set param for layer
-            // layers.push_back(layer);
-            // GetUpdater
-            // push back updater
+        virtual void InitModel( void ) {
+            net.InitModel();
         }
-        void Forward(bool is_train) {
-            for (int i = 0; i < num_layers_; ++i) {
-                layers[i].Forward(is_train);
-            }
-            // Update Batch
+        virtual void SaveModel( mshadow::utils::IStream &fo ) const {
+            net.SaveModel( fo );
         }
-
-        void Backprop(bool is_firstlayer) {
-            for (int i = num_layers_ - 1; i >= 0; --i) {
-                layers[i].Backprop(is_firstlayer);
-            }
-            // for (int i = num_layers_ - 1; i >= 0; --i) {
-            //      updaters[i].Update();
-            // }
-            // Update Bacth
+        virtual void LoadModel( mshadow::utils::IStream &fi ) {
+            net.LoadModel( fi );
+        }        
+        virtual void Update ( const std::vector<float> &labels, const mshadow::Tensor<cpu,4> &batch ) {
+            mshadow::Copy( net.in().data, batch );
+            net.Forward( true );
+            this->SyncOuput();
+            this->SetLoss( labels );
+            net.Backprop();
+            net.Update();
         }
-
+        virtual const mshadow::Tensor<cpu,2>& Predict( const mshadow::Tensor<cpu,4> &batch ) {
+            net.Forward( false );
+            this->SyncOuput();
+            return temp;
+        }
     private:
-        // TODO: support like multi-output nn
-        std::vector<ILayer*> layers;
-        std::vector<IUpdater*> &updaters
-        mshadow::Random<xpu> rnd;
-        Node<xpu> in_;
-        Node<xpu> target_;
-        int num_layers_;
-
+        //  sync output
+        inline void SyncOuput( void ){
+            mshadow::Shape<4> oshape  = net.out().data.shape;
+            Assert( net.out().is_mat() );
+            temp.Resize( mshadow::Shape2( oshape[1], oshape[0] ) );
+            mshadow::Copy( temp, net.out().data[0][0] );
+        }
+        // for now use softmax
+        inline void SetLoss( const std::vector<float> &labels ){
+            Assert( temp.shape[1] == labels.size() );
+            switch( loss_type ){
+            case 0: {
+                // softmax
+                for( size_t i = 0; i < labels.size(); ++ i ){
+                    temp[ i ][ (int)labels[i] ] -= 1.0f;
+                }
+                break;
+            }
+            case 1:{
+                // regression
+                Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
+                for( size_t i = 0; i < labels.size(); ++ i ){
+                    temp[ i ][0] -= labels[i];
+                }
+                break;
+            }
+            default: Error("unknown loss type");
+            }
+            mshadow::Copy( net.out().data[0][0], temp );
+        }
+    private:        
+        // loss function
+        int loss_type;
+        // temp space 
+        mshadow::TensorContainer<cpu,2> temp;
+        // true net 
+        NeuralNet<xpu> net;
     }; // class NeuralNet
 
 

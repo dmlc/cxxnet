@@ -22,7 +22,7 @@ namespace cxxnet {
     /*! \brief interface for network */
     class INetTrainer{
     public:
-        // set model parameters
+        // set model parameters, call this before everything, including load model
         virtual void SetParam( const char *name, const char *val ) = 0;
         // random initalize model
         virtual void InitModel( void ) = 0;
@@ -31,14 +31,13 @@ namespace cxxnet {
         // load model from stream
         virtual void LoadModel( mshadow::utils::IStream &fi ) = 0;
         // update model parameter
-        virtual void Update ( const std::vector<int> &labels, const mshadow::Tensor<cpu,4> &batch ) = 0;
+        virtual void Update ( const std::vector<float> &labels, const mshadow::Tensor<cpu,4> &batch ) = 0;
         // predict labels
-        virtual void Predict( const std::vector<int> &labels, const mshadow::Tensor<cpu,4> &batch ) = 0;
+        virtual const mshadow::Tensor<cpu,2>& Predict( const mshadow::Tensor<cpu,4> &batch ) = 0;
     };
 };
 
 namespace cxxnet {
-    // todo 
-    INetTrainer* CreateNet( int net_type );
+    INetTrainer* CreateNet( int net_type, const char *device );
 };
 #endif // CXXNET_H
