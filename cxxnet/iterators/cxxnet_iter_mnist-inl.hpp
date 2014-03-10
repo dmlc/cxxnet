@@ -15,6 +15,7 @@ namespace cxxnet {
             mode_ = 0;
             inst_offset_ = 0;
             silent_ = 0;
+            shuffle_ = 0;
         }
         virtual ~MNISTIterator( void ){
             if( img_.dptr != NULL ) delete []img_.dptr;
@@ -50,7 +51,7 @@ namespace cxxnet {
             this->loc_ = 0;
         }
         virtual bool Next( void ) {
-            if( loc_ + batch_size_ <= img_.shape[2] ){
+            if( loc_ + batch_size_ < img_.shape[2] ){
                 loc_ += batch_size_;
                 out_.data.dptr = img_[ loc_ ].dptr;
                 out_.labels = &labels_[ loc_ ];
@@ -70,6 +71,7 @@ namespace cxxnet {
             int image_count = gzimg.ReadInt();
             int image_rows  = gzimg.ReadInt();
             int image_cols  = gzimg.ReadInt();
+
             img_.shape = mshadow::Shape3( image_count, image_rows, image_cols );
             img_.shape.stride_ = img_.shape[0];
             
@@ -78,7 +80,7 @@ namespace cxxnet {
             for (int i = 0; i < image_count; ++i) {
                 for (int j = 0; j < image_rows; ++j) {
                     for (int k = 0; k < image_cols; ++k) {
-                        img_[k][j][i] = gzimg.ReadByte();
+                        img_[i][j][k] = gzimg.ReadByte();
                     }
                 }
             }
@@ -89,6 +91,7 @@ namespace cxxnet {
             utils::GzFile gzlabel( path_label.c_str(), "rb" );
             gzlabel.ReadInt();
             int labels_count = gzlabel.ReadInt();
+
             labels_.resize( labels_count );
             for( int i = 0; i < labels_count; ++i ) {
                 labels_[i] = gzlabel.ReadByte();

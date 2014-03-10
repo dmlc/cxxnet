@@ -17,7 +17,9 @@ namespace cxxnet{
         public:
             GzFile( const char *path, const char *mode ) {
                 fp_ = gzopen( path, mode );
-                fprintf( stderr, "cannot open %s", path );
+                if( fp_ == NULL ){
+                    fprintf( stderr, "cannot open %s", path );
+                }
                 Assert( fp_ != NULL, "Failed to open file\n" );
             }
             virtual ~GzFile( void ) {
@@ -35,7 +37,7 @@ namespace cxxnet{
                 gzwrite( fp_, ptr, size );
             }
             inline int ReadInt( void ) {
-                char buf[4];
+                unsigned char buf[4];
                 utils::Assert( Read( buf, sizeof(buf) ) == sizeof(buf), "Failed to read an int\n");
                 return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
             }            

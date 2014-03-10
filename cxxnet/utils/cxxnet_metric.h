@@ -72,7 +72,7 @@ namespace cxxnet{
                 sum_err = 0.0; cnt_inst = 0;
             }
             virtual void AddEval( const float* preds, const float* labels, int ndata ){
-                for( int i = 0; i < ndata; ++ i ){                    
+                for( int i = 0; i < ndata; ++ i ){
                     sum_err += (int)preds[i] != (int)labels[i];
                     cnt_inst+= 1;
                 }                 

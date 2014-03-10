@@ -17,7 +17,7 @@ CUBIN =
 all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 
 cxxnet.o: cxxnet/cxxnet.cu cxxnet/*.hpp cxxnet/*.h
-cxxnet_data.o: cxxnet/cxxnet_data.cpp cxxnet/iterators/*.hpp
+cxxnet_data.o: cxxnet/cxxnet_data.cpp cxxnet/iterators/*.hpp cxxnet/utils/cxxnet_io.h
 cxxnet_learner: cxxnet/cxxnet_main.cpp cxxnet_data.o cxxnet.o
 
 $(BIN) :

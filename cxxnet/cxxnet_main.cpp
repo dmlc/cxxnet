@@ -73,6 +73,7 @@ namespace cxxnet{
             if( !strcmp( name, "silent") )            silent        = atoi( val );            
             if( !strcmp( name, "pred" ))              name_pred   = val;
             if( !strcmp( name, "task") )              task = val;
+            if( !strcmp( name, "dev") )               device = val;
             cfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
         }
     private:
@@ -80,7 +81,7 @@ namespace cxxnet{
         inline void Init( void ){
             if( continue_training == 0 || SyncLastestModel() == 0 ){
                 continue_training = 0; 
-                net_trainer = this->CreateNet();
+                net_trainer = this->CreateNet();                
                 if( name_model_in == "NULL" ){
                     net_trainer->InitModel();
                 }else{
@@ -162,7 +163,7 @@ namespace cxxnet{
                         utils::Assert( itr_train == NULL, "can only have one data" );
                         itr_train = cxxnet::CreateIterator( itcfg );
                     }
-                    if( flag == 1 ){
+                    if( flag == 2 ){
                         itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
                         eval_names.push_back( evname );
                     }
@@ -176,7 +177,7 @@ namespace cxxnet{
         inline void TaskTrain( void ){            
             time_t start    = time( NULL );
             unsigned long elapsed = 0;            
-            if( continue_training == 0 ){
+            if( continue_training == 0 && save_period != 0 ){
                 this->SaveModel();
             }
             
@@ -195,7 +196,8 @@ namespace cxxnet{
                         elapsed = (long)(time(NULL) - start); 
                         if( !silent ){
                             printf("\r                                                               \r");
-                            printf("round %8d:[%8d] %ld sec elapsed", start_counter-1 , sample_counter, elapsed );
+                            printf("round %8d:[%8d] %ld sec elapsed", start_counter-1,
+                                   sample_counter, elapsed );
                             fflush( stdout );
                         }
                     }

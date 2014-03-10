@@ -21,6 +21,10 @@ namespace cxxnet{
         int num_hidden;
         /*! \brief initialization sd for weight */
         float init_sigma;
+        LayerParam( void ){
+            init_sigma = 0.01f;
+            num_hidden = 0;
+        }
         /*!
          * \brief Set param for the layer from string
          * \param name parameter name
@@ -28,6 +32,7 @@ namespace cxxnet{
          */
         inline void SetParam(const char *name, const char* val) {
             if( !strcmp( name, "init_sigma") ) init_sigma = (float)atof(val);
+            if( !strcmp( name, "nhidden") ) num_hidden = atoi(val);
         }
     };
 };
@@ -61,6 +66,7 @@ namespace cxxnet {
         }
         virtual void AdjustNodeShape( void ){
             Assert( in_.is_mat(), "input need to be a matrix" );
+            Assert( param_.num_hidden > 0, "must set nhidden correctly" );
             out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], param_.num_hidden );
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
@@ -75,7 +81,7 @@ namespace cxxnet {
             wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
             gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
-            gbias_.Resize( gbias_.shape ); 
+            gbias_.Resize( bias_.shape ); 
             // random initalize
             rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
@@ -120,7 +126,7 @@ namespace cxxnet {
     public:
         SoftmaxLayer( Node<xpu> &in, Node<xpu> &out )
             :out_(out){
-            Assert( &in == &out, "BUG" );
+            Assert( &in == &out, "softmax layer must self loop e.g layer[1->1] = softmax" );
         }
         virtual void Forward(bool is_train){
             mshadow::Softmax( out_.mat(), out_.mat() );            

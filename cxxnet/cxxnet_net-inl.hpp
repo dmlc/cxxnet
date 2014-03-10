@@ -113,8 +113,8 @@ namespace cxxnet {
                     meta.layers.push_back( this->GetLayerInfo( name, val ) );
                     meta.param.num_layers = static_cast<int>( meta.layers.size() );
                 }
-                netcfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
             }
+            netcfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
         }
         template<typename xpu>
         inline void ConfigLayers( std::vector< Node<xpu> >& nodes,
@@ -146,11 +146,12 @@ namespace cxxnet {
             // adjust node Shape
             nodes[0].data.shape = meta.param.GetShapeIn( batch_size );
             for( size_t i = 0; i < layers.size(); ++i ){
-                layers[i]->AdjustNodeShape();
+                layers[i]->AdjustNodeShape(); 
                 if( init_model ) layers[i]->InitModel();
             }
+
             // configure updaters             
-            layer_index = 0;
+            layer_index = -1;
             size_t ustart = 0;
 
             for( size_t i = 0; i < netcfg.size(); ++i ){
@@ -160,10 +161,10 @@ namespace cxxnet {
                     ++ layer_index;
                     ustart = updaters.size();
                     layers[ layer_index ]->GetUpdaters( updater_type.c_str(), updaters );
-                    for( size_t j = ustart; j < defcfg.size(); ++ j ){
+                    for( size_t j = ustart; j < updaters.size(); ++ j ){
                         for( size_t k = 0; k < defcfg.size(); ++ k ){
-                            updaters[ k ]->SetParam( defcfg[k].first, defcfg[k].second );
-                        }             
+                            updaters[j]->SetParam( defcfg[k].first, defcfg[k].second );
+                        }    
                     }
                 }else{
                     if( layer_index >= 0 ){
@@ -204,6 +205,8 @@ namespace cxxnet {
     template<typename xpu>
     struct NeuralNet{
     public:
+        /*!\brief do not print anything */
+        int silent;
         /*! \brief meta information about network */
         NetMetaModel meta;
         /*! \brief configure helper */
@@ -218,7 +221,9 @@ namespace cxxnet {
         mshadow::Random<xpu>     rnd;
     public:
         /*! \brief constructor */
-        NeuralNet( void ): cfg(meta),rnd(0){}
+        NeuralNet( void ): cfg(meta),rnd(0){
+            silent = 0;
+        }
         /*! \brief destructor */
         ~NeuralNet( void ){
             this->FreeSpace();
@@ -229,21 +234,26 @@ namespace cxxnet {
         }
         /*! \brief output node */
         inline Node<xpu>& out( void ){
-            return nodes[0];
+            return nodes.back();
         }
         /*! \brief set parameter */
         inline void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "seed") ) rnd.Seed( atoi( val ) );
+            if( !strcmp( name, "silent") ) silent = atoi(val);
             cfg.SetParam( name, val );
         }
         /*! \brief intialize model parameters */
         inline void InitModel( void ) {
             this->FreeSpace();
             meta.InitModel();
+            nodes.resize( meta.param.num_nodes, Node<xpu>() );
+
             for( int i = 0; i < meta.param.num_layers; ++ i ){
+                Assert( layers.size() == (size_t) i );
                 const NetMetaModel::LayerInfo &info = meta.layers[i];
-                layers[i] = CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] );
+                layers.push_back( CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] ) );
             }
+
             cfg.ConfigLayers( nodes, layers, updaters, true );
             this->InitNodes();
         }
@@ -261,7 +271,8 @@ namespace cxxnet {
             nodes.resize( meta.param.num_nodes, Node<xpu>() );
             for( int i = 0; i < meta.param.num_layers; ++ i ){
                 const NetMetaModel::LayerInfo &info = meta.layers[i];
-                layers[i] = CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] );
+                Assert( layers.size() == (size_t) i );
+                layers.push_back ( CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] ) );
                 layers[i]->LoadModel( fi );
             }
             cfg.ConfigLayers( nodes, layers, updaters, false );
@@ -293,6 +304,10 @@ namespace cxxnet {
         inline void InitNodes( void ){
             for( size_t i = 0; i < nodes.size(); ++ i ){
                 mshadow::AllocSpace( nodes[i].data );
+                mshadow::Shape<4> s = nodes[i].data.shape;
+                if( !silent ){
+                    printf("node[%d].shape: %u,%u,%u,%u\n",(int)i, s[3],s[2],s[1],s[0] );
+                }
             }             
         }
         /*! \brief set parameters */
@@ -316,6 +331,7 @@ namespace cxxnet {
     public:
         CXXNetTrainer( void ){
             loss_type = 0;
+            printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
         }
         virtual ~CXXNetTrainer( void ){}
         virtual void SetParam( const char *name, const char *val ){
@@ -360,7 +376,7 @@ namespace cxxnet {
             net.Forward( false );
             this->SyncOuput();
             for( index_t i = 0; i <temp.shape[1]; ++i ){
-                preds.push_back( this->TransformPred( temp[i]) );
+                preds.push_back( this->TransformPred( temp[i] ) );
             }
         }
     private:
