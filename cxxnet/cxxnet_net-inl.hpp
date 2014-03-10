@@ -217,7 +217,7 @@ namespace cxxnet {
         mshadow::Random<xpu>     rnd;
     public:
         /*! \brief constructor */
-        NeuralNet( void ): cfg( meta ),rnd(0){}
+        NeuralNet( void ): cfg(meta),rnd(0){}
         /*! \brief destructor */
         ~NeuralNet( void ){
             this->FreeSpace();
@@ -329,22 +329,28 @@ namespace cxxnet {
         }
         virtual void LoadModel( mshadow::utils::IStream &fi ) {
             net.LoadModel( fi );
-        }        
-        virtual void Update ( const std::vector<float> &labels, const mshadow::Tensor<cpu,4> &batch ) {
-            mshadow::Copy( net.in().data, batch );
+        }
+        // tell trainer which round it is
+        virtual void StartRound( int epoch ) {
+        }
+        virtual void Update ( const DataBatch& batch ) {
+            mshadow::Copy( net.in().data, batch.data );
             net.Forward( true );
             this->SyncOuput();
-            this->SetLoss( labels );
+            this->SetLoss( batch.labels );
             net.Backprop();
             net.Update();
         }
-        virtual const mshadow::Tensor<cpu,2>& Predict( const mshadow::Tensor<cpu,4> &batch ) {
+        virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ){
+            // TODO
+        }
+        virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) {
+            mshadow::Copy( net.in().data, batch.data );
             net.Forward( false );
             this->SyncOuput();
-            return temp;
+            // TODO
         }
     private:
-        //  sync output
         inline void SyncOuput( void ){
             mshadow::Shape<4> oshape  = net.out().data.shape;
             Assert( net.out().is_mat() );
@@ -352,18 +358,17 @@ namespace cxxnet {
             mshadow::Copy( temp, net.out().data[0][0] );
         }
         // for now use softmax
-        inline void SetLoss( const std::vector<float> &labels ){
-            Assert( temp.shape[1] == labels.size() );
+        inline void SetLoss( const float* labels ){
             switch( loss_type ){
             case 0: { // softmax
-                for( size_t i = 0; i < labels.size(); ++ i ){
+                for( index_t i = 0; i < temp.shape[1]; ++i ){
                     temp[ i ][ (int)labels[i] ] -= 1.0f;
                 }
                 break;
             }
             case 1:{ // regression
                 Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
-                for( size_t i = 0; i < labels.size(); ++ i ){
+                for( index_t i = 0; i <temp.shape[1]; ++i ){
                     temp[ i ][0] -= labels[i];
                 }
                 break;

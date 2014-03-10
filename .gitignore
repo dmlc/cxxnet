@@ -2,3 +2,4 @@
 test*
 *.o
 *.conf
+cxxnet_learner

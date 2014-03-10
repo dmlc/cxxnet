@@ -8,16 +8,17 @@ export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_th
 export NVCCFLAGS = -O3 --use_fast_math -ccbin $(CXX)
 
 # specify tensor path
-BIN = testc
-OBJ = 
+BIN = cxxnet_learner
+OBJ = cxxnet_data.o
 CUOBJ = cxxnet.o 
 CUBIN =
 .PHONY: clean all
 
 all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 
-testc: testcompile.cpp cxxnet.o
 cxxnet.o: cxxnet/cxxnet.cu cxxnet/*.hpp cxxnet/*.h
+cxxnet_data.o: cxxnet/cxxnet_data.cpp 
+cxxnet_learner: cxxnet/cxxnet_main.cpp cxxnet_data.o cxxnet.o
 
 $(BIN) :
 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.cpp %.o %.c, $^)
