@@ -5,7 +5,7 @@ export CXX = g++
 export NVCC =nvcc
 export CFLAGS = -Wall -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow
 export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand
-export NVCCFLAGS = -O3 --use_fast_math -ccbin $(CXX)
+export NVCCFLAGS = -O3 -ccbin $(CXX)
 
 # specify tensor path
 BIN = cxxnet_learner

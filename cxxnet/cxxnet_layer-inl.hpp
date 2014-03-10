@@ -129,7 +129,7 @@ namespace cxxnet {
             Assert( &in == &out, "softmax layer must self loop e.g layer[1->1] = softmax" );
         }
         virtual void Forward(bool is_train){
-            mshadow::Softmax( out_.mat(), out_.mat() );            
+            mshadow::Softmax( out_.mat(), out_.mat() );
         }
         virtual void Backprop(bool is_firstlayer){
             // do nothing
