@@ -199,9 +199,13 @@ namespace cxxnet{
                             fflush( stdout );
                         }
                     }
-                }                
-                for( size_t i = 0; i < itr_evals.size(); ++i ){
-                    net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
+                }
+                {// code handling evaluation
+                    fprintf(stderr, "[%d]", start_counter );
+                    for( size_t i = 0; i < itr_evals.size(); ++i ){
+                        net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
+                    }
+                    fprintf(stderr, "\n" );
                 }
                 elapsed = (unsigned long)(time(NULL) - start); 
                 this->SaveModel();

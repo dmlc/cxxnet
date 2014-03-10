@@ -30,6 +30,14 @@ extern "C"{
 #include <cstdio>
 #endif
 
+#ifdef _MSC_VER
+typedef unsigned char uint8_t;
+typedef unsigned short int uint16_t;
+typedef unsigned int  uint32_t;
+#else
+#include <inttypes.h>
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 

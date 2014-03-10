@@ -8,6 +8,7 @@
  */
 #include "cxxnet.h"
 #include "cxxnet_net.h"
+#include "utils/cxxnet_metric.h"
 
 namespace cxxnet {    
     using namespace mshadow::utils;
@@ -318,7 +319,8 @@ namespace cxxnet {
         }
         virtual ~CXXNetTrainer( void ){}
         virtual void SetParam( const char *name, const char *val ){
-            if( !strcmp( name, "loss" ) ) loss_type = atoi( val );
+            if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
+            if( !strcmp( name, "metric") ) metric.AddMetric( val );
             net.SetParam( name, val );
         }
         virtual void InitModel( void ) {
@@ -337,18 +339,29 @@ namespace cxxnet {
             mshadow::Copy( net.in().data, batch.data );
             net.Forward( true );
             this->SyncOuput();
+            mshadow::Copy( net.out().data[0][0], temp );
             this->SetLoss( batch.labels );
             net.Backprop();
             net.Update();
         }
         virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ){
-            // TODO
+            metric.Clear();
+            iter_eval->BeforeFirst();
+            while( iter_eval->Next() ){
+                const DataBatch& batch = iter_eval->Value();
+                std::vector<float> preds;
+                this->Predict( preds, batch );
+                metric.AddEval( &preds[0], batch.labels, preds.size() );
+            }
+            metric.Print( fo, evname );
         }
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) {
             mshadow::Copy( net.in().data, batch.data );
             net.Forward( false );
             this->SyncOuput();
-            // TODO
+            for( index_t i = 0; i <temp.shape[1]; ++i ){
+                preds.push_back( this->TransformPred( temp[i]) );
+            }
         }
     private:
         inline void SyncOuput( void ){
@@ -357,29 +370,41 @@ namespace cxxnet {
             temp.Resize( mshadow::Shape2( oshape[1], oshape[0] ) );
             mshadow::Copy( temp, net.out().data[0][0] );
         }
-        // for now use softmax
-        inline void SetLoss( const float* labels ){
+        inline float TransformPred( mshadow::Tensor<cpu,1> pred ){
             switch( loss_type ){
-            case 0: { // softmax
-                for( index_t i = 0; i < temp.shape[1]; ++i ){
-                    temp[ i ][ (int)labels[i] ] -= 1.0f;
-                }
-                break;
+            case 0: return GetMaxIndex( pred );               
+            case 1: return pred[0];
+            default: Error("unknown loss type"); return 0.0f;
             }
-            case 1:{ // regression
-                Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
-                for( index_t i = 0; i <temp.shape[1]; ++i ){
-                    temp[ i ][0] -= labels[i];
-                }
-                break;
-            }
+        }
+        inline void SetLoss( mshadow::Tensor<cpu,1> pred, float label ){
+            switch( loss_type ){
+            case 0: pred[ static_cast<int>(label) ] -= 1.0f; break;
+            case 1: pred[ 0 ] -=  label; break;
             default: Error("unknown loss type");
             }
-            mshadow::Copy( net.out().data[0][0], temp );
+        }
+        inline void SetLoss( const float* labels ){
+            if( loss_type == 1 ){
+                Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
+            }
+            for( index_t i = 0; i <temp.shape[1]; ++i ){
+                this->SetLoss( temp[i], labels[i] );
+            }
+            mshadow::Copy( net.out().data[0][0], temp );            
+        }
+        inline static int GetMaxIndex( mshadow::Tensor<cpu,1> pred ){
+            index_t maxidx = 0;
+            for( index_t i = 1; i < pred.shape[0]; ++ i ){
+                if( pred[i] > pred[maxidx] ) maxidx = i;
+            }
+            return maxidx;
         }
     private:        
         // loss function
         int loss_type;
+        // evaluator
+        utils::MetricSet metric;
         // temp space 
         mshadow::TensorContainer<cpu,2> temp;
         // true net 
