@@ -141,31 +141,6 @@ namespace cxxnet {
     };
 }; // namespace cxxnet
 
-namespace cxxnet{
-    inline int GetLayerType( const char *type ){
-        using namespace layer_type;
-        if( !strcmp( type, "fullc") )   return kFullConnect;
-        if( !strcmp( type, "softmax") ) return kSoftmax;
-        return 0;
-    }
-
-    template<typename xpu>
-    inline ILayer* CreateLayer( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
-        using namespace layer_type;
-        switch( type ){
-        case kFullConnect: return new FullConnectLayer<xpu>( rnd, in, out );
-        case kSoftmax    : return new SoftmaxLayer<xpu>( in, out );
-        default: Error("unknown layer type");
-        }
-        return NULL;
-    }
-    template<typename xpu>
-    inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
-        return CreateLayer( GetLayerType(type), rnd, in, out );
-    }
-};
-
-
 namespace cxxnet {
     template<typename xpu>
     class RectifiedLinearLayer : public ILayer{
@@ -248,7 +223,33 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu,1> gbias_;
     };
 
+};
+
+namespace cxxnet{
+    inline int GetLayerType( const char *type ){
+        using namespace layer_type;
+        if( !strcmp( type, "fullc") )   return kFullConnect;
+        if( !strcmp( type, "softmax") ) return kSoftmax;
+        if( !strcmp( type, "relu") ) return kRectifiedLinear;
+        return 0;
+    }
+
+    template<typename xpu>
+    inline ILayer* CreateLayer( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
+        using namespace layer_type;
+        switch( type ){
+        case kFullConnect: return new FullConnectLayer<xpu>( rnd, in, out );
+        case kSoftmax    : return new SoftmaxLayer<xpu>( in, out );
+        case kRectifiedLinear : return new RectifiedLinearLayer<xpu>(rnd, in, out);
+        default: Error("unknown layer type");
+        }
+        return NULL;
+    }
+    template<typename xpu>
+    inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
+        return CreateLayer( GetLayerType(type), rnd, in, out );
+    }
+};
 
 
-}; // namespace cxxnet
 #endif // CXXNET_LAYER_INL_HPP
