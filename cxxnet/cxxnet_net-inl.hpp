@@ -215,7 +215,7 @@ namespace cxxnet {
         std::vector<ILayer*>     layers;
         /*! \brief updaters in the neural net */
         std::vector<IUpdater*>   updaters;
-        /*! \brief random number generator */        
+        /*! \brief random number generator */
         mshadow::Random<xpu>     rnd;
         /*! \brief node factory */
         NodeFactory<xpu> nfactory;
@@ -382,15 +382,19 @@ namespace cxxnet {
             metric.Print( fo, evname );
         }
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) {
-            net.in().Pin();
-            mshadow::Copy( net.in().data, batch.data );
-            net.in().Unpin();
-
-            net.Forward( false );
-            this->SyncOuput();
+            this->PreparePredTemp( batch );
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 preds.push_back( this->TransformPred( temp[i] ) );
             }
+        }
+    protected:
+        // put prediction into temp
+        virtual void PreparePredTemp( const DataBatch& batch ){
+            net.in().Pin();
+            mshadow::Copy( net.in().data, batch.data );
+            net.in().Unpin();
+            net.Forward( false );
+            this->SyncOuput();
         }
     private:
         inline void SyncOuput( void ){
@@ -433,7 +437,7 @@ namespace cxxnet {
             }
             return maxidx;
         }
-    private:        
+    protected:
         // loss function
         int loss_type;
         // evaluator
@@ -442,8 +446,78 @@ namespace cxxnet {
         mshadow::TensorContainer<cpu,2> temp;
         // true net 
         NeuralNet<xpu> net;
-    }; // class NeuralNet
+    }; // class NeuralNet 
 
-
+  
+    /*! 
+     * \brief implementation of averaging neural network trainer 
+     *        will perform weight averaging during predictions
+     */
+    template<typename xpu>    
+    class CXXAvgNetTrainer: public CXXNetTrainer<xpu>{        
+    public:
+        CXXAvgNetTrainer( void ){
+            round = 0;
+            num_burn = 10;
+            num_avg_record = 0;
+        }
+        virtual ~CXXAvgNetTrainer( void ){}        
+        virtual void StartRound( int epoch ) {
+            CXXNetTrainer<xpu>::StartRound( epoch );
+            this->round = epoch;
+        }
+        virtual void SetParam( const char *name, const char *val ){
+            CXXNetTrainer<xpu>::SetParam( name, val );
+            if( !strcmp( "num_inst",name) ) num_avg_record = atoi(val);
+            if( !strcmp( "num_burn",name) ) num_burn = atoi(val);            
+        }
+        virtual void InitModel( void ){
+            CXXNetTrainer<xpu>::InitModel();     
+            ref_counter.resize( num_avg_record, 0 );
+            mshadow::Shape<2> s = this->net.out().data[0][0].shape; 
+            avg_pred.Resize( mshadow::Shape2( num_avg_record, s[0] ), 0.0f );
+        }
+        virtual void SaveModel( mshadow::utils::IStream &fo ) const {
+            CXXNetTrainer<xpu>::SaveModel( fo );
+            fo.Write( &num_avg_record, sizeof(int) );
+            fo.Write( &ref_counter[0], ref_counter.size() * sizeof(int) );
+            avg_pred.SaveBinary( fo );            
+        }
+        virtual void LoadModel( mshadow::utils::IStream &fi ) {
+            CXXNetTrainer<xpu>::LoadModel( fi );
+            Assert( fi.Read( &num_avg_record, sizeof(int) )!= 0 );
+            ref_counter.resize( num_avg_record );
+            Assert( fi.Read( &ref_counter[0], ref_counter.size() * sizeof(int) ) != 0 );
+            avg_pred.LoadBinary( fi );
+        }
+    protected:
+        virtual void PreparePredTemp( const DataBatch& batch ){
+            CXXNetTrainer<xpu>::PreparePredTemp( batch );
+            mshadow::Tensor<cpu,2> &temp = this->temp;
+            Assert( batch.inst_index != NULL, "CXXAvgNetTrainer need inst_index" );
+            for( index_t i = 0; i < temp.shape[1]; ++i ){
+                unsigned ridx = batch.inst_index[ i ];
+                Assert( ridx < num_avg_record, "inst_index exceed num_avg_record" );
+                if( ref_counter[ ridx ] > round ) continue;
+                ref_counter[ ridx ] = round + 1;
+                int diff = round - num_burn;
+                if( diff < 1 ) diff = 1;
+                float alpha = 1.0f / diff;
+                avg_pred[ridx] = (1.0f-alpha) * avg_pred[ridx] + alpha*temp[i];
+                mshadow::Copy( temp[ i ], avg_pred[ridx] );
+            }
+        }
+    private:
+        // round counter
+        int round;
+        // number of burn in rounds, start averagin after this
+        int num_burn;
+        // number of records to do averaging
+        unsigned num_avg_record;
+        // reference counter
+        std::vector<int> ref_counter;
+        // average prediction 
+        mshadow::TensorContainer<cpu,2> avg_pred;
+    };
 }; // namespace cxxnet
 #endif // CXXNET_NET_INL_HPP

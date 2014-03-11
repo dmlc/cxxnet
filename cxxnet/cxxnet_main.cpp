@@ -27,6 +27,7 @@ namespace cxxnet{
             name_model_in = "NULL";
             name_pred     = "pred.txt";
             print_step    = 100;
+            eval_train = 0;
         }
         ~CXXNetLearnTask( void ){
             if( net_trainer != NULL ) delete net_trainer;
@@ -61,7 +62,8 @@ namespace cxxnet{
         
         inline void SetParam( const char *name , const char *val ){
             if( !strcmp( val, "default") ) return;
-            if( !strcmp( name,"trainer"))             net_type = atoi( val ); 
+            if( !strcmp( name,"net_type"))            net_type = atoi( val );
+            if( !strcmp( name,"eval_train"))          eval_train = atoi( val );  
             if( !strcmp( name,"print_step"))          print_step = atoi( val ); 
             if( !strcmp( name,"continue"))            continue_training = atoi( val ); 
             if( !strcmp( name,"save_model" ) )        save_period = atoi( val );
@@ -204,6 +206,9 @@ namespace cxxnet{
                 }
                 {// code handling evaluation
                     fprintf(stderr, "[%d]", start_counter );
+                    if( eval_train ){
+                        net_trainer->Evaluate( stderr, itr_train, "train" );
+                    } 
                     for( size_t i = 0; i < itr_evals.size(); ++i ){
                         net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
                     }
@@ -232,6 +237,8 @@ namespace cxxnet{
         // all the configurations
         std::vector< std::pair< std::string, std::string> > cfg;
     private:
+        // whether evaluate training loss
+        int eval_train;
         // how may samples before print information
         int print_step;
         // number of round to train
