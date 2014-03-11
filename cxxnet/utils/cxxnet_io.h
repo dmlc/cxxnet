@@ -66,11 +66,12 @@ namespace cxxnet {
             virtual ~BinFile() {
                 this->Close();
             }
-            virtual Close() { if (fp_) fclose(fp_); }
-            virtual size_t Read( FILE *ptr, size_t size ) {
+            virtual void Close() { if (fp_) fclose(fp_); }
+            virtual size_t Read( void *dptr, size_t size ) {
                 // TODO
+                return 0;
             }
-            virtual void Write( const FILE *ptr, size_t size ) {
+            virtual void Write( const void *dptr, size_t size ) {
                 // TODO
             }
             virtual size_t Size() {
