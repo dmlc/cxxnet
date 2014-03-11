@@ -50,6 +50,7 @@ namespace cxxnet {
             this->loc_ = 0;
         }
         virtual bool Next( void ) {
+            // Different Mode should use differnt boundary ?
             if( loc_ + batch_size_ < img_.shape[2] ){
                 loc_ += batch_size_;
                 out_.data.dptr = img_[ loc_ ].dptr;
