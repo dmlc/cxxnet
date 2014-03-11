@@ -23,6 +23,11 @@ namespace cxxnet {
         virtual ~IUpdater( void ){}
         /*! \brief update parameter */
         virtual void Update( void ) = 0;
+        /*! 
+         * \brief inform the updater that starting round iteration over data 
+         * \param round round counter
+         */
+        virtual void StartRound( int round ) = 0;
         /*!\ brief set parameters that could be spefic to this updater */
         virtual void SetParam( const char *name, const char *val ) = 0;
     };

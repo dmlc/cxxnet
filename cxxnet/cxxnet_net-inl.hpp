@@ -302,6 +302,15 @@ namespace cxxnet {
                 updaters[i]->Update();
             }
         }
+        /*! 
+         * \brief notify round start  
+         * \param round round counter
+         */
+        virtual void StartRound( int round ) {
+            for( size_t i = 0; i < updaters.size(); ++ i ){
+                updaters[i]->StartRound( round );
+            }
+        }
     private:
         /*! \brief check the node shapes */
         inline void InitNodes( void ){
@@ -333,7 +342,7 @@ namespace cxxnet {
     class CXXNetTrainer : public INetTrainer{
     public:
         CXXNetTrainer( void ){
-            loss_type = 0;
+            loss_type = 0; round = 0;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
         }
         virtual ~CXXNetTrainer( void ){}
@@ -352,7 +361,9 @@ namespace cxxnet {
             net.LoadModel( fi );
         }
         // tell trainer which round it is
-        virtual void StartRound( int epoch ) {
+        virtual void StartRound( int round ) {
+            net.StartRound( round );
+            this->round = round;
         }
         virtual void Update ( const DataBatch& batch ) {
             net.in().Pin(); 
@@ -438,6 +449,8 @@ namespace cxxnet {
             return maxidx;
         }
     protected:
+        // current round
+        int round;
         // loss function
         int loss_type;
         // evaluator
@@ -457,15 +470,10 @@ namespace cxxnet {
     class CXXAvgNetTrainer: public CXXNetTrainer<xpu>{        
     public:
         CXXAvgNetTrainer( void ){
-            round = 0;
             num_burn = 10;
             num_avg_record = 0;
         }
         virtual ~CXXAvgNetTrainer( void ){}        
-        virtual void StartRound( int epoch ) {
-            CXXNetTrainer<xpu>::StartRound( epoch );
-            this->round = epoch;
-        }
         virtual void SetParam( const char *name, const char *val ){
             CXXNetTrainer<xpu>::SetParam( name, val );
             if( !strcmp( "num_inst",name) ) num_avg_record = atoi(val);
@@ -498,9 +506,9 @@ namespace cxxnet {
             for( index_t i = 0; i < temp.shape[1]; ++i ){
                 unsigned ridx = batch.inst_index[ i ];
                 Assert( ridx < num_avg_record, "inst_index exceed num_avg_record" );
-                if( ref_counter[ ridx ] > round ) continue;
-                ref_counter[ ridx ] = round + 1;
-                int diff = round - num_burn;
+                if( ref_counter[ ridx ] > this->round ) continue;
+                ref_counter[ ridx ] = this->round + 1;
+                int diff = this->round - num_burn;
                 if( diff < 1 ) diff = 1;
                 float alpha = 1.0f / diff;
                 avg_pred[ridx] = (1.0f-alpha) * avg_pred[ridx] + alpha*temp[i];
@@ -508,8 +516,6 @@ namespace cxxnet {
             }
         }
     private:
-        // round counter
-        int round;
         // number of burn in rounds, start averagin after this
         int num_burn;
         // number of records to do averaging

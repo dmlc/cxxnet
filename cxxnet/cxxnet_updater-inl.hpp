@@ -7,6 +7,8 @@
  * \author Tianqi Chen
  */
 #include "cxxnet_net.h"
+#include "mshadow/tensor_container.h"
+#include "utils/cxxnet_global_random.h"
 
 namespace cxxnet{
     // expr is needed to use expression
@@ -17,17 +19,22 @@ namespace cxxnet{
     struct UpdaterParam{
         /*! \brief tag of current parameter group */
         const char *tag;
+        /*! \brief current round */
+        int round;
+        /*! \brief whether can print messages */
+        int silent;
         /*! \brief learning rate */
         float learning_rate;
         /*! \brief weight decay */
         float wd;
-        /*! \brief momentum decay */
+        /*! \brief momentum  */
         float momentum;
         /*! \brief constructor that sets default parameters */
         UpdaterParam( void ){
             learning_rate = 0.01f;
             wd = 0.0f;
             momentum = 1.0f;
+            silent = 0;
         }
         /*!
          * \brief Set param for the layer from string
@@ -45,6 +52,7 @@ namespace cxxnet{
             if( !strcmp( name, "eta") ) learning_rate = (float)atof(val);
             if( !strcmp( name, "wd") )            wd = (float)atof(val);
             if( !strcmp( name, "momentum") )      momentum = (float)atof(val);
+            if( !strcmp( name, "silent") )        silent = atoi(val);
         }
     };
 }; // namespace cxxnet
@@ -63,6 +71,9 @@ namespace cxxnet{
             w  += (-param.learning_rate) * dw;
             dw *= param.momentum;
         }
+        virtual void StartRound( int round ) {
+            param.round = round;
+        }
         virtual void SetParam( const char *name, const char *val ){
             param.SetParam( name, val );
         }
@@ -74,14 +85,140 @@ namespace cxxnet{
 
 namespace cxxnet{
     template<typename xpu, int dim>
+    class SGHMCUpdater : public IUpdater{
+    public:
+        SGHMCUpdater( mshadow::Random<xpu> &rnd, mshadow::Tensor<xpu,dim> &w, mshadow::Tensor<xpu,dim> &dw, const char *tag )
+            :rnd(rnd), w(w), dw(dw){
+            param.tag = tag;
+            m_w.Resize( w.shape, 0.0f );
+            temp.Resize( w.shape );
+        }
+        virtual ~SGHMCUpdater( void ){}
+        virtual void StartRound( int round ) {
+            param.round = round;
+        }
+        // update model parameters
+        virtual void Update( void ){
+            if( param.need_hypersample() ) {
+                this->UpdateHyper();
+            }
+            m_w *= param.momentum;
+            m_w += (-param.learning_rate) * ( dw + param.wd * w );
+            if( param.need_sample() ){
+                m_w += rnd.gaussian( w.shape ) * param.GetSigma();
+            }
+            w += m_w;
+            // set dw = 0, so we get fresh gradient 
+            dw = 0.0f;
+        }
+        // update hyper parameters
+        virtual void UpdateHyper( void ){
+            mshadow::Copy( temp, w );
+            mshadow::Tensor<cpu,2> wt = temp.FlatTo2D();
+            double sumcnt = wt.shape[1] * wt.shape[0];
+            double sumsqr = 0.0f;
+            // note: make the norm sum operation in mshadow
+            for( index_t y = 0; y < wt.shape[1]; ++ y )
+                for( index_t x = 0; x < wt.shape[0]; ++ x ){
+                    sumsqr += wt[y][x] * wt[y][x];
+                }
+            double alpha = param.hyper_alpha + 0.5 * sumcnt;
+            double beta  = param.hyper_beta  + 0.5 * sumsqr;
+            double plambda;
+            if( param.temp < 1e-6f ){
+                plambda = std::max( alpha - 1.0, 0.0 ) / beta;
+            }else{
+                plambda = utils::SampleGamma( alpha, beta );
+            }
+            // set weight decay 
+            param.wd = static_cast<float>( plambda / param.num_train );
+            if( param.silent == 0 ){
+                printf("hyperupdate[");
+                for( int i = dim-1; i > 0 ; --i ){
+                    printf("%u,", temp.shape[i] );
+                }
+                printf("%u]:plambda=%f,wd=%f\n", temp.shape[0], plambda, param.wd );
+            }
+        }
+        virtual void SetParam( const char *name, const char *val ){
+            param.SetParam( name, val );            
+        }
+    protected:
+        struct HMCParam : public UpdaterParam {
+            // when to start sample
+            int start_sample;
+            // when to start hyper parameter sampling
+            int start_hsample;
+            // number of training data
+            int num_train;
+            // Gamma(alpha, beta) prior on regularizer
+            float hyper_alpha;
+            float hyper_beta;
+            // sample hyper parameter each gap_hsample over training data
+            int gap_hsample;
+            // temperature
+            float temp;
+            HMCParam( void ){
+                start_sample  = INT_MAX;
+                start_hsample = INT_MAX;
+                temp  = 1.0f;
+                hyper_alpha = hyper_beta = 1.0f;
+                gap_hsample = 1;                
+            }
+            inline void SetParam( const char *name, const char* val ) {
+                UpdaterParam::SetParam( name, val );
+                if( !strncmp( name, tag, strlen(tag) ) ){
+                    int ltag = strlen(tag);
+                    if( name[ltag] == ':' ) name += ltag + 1;
+                    if( !strcmp( "start_sample", name ) )  start_sample = atoi( val );
+                    if( !strcmp( "start_hsample", name ) ) start_hsample = atoi( val );
+                    if( !strcmp( "gap_hsample", name ) )   gap_hsample = atoi( val );
+                    if( !strcmp( "num_train", name ) )     num_train = atoi( val );
+                    if( !strcmp( "temp", name ) )          temp = (float)atof( val );
+                }
+            }
+            inline bool need_sample( void ) const{
+                return round >= start_sample;
+            }
+            inline bool need_hypersample( void ) const{
+                int diff = round - start_hsample;
+                return diff >= 0 && diff % gap_hsample == 0;
+            }
+            inline real_t GetSigma( void ) const{
+                real_t scale;
+                if ( momentum < 1e-6f ){
+                    scale = learning_rate / num_train;
+                }else{                    
+                    scale = learning_rate * (1.0f-momentum) / num_train;
+                }
+                return std::sqrt( 2.0f * temp * scale );
+            }
+        };
+    private:
+        // training parameter
+        HMCParam param;
+        // momentum variable 
+        mshadow::TensorContainer<xpu,dim> m_w;
+        mshadow::TensorContainer<cpu,dim> temp;
+        // PRNG
+        mshadow::Random<xpu> &rnd;
+        // weights, gradient accumulater
+        mshadow::Tensor<xpu,dim> &w, &dw;
+    };
+};
+
+namespace cxxnet{
+    template<typename xpu, int dim>
     inline IUpdater* CreateUpdater( const char *type,
                                     mshadow::Random<xpu> &rnd, 
                                     mshadow::Tensor<xpu,dim> &weight, 
                                     mshadow::Tensor<xpu,dim> &wgrad,
                                     const char *tag ){
         if( !strcmp( type, "sgd" ) ) return new SGDUpdater<xpu,dim>( weight, wgrad, tag );
+        if( !strcmp( type, "sghmc" ) ) return new SGHMCUpdater<xpu,dim>( rnd, weight, wgrad, tag );
         Error("unknown updater type");
         return NULL;
     }    
 }; // namespace cxxnet;
 #endif // CXXNET_UPDATER_INL_HPP
+    
