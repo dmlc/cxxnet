@@ -142,14 +142,12 @@ namespace cxxnet {
                     }
                 }
             }
-
             // adjust node Shape
             nodes[0].data.shape = meta.param.GetShapeIn( batch_size );
             for( size_t i = 0; i < layers.size(); ++i ){
                 layers[i]->AdjustNodeShape(); 
                 if( init_model ) layers[i]->InitModel();
             }
-
             // configure updaters             
             layer_index = -1;
             size_t ustart = 0;
@@ -219,6 +217,8 @@ namespace cxxnet {
         std::vector<IUpdater*>   updaters;
         /*! \brief random number generator */        
         mshadow::Random<xpu>     rnd;
+        /*! \brief node factory */
+        NodeFactory<xpu> nfactory;
     public:
         /*! \brief constructor */
         NeuralNet( void ): cfg(meta),rnd(0){
@@ -240,20 +240,21 @@ namespace cxxnet {
         inline void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "seed") ) rnd.Seed( atoi( val ) );
             if( !strcmp( name, "silent") ) silent = atoi(val);
+            if( !strcmp( name, "memlimit") ) nfactory.SetMemLimit( val );
             cfg.SetParam( name, val );
         }
         /*! \brief intialize model parameters */
         inline void InitModel( void ) {
             this->FreeSpace();
             meta.InitModel();
-            nodes.resize( meta.param.num_nodes, Node<xpu>() );
-
+            for( int i = 0; i < meta.param.num_nodes; ++i ){
+                nodes.push_back( nfactory.CreateNode() );
+            }
             for( int i = 0; i < meta.param.num_layers; ++ i ){
                 Assert( layers.size() == (size_t) i );
                 const NetMetaModel::LayerInfo &info = meta.layers[i];
                 layers.push_back( CreateLayer( info.type, rnd, nodes[ info.nindex_in ], nodes[ info.nindex_out ] ) );
             }
-
             cfg.ConfigLayers( nodes, layers, updaters, true );
             this->InitNodes();
         }
@@ -268,7 +269,9 @@ namespace cxxnet {
         inline void LoadModel( mshadow::utils::IStream &fi ) {
             this->FreeSpace();
             meta.LoadModel( fi );
-            nodes.resize( meta.param.num_nodes, Node<xpu>() );
+            for( int i = 0; i < meta.param.num_nodes; ++i ){
+                nodes.push_back( nfactory.CreateNode() );
+            }
             for( int i = 0; i < meta.param.num_layers; ++ i ){
                 const NetMetaModel::LayerInfo &info = meta.layers[i];
                 Assert( layers.size() == (size_t) i );
@@ -300,20 +303,20 @@ namespace cxxnet {
             }
         }
     private:
-        /*! \brief intialize the node space */
+        /*! \brief check the node shapes */
         inline void InitNodes( void ){
             for( size_t i = 0; i < nodes.size(); ++ i ){
-                mshadow::AllocSpace( nodes[i].data );
                 mshadow::Shape<4> s = nodes[i].data.shape;
+                nodes[i].Pin(); nodes[i].Unpin();
                 if( !silent ){
                     printf("node[%d].shape: %u,%u,%u,%u\n",(int)i, s[3],s[2],s[1],s[0] );
                 }
-            }             
+            }
         }
         /*! \brief set parameters */
         inline void FreeSpace( void ){
             for( size_t i = 0; i < nodes.size(); ++ i ){
-                mshadow::FreeSpace( nodes[i].data );
+                nodes[i].FreeSpace();
             } 
             for( size_t i = 0; i < layers.size(); ++ i ){
                 delete layers[i];
@@ -352,10 +355,17 @@ namespace cxxnet {
         virtual void StartRound( int epoch ) {
         }
         virtual void Update ( const DataBatch& batch ) {
-            mshadow::Copy( net.in().data, batch.data );
+            net.in().Pin(); 
+            mshadow::Copy( net.in().data, batch.data ); 
+            net.in().Unpin();
+            
             net.Forward( true );
             this->SyncOuput();
-            mshadow::Copy( net.out().data[0][0], temp );
+            
+            net.out().Pin(); 
+            mshadow::Copy( net.out().data[0][0], temp ); 
+            net.out().Unpin();
+            
             this->SetLoss( batch.labels );
             net.Backprop();
             net.Update();
@@ -372,7 +382,10 @@ namespace cxxnet {
             metric.Print( fo, evname );
         }
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) {
+            net.in().Pin();
             mshadow::Copy( net.in().data, batch.data );
+            net.in().Unpin();
+
             net.Forward( false );
             this->SyncOuput();
             for( index_t i = 0; i <temp.shape[1]; ++i ){
@@ -384,7 +397,9 @@ namespace cxxnet {
             mshadow::Shape<4> oshape  = net.out().data.shape;
             Assert( net.out().is_mat() );
             temp.Resize( mshadow::Shape2( oshape[1], oshape[0] ) );
+            net.out().Pin();
             mshadow::Copy( temp, net.out().data[0][0] );
+            net.out().Unpin();
         }
         inline float TransformPred( mshadow::Tensor<cpu,1> pred ){
             switch( loss_type ){
@@ -407,7 +422,9 @@ namespace cxxnet {
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 this->SetLoss( temp[i], labels[i] );
             }
-            mshadow::Copy( net.out().data[0][0], temp );            
+            net.out().Pin();
+            mshadow::Copy( net.out().data[0][0], temp );
+            net.out().Unpin();
         }
         inline static int GetMaxIndex( mshadow::Tensor<cpu,1> pred ){
             index_t maxidx = 0;

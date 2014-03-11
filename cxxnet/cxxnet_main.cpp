@@ -177,7 +177,7 @@ namespace cxxnet{
         inline void TaskTrain( void ){            
             time_t start    = time( NULL );
             unsigned long elapsed = 0;            
-            if( continue_training == 0 && save_period != 0 ){
+            if( continue_training == 0 ){
                 this->SaveModel();
             }
             

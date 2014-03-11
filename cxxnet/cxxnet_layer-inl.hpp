@@ -125,7 +125,7 @@ namespace cxxnet {
     template<typename xpu>
     class SoftmaxLayer: public ILayer{
     public:
-        SoftmaxLayer( Node<xpu> &in, Node<xpu> &out )
+        SoftmaxLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
             :out_(out){
             Assert( &in == &out, "softmax layer must self loop e.g layer[1->1] = softmax" );
         }
@@ -147,7 +147,6 @@ namespace cxxnet {
     public:
         RectifiedLinearLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
             :rnd_(rnd), in_(in), out_(out){
-
         }
         virtual ~RectifiedLinearLayer( void ){
         }
@@ -226,6 +225,49 @@ namespace cxxnet {
 };
 
 namespace cxxnet{
+    /* layer patch that handles memory issues */
+    template<typename xpu>
+    struct LayerPatch: public ILayer{
+    public:
+        LayerPatch( ILayer *base, Node<xpu>& in, Node<xpu>& out )
+            :base_(base), in_(in), out_(out){}
+        virtual ~LayerPatch( void ){ delete base_; }
+        virtual void Forward( bool is_train ){
+            in_.Pin(); out_.Pin();
+            base_->Forward( is_train );
+            in_.Unpin(); out_.Unpin();
+        }
+        virtual void Backprop( bool is_firstlayer ){
+            in_.Pin(); out_.Pin();
+            base_->Backprop( is_firstlayer );
+            in_.Unpin(); out_.Unpin();
+        }
+    public:
+        virtual void AdjustNodeShape( void ){ 
+            base_->AdjustNodeShape();
+        }
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
+            base_->GetUpdaters( updater, updaters );
+        }
+        virtual void SetParam( const char *name, const char* val ) {
+            base_->SetParam( name, val );
+        }
+        virtual void InitModel(void) {
+            base_->InitModel();
+        }
+        virtual void SaveModel(mshadow::utils::IStream &fo) const {
+            base_->SaveModel( fo );
+        }
+        virtual void LoadModel(mshadow::utils::IStream &fi) {
+            base_->LoadModel( fi );
+        }
+    private:
+        ILayer *base_;
+        Node<xpu> &in_, &out_;
+    };
+};
+
+namespace cxxnet{
     inline int GetLayerType( const char *type ){
         using namespace layer_type;
         if( !strcmp( type, "fullc") )   return kFullConnect;
@@ -235,15 +277,19 @@ namespace cxxnet{
     }
 
     template<typename xpu>
-    inline ILayer* CreateLayer( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
+    inline ILayer* CreateLayer_( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
         using namespace layer_type;
         switch( type ){
         case kFullConnect: return new FullConnectLayer<xpu>( rnd, in, out );
-        case kSoftmax    : return new SoftmaxLayer<xpu>( in, out );
+        case kSoftmax    : return new SoftmaxLayer<xpu>( rnd, in, out );
         case kRectifiedLinear : return new RectifiedLinearLayer<xpu>(rnd, in, out);
         default: Error("unknown layer type");
         }
         return NULL;
+    }
+    template<typename xpu>
+    inline ILayer* CreateLayer( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
+        return new LayerPatch<xpu>( CreateLayer_<xpu>(type,rnd,in,out), in, out );
     }
     template<typename xpu>
     inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
