@@ -61,7 +61,7 @@ namespace cxxnet {
             gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
             gbias_ += scale * sum_rows( out_.mat() );
             // backprop
-            if( is_firstlayer ){
+            if( is_firstlayer ){                
                 in_.mat() = dot( out_.mat(), wmat_.T() );
             }
         }
@@ -152,7 +152,7 @@ namespace cxxnet {
         }
         virtual void Forward(bool is_train) {
             in_.mat() = F<op::sigmoid>(in_.mat());
-            mshadow::Copy(out_.mat(), in_.mat());
+            mshadow::Copy( out_.mat(), in_.mat() );
         }
         virtual void Backprop(bool is_firstlayer){
             in_.mat() = in_.mat() * (1 - in_.mat()) * out_.mat();
