@@ -14,6 +14,8 @@
 #include "cxxnet.h"
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_io.h"
+#include "utils/cxxnet_utils.h"
+
 
 namespace cxxnet {
     /*! \brief interface of a updater */
@@ -23,8 +25,8 @@ namespace cxxnet {
         virtual ~IUpdater( void ){}
         /*! \brief update parameter */
         virtual void Update( void ) = 0;
-        /*! 
-         * \brief inform the updater that starting round iteration over data 
+        /*!
+         * \brief inform the updater that starting round iteration over data
          * \param round round counter
          */
         virtual void StartRound( int round ) = 0;
@@ -88,10 +90,10 @@ namespace cxxnet {
     struct Node;
 
     /*! \brief abstruct class for Node */
-    template<typename xpu>    
+    template<typename xpu>
     class NodeFactory{
     public:
-        NodeFactory( void ){  
+        NodeFactory( void ){
             if( xpu::kDevCPU ){
                 // CPU, always not use backup
                 max_mem_ = std::numeric_limits<size_t>::max();
@@ -131,9 +133,9 @@ namespace cxxnet {
                 warning_ = 0;
             }
             while( total_mem_ > max_mem_ ){
-                Assert( !free_list_.empty(), "can not meet memory requirement" );
+                utils::Assert( !free_list_.empty(), "can not meet memory requirement" );
                 Node<xpu> *n = free_list_.front(); free_list_.pop();
-                Assert( n->data.dptr != NULL, "BUG" );
+                utils::Assert( n->data.dptr != NULL, "BUG" );
                 if( !n->pinned_ ) {
                     if( n->backup_.dptr == NULL ){
                         n->backup_.shape = n->data.shape;
@@ -206,7 +208,7 @@ namespace cxxnet {
             pinned_ = false;
             inqueue_ = false;
             data.dptr = NULL;
-            backup_.dptr = NULL; 
+            backup_.dptr = NULL;
         }
         /*! \brief whether data is pinned */
         bool pinned_;
@@ -242,6 +244,8 @@ namespace cxxnet {
         const int kFullConnect = 0;
         const int kSoftmax     = 1;
         const int kRectifiedLinear = 2;
+        const int kSigmoid = 3;
+        const int kTanh = 4;
     };
     /*!
      * \brief factory: create an upadater algorithm of given type
