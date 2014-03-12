@@ -10,7 +10,7 @@
 #include "../core/cxxnet_core.h"
 #include "../utils/cxxnet_metric.h"
 
-namespace cxxnet {    
+namespace cxxnet {
     using namespace mshadow::utils;
     using namespace mshadow::expr;
 
@@ -30,10 +30,10 @@ namespace cxxnet {
             /*! \brief reserved flag, used to extend data structure */
             int reserved_flag;
             /*! \brief constructor, reserved flag */
-            Param( void ){ 
+            Param( void ){
                 init_end = 0;
                 reserved_flag = 0;
-            } 
+            }
             /*! \brief get input shape, given number of batches */
             mshadow::Shape<4> GetShapeIn( index_t nbatch ) const{
                 if( shape_in[2] == 1 && shape_in[1] == 1 ){
@@ -58,21 +58,22 @@ namespace cxxnet {
     public:
         /*! \brief model parameter */
         Param param;
-        /*! \brief information about each layers */        
+        /*! \brief information about each layers */
         std::vector<LayerInfo> layers;
     public:
         /*! \brief set model parameters */
         inline void SetParam( const char *name, const char *val ){
             if( param.init_end != 0 ) return;
-            if( !strcmp( name, "input_shape") ){                
+            if( !strcmp( name, "input_shape") ){
                 unsigned x, y, z;
-                Assert( sscanf( val, "%u,%u,%u", &z,&y,&x ) ==3, 
+                Assert( sscanf( val, "%u,%u,%u", &z,&y,&x ) ==3,
                                "input_shape must be three consecutive integers without space example: 1,1,200 " );
-                param.shape_in[0] = x; param.shape_in[1] = y; param.shape_in[2] = z; 
+                param.shape_in[0] = x; param.shape_in[1] = y; param.shape_in[2] = z;
             }
         }
         /*! \brief guess parameters, from current setting */
         inline void InitModel( void ){
+            param.num_nodes = 0;
             param.num_layers = static_cast<int>( layers.size() );
             for( size_t i = 0; i < layers.size(); ++ i ){
                 param.num_nodes = std::max( layers[i].nindex_out + 1, param.num_nodes );
@@ -118,17 +119,17 @@ namespace cxxnet {
         }
         template<typename xpu>
         inline void ConfigLayers( std::vector< Node<xpu> >& nodes,
-                                  std::vector<ILayer*>& layers, 
+                                  std::vector<ILayer*>& layers,
                                   std::vector<IUpdater*>& updaters, bool init_model ){
             // default configuration
-            int layer_index = -1;            
+            int layer_index = -1;
             std::vector< std::pair< const char *, const char *> > defcfg;
             for( size_t i = 0; i < netcfg.size(); ++i ){
                 const char* name = netcfg[i].first.c_str();
                 const char* val  = netcfg[i].second.c_str();
                 if( !strncmp( name, "layer[", 6 ) ){
                     ++ layer_index;
-                    NetMetaModel::LayerInfo inf = this->GetLayerInfo( name, val );       
+                    NetMetaModel::LayerInfo inf = this->GetLayerInfo( name, val );
                     Assert( inf == meta.layers[layer_index], "config setting mismatch" );
                     // set global parameters
                     for( size_t j = 0; j < defcfg.size(); ++ j ){
@@ -138,23 +139,23 @@ namespace cxxnet {
                     if( layer_index >= 0 ){
                         layers[ layer_index ]->SetParam( name, val );
                     }else{
-                        defcfg.push_back( std::make_pair( name, val ) );                    
+                        defcfg.push_back( std::make_pair( name, val ) );
                     }
                 }
             }
             // adjust node Shape
             nodes[0].data.shape = meta.param.GetShapeIn( batch_size );
             for( size_t i = 0; i < layers.size(); ++i ){
-                layers[i]->AdjustNodeShape(); 
+                layers[i]->AdjustNodeShape();
                 if( init_model ) layers[i]->InitModel();
             }
-            // configure updaters             
+            // configure updaters
             layer_index = -1;
             size_t ustart = 0;
 
             for( size_t i = 0; i < netcfg.size(); ++i ){
                 const char* name = netcfg[i].first.c_str();
-                const char* val  = netcfg[i].second.c_str();                
+                const char* val  = netcfg[i].second.c_str();
                 if( !strncmp( name, "layer[", 6 ) ){
                     ++ layer_index;
                     ustart = updaters.size();
@@ -162,7 +163,7 @@ namespace cxxnet {
                     for( size_t j = ustart; j < updaters.size(); ++ j ){
                         for( size_t k = 0; k < defcfg.size(); ++ k ){
                             updaters[j]->SetParam( defcfg[k].first, defcfg[k].second );
-                        }    
+                        }
                     }
                 }else{
                     if( layer_index >= 0 ){
@@ -180,7 +181,7 @@ namespace cxxnet {
             Assert( sscanf( name, "layer[%d->%d]", &a, &b ) == 2, "invalid config format, correct example: layer[1->2]" );
             Assert( sscanf( val , "%[^:]:%s", ltype, tag ) >= 1, "invalid config format" );
             NetMetaModel::LayerInfo inf;
-            inf.nindex_in = a; inf.nindex_out = b;            
+            inf.nindex_in = a; inf.nindex_out = b;
             inf.type = GetLayerType( ltype );
             return inf;
         }
@@ -193,11 +194,11 @@ namespace cxxnet {
         // number of batch size
         int batch_size;
         // whether in net config mode
-        int netcfg_mode;        
+        int netcfg_mode;
     };
 
-    /*! 
-     * \brief data structure of netural net  
+    /*!
+     * \brief data structure of netural net
      * \tparam xpu data storage type
      */
     template<typename xpu>
@@ -281,8 +282,8 @@ namespace cxxnet {
             cfg.ConfigLayers( nodes, layers, updaters, false );
             this->InitNodes();
         }
-        /*! 
-         * \brief forward prop 
+        /*!
+         * \brief forward prop
          * \param is_train whether is training phase
          */
         inline void Forward( bool is_train ){
@@ -302,8 +303,8 @@ namespace cxxnet {
                 updaters[i]->Update();
             }
         }
-        /*! 
-         * \brief notify round start  
+        /*!
+         * \brief notify round start
          * \param round round counter
          */
         virtual void StartRound( int round ) {
@@ -326,7 +327,7 @@ namespace cxxnet {
         inline void FreeSpace( void ){
             for( size_t i = 0; i < nodes.size(); ++ i ){
                 nodes[i].FreeSpace();
-            } 
+            }
             for( size_t i = 0; i < layers.size(); ++ i ){
                 delete layers[i];
             }
@@ -336,7 +337,7 @@ namespace cxxnet {
             nodes.clear(); layers.clear(); updaters.clear();
         }
     };
-    
+
     /*! \brief implementation of neural network trainer */
     template<typename xpu>
     class CXXNetTrainer : public INetTrainer{
@@ -366,17 +367,17 @@ namespace cxxnet {
             this->round = round;
         }
         virtual void Update ( const DataBatch& batch ) {
-            net.in().Pin(); 
-            mshadow::Copy( net.in().data, batch.data ); 
+            net.in().Pin();
+            mshadow::Copy( net.in().data, batch.data );
             net.in().Unpin();
-            
+
             net.Forward( true );
             this->SyncOuput();
-            
-            net.out().Pin(); 
-            mshadow::Copy( net.out().data[0][0], temp ); 
+
+            net.out().Pin();
+            mshadow::Copy( net.out().data[0][0], temp );
             net.out().Unpin();
-            
+
             this->SetLoss( batch.labels );
             net.Backprop();
             net.Update();
@@ -418,7 +419,7 @@ namespace cxxnet {
         }
         inline float TransformPred( mshadow::Tensor<cpu,1> pred ){
             switch( loss_type ){
-            case 0: return GetMaxIndex( pred );               
+            case 0: return GetMaxIndex( pred );
             case 1: return pred[0];
             default: Error("unknown loss type"); return 0.0f;
             }
@@ -455,41 +456,41 @@ namespace cxxnet {
         int loss_type;
         // evaluator
         utils::MetricSet metric;
-        // temp space 
+        // temp space
         mshadow::TensorContainer<cpu,2> temp;
-        // true net 
+        // true net
         NeuralNet<xpu> net;
-    }; // class NeuralNet 
+    }; // class NeuralNet
 
-  
-    /*! 
-     * \brief implementation of averaging neural network trainer 
+
+    /*!
+     * \brief implementation of averaging neural network trainer
      *        will perform weight averaging during predictions
      */
-    template<typename xpu>    
-    class CXXAvgNetTrainer: public CXXNetTrainer<xpu>{        
+    template<typename xpu>
+    class CXXAvgNetTrainer: public CXXNetTrainer<xpu>{
     public:
         CXXAvgNetTrainer( void ){
             num_burn = 10;
             num_avg_record = 0;
         }
-        virtual ~CXXAvgNetTrainer( void ){}        
+        virtual ~CXXAvgNetTrainer( void ){}
         virtual void SetParam( const char *name, const char *val ){
             CXXNetTrainer<xpu>::SetParam( name, val );
             if( !strcmp( "num_inst",name) ) num_avg_record = atoi(val);
-            if( !strcmp( "num_burn",name) ) num_burn = atoi(val);            
+            if( !strcmp( "num_burn",name) ) num_burn = atoi(val);
         }
         virtual void InitModel( void ){
-            CXXNetTrainer<xpu>::InitModel();     
+            CXXNetTrainer<xpu>::InitModel();
             ref_counter.resize( num_avg_record, 0 );
-            mshadow::Shape<2> s = this->net.out().data[0][0].shape; 
+            mshadow::Shape<2> s = this->net.out().data[0][0].shape;
             avg_pred.Resize( mshadow::Shape2( num_avg_record, s[0] ), 0.0f );
         }
         virtual void SaveModel( mshadow::utils::IStream &fo ) const {
             CXXNetTrainer<xpu>::SaveModel( fo );
             fo.Write( &num_avg_record, sizeof(int) );
             fo.Write( &ref_counter[0], ref_counter.size() * sizeof(int) );
-            avg_pred.SaveBinary( fo );            
+            avg_pred.SaveBinary( fo );
         }
         virtual void LoadModel( mshadow::utils::IStream &fi ) {
             CXXNetTrainer<xpu>::LoadModel( fi );
@@ -522,7 +523,7 @@ namespace cxxnet {
         unsigned num_avg_record;
         // reference counter
         std::vector<int> ref_counter;
-        // average prediction 
+        // average prediction
         mshadow::TensorContainer<cpu,2> avg_pred;
     };
 }; // namespace cxxnet
