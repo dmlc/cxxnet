@@ -15,16 +15,20 @@ namespace cxxnet{
     // expr is needed to use expression
     using namespace mshadow::expr;
     using namespace mshadow::utils;
-
+    // Random init method
+    using namespace cxxnet::rnd_type;
     /*! \brief potential parameters for each layer */
     struct LayerParam{
         /*! \brief number of hidden layers */
         int num_hidden;
         /*! \brief initialization sd for weight */
         float init_sigma;
+        /*! \brief initialization random type */
+        int random_type;
         LayerParam( void ){
             init_sigma = 0.01f;
             num_hidden = 0;
+            random_type = 0;
         }
         /*!
          * \brief Set param for the layer from string
@@ -34,6 +38,7 @@ namespace cxxnet{
         inline void SetParam(const char *name, const char* val) {
             if( !strcmp( name, "init_sigma") ) init_sigma = (float)atof(val);
             if( !strcmp( name, "nhidden") ) num_hidden = atoi(val);
+            if( !strcmp( name, "random_type")) random_type = atoi(val);
         }
     };
 };
@@ -84,8 +89,20 @@ namespace cxxnet {
             bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
             gbias_.Resize( bias_.shape );
             // random initalize
-            rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
+            if (param_.random_type == kGaussian) {
+                InitGaussian();
+            } else {
+                InitUniform();
+            }
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
+        }
+        virtual void InitGaussian() {
+            rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
+        }
+        virtual void InitUniform() {
+            float a = -sqrt(6.0f / (wmat_.shape[0] + wmat_.shape[1]));
+            float b = sqrt(6.0f / (wmat_.shape[0] + wmat_.shape[1]));
+            rnd_.SampleUniform( wmat_, a, b);
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
             fo.Write( &param_, sizeof(LayerParam) );

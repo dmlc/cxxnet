@@ -254,6 +254,11 @@ namespace cxxnet {
         const int kSigmoid = 3;
         const int kTanh = 4;
     };
+    /*! \brief namespace for type of random init method */
+    namespace rnd_type {
+        const int kGaussian = 0;
+        const int kUniform = 1;
+    };
     /*!
      * \brief factory: create an upadater algorithm of given type
      * \param type indicate the type of a layer
