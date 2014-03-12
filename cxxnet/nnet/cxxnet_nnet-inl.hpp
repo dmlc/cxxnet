@@ -6,7 +6,7 @@
  * \brief implementation of netural nets
  * \author Tianqi Chen, Bing Xu
  */
-#include "cxxnet.h"
+#include "cxxnet_nnet.h"
 #include "../core/cxxnet_core.h"
 #include "../utils/cxxnet_metric.h"
 
