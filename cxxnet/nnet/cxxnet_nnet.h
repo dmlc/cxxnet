@@ -15,6 +15,7 @@ namespace cxxnet {
     /*! \brief interface for network */
     class INetTrainer{
     public:
+        virtual ~INetTrainer( void ){}
         // set model parameters, call this before everything, including load model
         virtual void SetParam( const char *name, const char *val ) = 0;
         // random initalize model
