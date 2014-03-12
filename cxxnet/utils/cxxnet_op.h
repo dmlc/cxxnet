@@ -11,17 +11,38 @@
 namespace cxxnet {
     /*! \brief operations for algorithm */
     namespace op {
+        struct sigmoid {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return 1.0f / (1.0f + expf(-a));
+            }
+        };
+        struct sigmoid_grad {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return a * ( 1.0f - a );
+            }
+        };
+
         /*! \brief Rectified Linear Operation
                    https://en.wikipedia.org/wiki/Rectifier_(neural_networks) */
         struct relu {
             MSHADOW_XINLINE static real_t Map(real_t a) {
-                return a > 0 ? a : 0;
+                return max( a, 0.0f );
             }
-        }; // struct relu
-
-        struct sigmoid {
+        };
+        struct relu_grad {
             MSHADOW_XINLINE static real_t Map(real_t a) {
-                return 1.0f / (1.0f + exp(-a));
+                return a > 0.0f ? 1.0f : 0.0f;
+            }
+        };
+
+        struct tanh {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return tanhf( a );
+            }
+        };
+        struct tanh_grad {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return 1.0f - a * a;
             }
         };
 

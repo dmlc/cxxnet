@@ -61,7 +61,7 @@ namespace cxxnet {
             gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
             gbias_ += scale * sum_rows( out_.mat() );
             // backprop
-            if( is_firstlayer ){                
+            if( is_firstlayer ){
                 in_.mat() = dot( out_.mat(), wmat_.T() );
             }
         }
@@ -142,20 +142,20 @@ namespace cxxnet {
 }; // namespace cxxnet
 
 namespace cxxnet {
-    template<typename xpu>
-    class SigmoidLayer : public ILayer{
+
+    template<typename xpu,typename ForwardOp, typename BackOp >
+    class ActivationLayer : public ILayer{
     public:
-        SigmoidLayer( Node<xpu> &in, Node<xpu> &out )
+        ActivationLayer( Node<xpu> &in, Node<xpu> &out )
             :in_(in), out_(out) {
         }
-        virtual ~SigmoidLayer( void ){
-        }
-        virtual void Forward(bool is_train) {
-            in_.mat() = F<op::sigmoid>(in_.mat());
+        virtual ~ActivationLayer( void ){}
+        virtual void Forward( bool is_train ) {
+            in_.mat() = F<ForwardOp>( in_.mat() );
             mshadow::Copy( out_.mat(), in_.mat() );
         }
-        virtual void Backprop(bool is_firstlayer){
-            in_.mat() = in_.mat() * (1 - in_.mat()) * out_.mat();
+        virtual void Backprop( bool is_firstlayer ){
+            in_.mat() = F<BackOp>( in_.mat() ) * out_.mat();
         }
         virtual void AdjustNodeShape( void ) {
             out_.data.shape = in_.data.shape;
@@ -166,7 +166,6 @@ namespace cxxnet {
         /*! \brief output node */
         Node<xpu> &out_;
     };
-
 };
 
 namespace cxxnet{
@@ -229,8 +228,9 @@ namespace cxxnet{
         switch( type ){
         case kFullConnect: return new FullConnectLayer<xpu>( rnd, in, out );
         case kSoftmax    : return new SoftmaxLayer<xpu>( rnd, in, out );
-        // case kRectifiedLinear : return new RectifiedLinearLayer<xpu>(rnd, in, out);
-        case kSigmoid : return new SigmoidLayer<xpu>(in, out);
+        case kSigmoid : return new ActivationLayer<xpu,op::sigmoid,op::sigmoid_grad>(in, out);
+        case kTanh    : return new ActivationLayer<xpu,op::tanh,op::tanh_grad>(in, out);
+        case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
         default: Error("unknown layer type");
         }
         return NULL;
