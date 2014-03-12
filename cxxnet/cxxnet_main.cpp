@@ -144,11 +144,19 @@ namespace cxxnet{
             }
             return net;
         }
+        inline void InitIter( IIterator<DataBatch>* itr, 
+                              const std::vector< std::pair< std::string, std::string> > &defcfg ){
+            for( size_t i = 0; i < defcfg.size(); ++ i ){
+                itr->SetParam( defcfg[i].first.c_str(), defcfg[i].second.c_str() );
+            }
+            itr->Init();
+        }
         // iterators
         inline void CreateIterators( void ){
             int flag = 0;
             std::string evname;
             std::vector< std::pair< std::string, std::string> > itcfg;
+            std::vector< std::pair< std::string, std::string> > defcfg;
             for( size_t i = 0; i < cfg.size(); ++ i ){
                 const char *name = cfg[i].first.c_str();
                 const char *val  = cfg[i].second.c_str();
@@ -171,8 +179,17 @@ namespace cxxnet{
                     }
                     flag = 0; itcfg.clear();
                 }               
-                if( flag == 0 ) continue;
-                itcfg.push_back( cfg[i] );
+                if( flag == 0 ) {
+                    defcfg.push_back( cfg[i] );
+                }else{
+                    itcfg.push_back( cfg[i] );
+                }
+            }
+            if( itr_train != NULL ){
+                this->InitIter( itr_train, defcfg );
+            }
+            for( size_t i = 0; i < itr_evals.size(); ++ i ){
+                this->InitIter( itr_evals[i], defcfg );
             }
         }
     private:

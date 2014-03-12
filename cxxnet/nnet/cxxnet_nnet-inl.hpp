@@ -108,39 +108,42 @@ namespace cxxnet {
             if( !strcmp( name, "netconfig" ) && !strcmp( val, "start") ) netcfg_mode = 1;
             if( !strcmp( name, "netconfig" ) && !strcmp( val, "end") )   netcfg_mode = 0;
 
-            if( netcfg_mode == 0 ) return;
             if( !strncmp( name, "layer[", 6 ) ){
+                netcfg_mode = 2;
                 if( meta.param.init_end == 0 ){
                     meta.layers.push_back( this->GetLayerInfo( name, val ) );
                     meta.param.num_layers = static_cast<int>( meta.layers.size() );
                 }
             }
-            netcfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
+            if( netcfg_mode == 2 ){
+                // layer specific configuration
+                netcfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
+            }else{
+                defcfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
+            }
         }
         template<typename xpu>
         inline void ConfigLayers( std::vector< Node<xpu> >& nodes,
                                   std::vector<ILayer*>& layers,
                                   std::vector<IUpdater*>& updaters, bool init_model ){
             // default configuration
-            int layer_index = -1;
-            std::vector< std::pair< const char *, const char *> > defcfg;
+            int layer_index = -1;           
             for( size_t i = 0; i < netcfg.size(); ++i ){
                 const char* name = netcfg[i].first.c_str();
                 const char* val  = netcfg[i].second.c_str();
                 if( !strncmp( name, "layer[", 6 ) ){
                     ++ layer_index;
+                    Assert( layer_index >= 0 && layer_index < meta.param.num_layers );
                     NetMetaModel::LayerInfo inf = this->GetLayerInfo( name, val );
                     Assert( inf == meta.layers[layer_index], "config setting mismatch" );
                     // set global parameters
                     for( size_t j = 0; j < defcfg.size(); ++ j ){
-                        layers[ layer_index ]->SetParam( defcfg[j].first, defcfg[j].second );
+                        layers[ layer_index ]->
+                            SetParam( defcfg[j].first.c_str(), defcfg[j].second.c_str() );
                     }
                 }else{
-                    if( layer_index >= 0 ){
-                        layers[ layer_index ]->SetParam( name, val );
-                    }else{
-                        defcfg.push_back( std::make_pair( name, val ) );
-                    }
+                    Assert( layer_index >= 0 );
+                    layers[ layer_index ]->SetParam( name, val );
                 }
             }
             // adjust node Shape
@@ -162,14 +165,14 @@ namespace cxxnet {
                     layers[ layer_index ]->GetUpdaters( updater_type.c_str(), updaters );
                     for( size_t j = ustart; j < updaters.size(); ++ j ){
                         for( size_t k = 0; k < defcfg.size(); ++ k ){
-                            updaters[j]->SetParam( defcfg[k].first, defcfg[k].second );
+                            updaters[j]->
+                                SetParam( defcfg[k].first.c_str(), defcfg[k].second.c_str() );
                         }
                     }
                 }else{
-                    if( layer_index >= 0 ){
-                        for( size_t j = ustart; j < updaters.size(); ++ j ){
-                            updaters[j]->SetParam( name, val );
-                        }
+                    Assert( layer_index >= 0 );
+                    for( size_t j = ustart; j < updaters.size(); ++ j ){
+                        updaters[j]->SetParam( name, val );
                     }
                 }
             }
@@ -190,7 +193,7 @@ namespace cxxnet {
         // type of updater
         std::string updater_type;
         // configures about network
-        std::vector< std::pair< std::string, std::string > > netcfg;
+        std::vector< std::pair< std::string, std::string > > netcfg, defcfg;
         // number of batch size
         int batch_size;
         // whether in net config mode

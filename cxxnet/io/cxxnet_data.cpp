@@ -22,7 +22,6 @@ namespace cxxnet{
         for( size_t i = 0; i < cfg.size(); ++ i ){
             it->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );
         }
-        it->Init();
         return it;
     }
 };
