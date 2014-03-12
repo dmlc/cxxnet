@@ -45,7 +45,16 @@ namespace cxxnet {
                 return 1.0f - a * a;
             }
         };
-
+        struct softplus {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return logf(1 + expf(a));
+            }
+        };
+        struct softplus_grad {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return 1.0f / (1.0f + expf(-a));
+            }
+        };
     }; //namespace op
 
 }; //namespace cxxnet

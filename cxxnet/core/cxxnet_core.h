@@ -253,6 +253,7 @@ namespace cxxnet {
         const int kRectifiedLinear = 2;
         const int kSigmoid = 3;
         const int kTanh = 4;
+        const int kSoftplus = 5;
     };
     /*! \brief namespace for type of random init method */
     namespace rnd_type {

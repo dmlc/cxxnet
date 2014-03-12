@@ -236,6 +236,7 @@ namespace cxxnet{
         if( !strcmp( type, "relu") ) return kRectifiedLinear;
         if( !strcmp( type, "sigmoid") ) return kSigmoid;
         if( !strcmp( type, "tanh") ) return kTanh;
+        if( !strcmp( type, "softplus") ) return kSoftplus;
         return 0;
     }
 
@@ -248,6 +249,7 @@ namespace cxxnet{
         case kSigmoid : return new ActivationLayer<xpu,op::sigmoid,op::sigmoid_grad>(in, out);
         case kTanh    : return new ActivationLayer<xpu,op::tanh,op::tanh_grad>(in, out);
         case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
+        case kSoftplus: return new ActivationLayer<xpu,op::softplus,op::softplus_grad>(in, out);
         default: Error("unknown layer type");
         }
         return NULL;
