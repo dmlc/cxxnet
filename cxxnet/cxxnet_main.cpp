@@ -5,7 +5,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
-#include "nnet/cxxnet.h"
+#include "nnet/cxxnet_nnet.h"
 #include "io/cxxnet_data.h"
 #include "utils/cxxnet_config.h"
 

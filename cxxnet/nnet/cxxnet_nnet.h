@@ -1,8 +1,8 @@
-#ifndef CXXNET_H
-#define CXXNET_H
+#ifndef CXXNET_NNET_H
+#define CXXNET_NNET_H
 #pragma once
 /*!
- * \file cxxnet.h
+ * \file cxxnet_nnet.h
  * \brief trainer abstraction
  * \author Bing Xu, Tianqi Chen
  */

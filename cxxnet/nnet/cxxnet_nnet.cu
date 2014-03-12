@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_DEPRECATE
-#include "cxxnet_net-inl.hpp"
+#include "cxxnet_nnet-inl.hpp"
 
 namespace cxxnet {
     template<typename xpu>
