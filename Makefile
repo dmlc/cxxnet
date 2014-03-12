@@ -10,15 +10,15 @@ export NVCCFLAGS = -O3 -ccbin $(CXX)
 # specify tensor path
 BIN = cxxnet_learner
 OBJ = cxxnet_data.o
-CUOBJ = cxxnet.o 
+CUOBJ = cxxnet_nnet.o 
 CUBIN =
 .PHONY: clean all
 
 all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 
-cxxnet.o: cxxnet/cxxnet.cu cxxnet/*.hpp cxxnet/*.h
-cxxnet_data.o: cxxnet/cxxnet_data.cpp cxxnet/iterators/*.hpp cxxnet/utils/cxxnet_io.h
-cxxnet_learner: cxxnet/cxxnet_main.cpp cxxnet_data.o cxxnet.o
+cxxnet_nnet.o: cxxnet/nnet/cxxnet.cu cxxnet/core/*.hpp cxxnet/core/*.h cxxnet/nnet/*.hpp cxxnet/nnet/*.h 
+cxxnet_data.o: cxxnet/io/cxxnet_data.cpp cxxnet/io/*.hpp cxxnet/utils/cxxnet_io_utils.h
+cxxnet_learner: cxxnet/cxxnet_main.cpp cxxnet_data.o cxxnet_nnet.o
 
 $(BIN) :
 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.cpp %.o %.c, $^)

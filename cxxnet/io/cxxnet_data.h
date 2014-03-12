@@ -11,14 +11,6 @@
 #include <string>
 #include "mshadow/tensor.h"
 
-/*! \brief namespace of cxxnet */
-namespace cxxnet {
-    typedef mshadow::cpu cpu;
-    typedef mshadow::gpu gpu;
-    typedef mshadow::index_t index_t;
-    typedef mshadow::real_t  real_t;
-};
-
 namespace cxxnet {
     /*! 
      * \brief iterator type 
@@ -53,7 +45,7 @@ namespace cxxnet {
         /*! \brief unique id for instance, can be NULL, sometimes is useful */
         unsigned* inst_index;
         /*! \brief content of data */
-        mshadow::Tensor<cpu,4> data;
+        mshadow::Tensor<mshadow::cpu,4> data;
     };
 };
 

@@ -5,8 +5,8 @@
 #include <string>
 #include <cstring>
 #include <vector>
-#include "cxxnet.h"
-#include "cxxnet_data.h"
+#include "nnet/cxxnet.h"
+#include "io/cxxnet_data.h"
 #include "utils/cxxnet_config.h"
 
 namespace cxxnet{

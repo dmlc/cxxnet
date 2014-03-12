@@ -1,7 +1,7 @@
-#ifndef CXXNET_IO_H
-#define CXXNET_IO_H
+#ifndef CXXNET_IO_UTILS_H
+#define CXXNET_IO_UTILS_H
 /*!
- * \file cxxnet_io.h
+ * \file cxxnet_io_utils.h
  * \brief io extensions
  * \author Bing Xu
  */

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "mshadow/tensor_container.h"
-#include "../cxxnet_data.h"
-#include "../utils/cxxnet_io.h"
+#include "cxxnet_data.h"
+#include "../utils/cxxnet_io_utils.h"
 #include "../utils/cxxnet_global_random.h"
 
 namespace cxxnet {

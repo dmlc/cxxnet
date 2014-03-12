@@ -1,8 +1,8 @@
-#ifndef CXXNET_NET_H
-#define CXXNET_NET_H
+#ifndef CXXNET_CORE_H
+#define CXXNET_CORE_H
 #pragma once
 /*!
- * \file cxxnet_net.h
+ * \file cxxnet_core.h
  * \brief Abstruct definition for layer interface,
  *        data type, everything used to construct a network
  * \author Tianqi Chen, Bing Xu
@@ -11,10 +11,17 @@
 #include <limits>
 #include <queue>
 #include <string>
-#include "cxxnet.h"
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_io.h"
-#include "utils/cxxnet_utils.h"
+#include "../utils/cxxnet_utils.h"
+
+/*! \brief namespace of cxxnet */
+namespace cxxnet {
+    typedef mshadow::cpu cpu;
+    typedef mshadow::gpu gpu;
+    typedef mshadow::index_t index_t;
+    typedef mshadow::real_t  real_t;
+};
 
 
 namespace cxxnet {
@@ -84,8 +91,8 @@ namespace cxxnet {
     };
 }; // namespace cxxnet
 
+// data structures
 namespace cxxnet {
-    // potentially useful data structures
     template<typename xpu>
     struct Node;
 

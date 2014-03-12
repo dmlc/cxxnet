@@ -2,13 +2,13 @@
 #define CXXNET_NET_INL_HPP
 #pragma once
 /*!
- * \file cxxnet_nn.h
+ * \file cxxnet_net-inl.hpp
  * \brief implementation of netural nets
  * \author Tianqi Chen, Bing Xu
  */
 #include "cxxnet.h"
-#include "cxxnet_net.h"
-#include "utils/cxxnet_metric.h"
+#include "../core/cxxnet_core.h"
+#include "../utils/cxxnet_metric.h"
 
 namespace cxxnet {    
     using namespace mshadow::utils;

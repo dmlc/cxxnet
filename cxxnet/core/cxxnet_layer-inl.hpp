@@ -7,8 +7,8 @@
  * \author Bing Xu, Tianqi Chen
  */
 
-#include "cxxnet_net.h"
-#include "utils/cxxnet_op.h"
+#include "cxxnet_core.h"
+#include "cxxnet_op.h"
 #include "mshadow/tensor_container.h"
 
 namespace cxxnet{

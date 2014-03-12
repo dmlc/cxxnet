@@ -9,7 +9,7 @@
 #include <vector>
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_io.h"
-#include "cxxnet_data.h"
+#include "../io/cxxnet_data.h"
 
 namespace cxxnet {
     /*! \brief interface for network */

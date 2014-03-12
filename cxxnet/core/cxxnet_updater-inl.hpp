@@ -6,9 +6,9 @@
  * \brief implementation of updaters
  * \author Tianqi Chen
  */
-#include "cxxnet_net.h"
+#include "cxxnet_core.h"
 #include "mshadow/tensor_container.h"
-#include "utils/cxxnet_global_random.h"
+#include "../utils/cxxnet_global_random.h"
 
 namespace cxxnet{
     // expr is needed to use expression

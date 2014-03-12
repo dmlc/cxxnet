@@ -3,9 +3,18 @@
 
 #include <string>
 #include <vector>
+#include "mshadow/tensor.h"
+
+namespace cxxnet {
+    typedef mshadow::cpu cpu;
+    typedef mshadow::gpu gpu;
+    typedef mshadow::index_t index_t;
+    typedef mshadow::real_t  real_t;
+};
+
 #include "cxxnet_data.h"
-#include "utils/cxxnet_io.h"
-#include "iterators/cxxnet_iter_mnist-inl.hpp"
+#include "../utils/cxxnet_io_utils.h"
+#include "cxxnet_iter_mnist-inl.hpp"
 
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
