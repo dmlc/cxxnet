@@ -19,6 +19,12 @@ namespace cxxnet {
             }
         }; // struct relu
 
+        struct sigmoid {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return 1.0f / (1.0f + exp(-a));
+            }
+        };
+
     }; //namespace op
 
 }; //namespace cxxnet
