@@ -158,12 +158,16 @@ namespace cxxnet{
             int gap_hsample;
             // temperature
             float temp;
+            // output precision matrix
+            float lambda_output;
+            // output preiction matrix
             HMCParam( void ){
                 start_sample  = INT_MAX;
                 start_hsample = INT_MAX;
                 temp  = 1.0f;
                 hyper_alpha = hyper_beta = 1.0f;
-                gap_hsample = 1;                
+                gap_hsample = 1;
+                lambda_output = 1.0f;
             }
             inline void SetParam( const char *name, const char* val ) {
                 UpdaterParam::SetParam( name, val );
@@ -175,6 +179,7 @@ namespace cxxnet{
                     if( !strcmp( "gap_hsample", name ) )   gap_hsample = atoi( val );
                     if( !strcmp( "num_train", name ) )     num_train = atoi( val );
                     if( !strcmp( "temp", name ) )          temp = (float)atof( val );
+                    if( !strcmp( "lambda_output", name ) ) lambda_output = (float)atof( val );
                 }
             }
             inline bool need_sample( void ) const{
@@ -187,9 +192,9 @@ namespace cxxnet{
             inline real_t GetSigma( void ) const{
                 real_t scale;
                 if ( momentum < 1e-6f ){
-                    scale = learning_rate / num_train;
+                    scale = learning_rate / (num_train * lambda_output);
                 }else{                    
-                    scale = learning_rate * (1.0f-momentum) / num_train;
+                    scale = learning_rate * (1.0f-momentum) / ( num_train * lambda_output );
                 }
                 return std::sqrt( 2.0f * temp * scale );
             }

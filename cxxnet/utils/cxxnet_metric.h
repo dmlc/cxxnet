@@ -61,6 +61,49 @@ namespace cxxnet{
             long   cnt_inst;
         };
 
+        /*! \brief r^2 correlation square */
+        struct MetricCorrSqr : public IMetric{      
+        public:
+            MetricCorrSqr( void ){
+                this->Clear();
+            }
+            virtual ~MetricCorrSqr( void ){}
+            virtual void Clear( void ){
+                sum_x = 0.0; sum_y = 0.0;
+                sum_xsqr  = 0.0; 
+                sum_ysqr  = 0.0;
+                sum_xyprod = 0.0;
+                cnt_inst = 0;
+            }
+            virtual void AddEval( const float* preds, const float* labels, int ndata ){
+                for( int i = 0; i < ndata; ++ i ){
+                    const float x = preds[i];
+                    const float y = labels[i];
+                    sum_x += x; sum_y += y;
+                    sum_xsqr += x * x;
+                    sum_ysqr += y * y;
+                    sum_xyprod += x * y;
+                    cnt_inst += 1;
+                }                 
+            }
+            virtual double Get( void ) const{
+                double mean_x = sum_x / cnt_inst;
+                double mean_y = sum_y / cnt_inst;
+                double corr = sum_xyprod / cnt_inst - mean_x*mean_y;
+                double xvar = sum_xsqr / cnt_inst  - mean_x*mean_x;
+                double yvar = sum_ysqr / cnt_inst  - mean_y*mean_y;
+                return corr * corr / ( xvar * yvar );
+            }
+            virtual const char *Name( void ) const{
+                return "r2";
+            }
+        private:
+            double sum_x, sum_y;
+            double sum_xsqr, sum_ysqr;
+            double sum_xyprod;
+            long   cnt_inst;
+        };
+
         /*! \brief Error */
         struct MetricError : public IMetric{      
         public:
@@ -94,6 +137,7 @@ namespace cxxnet{
             void AddMetric( const char *name ){                
                 if( !strcmp( name, "rmse") ) evals_.push_back( &rmse_ );
                 if( !strcmp( name, "error") ) evals_.push_back( &error_ );
+                if( !strcmp( name, "r2") )    evals_.push_back( &corrsqr_ );
                 // simple way to enforce uniqueness, not a good way, not ok here
                 std::sort( evals_.begin(), evals_.end() );
                 evals_.resize( std::unique( evals_.begin(), evals_.end() ) - evals_.begin() );
@@ -116,6 +160,7 @@ namespace cxxnet{
         private:
             MetricRMSE  rmse_;
             MetricError error_;
+            MetricCorrSqr corrsqr_;
             std::vector<IMetric*> evals_;  
         };
     };
