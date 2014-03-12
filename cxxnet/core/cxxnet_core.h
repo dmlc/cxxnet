@@ -29,7 +29,9 @@ namespace cxxnet {
     class IUpdater{
     public:
         /*!\brief virtual destructor */
-        virtual ~IUpdater( void ){}
+        virtual ~IUpdater( void ){} 
+        /*! \brief intialize, print information about updater if not silent */
+        virtual void Init( void ) = 0;
         /*! \brief update parameter */
         virtual void Update( void ) = 0;
         /*!

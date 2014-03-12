@@ -66,6 +66,11 @@ namespace cxxnet{
             param.tag = tag;
         }
         virtual ~SGDUpdater( void ){}
+        virtual void Init( void ){
+            if( param.silent == 0 ){
+                printf("SGDUpdater: eta=%f, mom=%f\n", param.learning_rate, param.momentum );
+            }
+        }
         virtual void Update( void ){
             dw += param.wd * w;
             w  += (-param.learning_rate) * dw;
@@ -96,11 +101,17 @@ namespace cxxnet{
         virtual ~SGHMCUpdater( void ){}
         virtual void StartRound( int round ) {
             param.round = round;
+            param.hyper_sampled = 0;
+        }
+        virtual void Init( void ){
+            if( param.silent == 0 ){
+                printf("SGDHMCUpdater: eta=%f, mom=%f\n", param.learning_rate, param.momentum );
+            }
         }
         // update model parameters
         virtual void Update( void ){
-            if( param.need_hypersample() ) {
-                this->UpdateHyper();
+            if( param.need_hypersample() && param.hyper_sampled  == 0 ) {
+                this->UpdateHyper(); param.hyper_sampled = 1;
             }
             m_w *= param.momentum;
             m_w += (-param.learning_rate) * ( dw + param.wd * w );
@@ -132,7 +143,7 @@ namespace cxxnet{
             }
             // set weight decay 
             param.wd = static_cast<float>( plambda / param.num_train );
-            if( param.silent == 0 ){
+            if( param.silent == 0 && param.print_hupdate != 0 ){
                 printf("hyperupdate[");
                 for( int i = dim-1; i > 0 ; --i ){
                     printf("%u,", temp.shape[i] );
@@ -156,6 +167,9 @@ namespace cxxnet{
             float hyper_beta;
             // sample hyper parameter each gap_hsample over training data
             int gap_hsample;
+            int hyper_sampled;
+            // print hyper update
+            int print_hupdate;
             // temperature
             float temp;
             // output precision matrix
@@ -168,19 +182,22 @@ namespace cxxnet{
                 hyper_alpha = hyper_beta = 1.0f;
                 gap_hsample = 1;
                 lambda_output = 1.0f;
+                hyper_sampled = 0;
+                print_hupdate  = 0;
             }
             inline void SetParam( const char *name, const char* val ) {
                 UpdaterParam::SetParam( name, val );
                 if( !strncmp( name, tag, strlen(tag) ) ){
                     int ltag = strlen(tag);
                     if( name[ltag] == ':' ) name += ltag + 1;
-                    if( !strcmp( "start_sample", name ) )  start_sample = atoi( val );
-                    if( !strcmp( "start_hsample", name ) ) start_hsample = atoi( val );
-                    if( !strcmp( "gap_hsample", name ) )   gap_hsample = atoi( val );
-                    if( !strcmp( "num_train", name ) )     num_train = atoi( val );
-                    if( !strcmp( "temp", name ) )          temp = (float)atof( val );
-                    if( !strcmp( "lambda_output", name ) ) lambda_output = (float)atof( val );
                 }
+                if( !strcmp( "start_sample", name ) )  start_sample = atoi( val );
+                if( !strcmp( "start_hsample", name ) ) start_hsample = atoi( val );
+                if( !strcmp( "gap_hsample", name ) )   gap_hsample = atoi( val );
+                if( !strcmp( "num_train", name ) )     num_train = atoi( val );
+                if( !strcmp( "temp", name ) )          temp = (float)atof( val );
+                if( !strcmp( "print_hupdate", name ) ) print_hupdate = atoi( val );
+                if( !strcmp( "lambda_output", name ) ) lambda_output = (float)atof( val );
             }
             inline bool need_sample( void ) const{
                 return round >= start_sample;
@@ -218,7 +235,7 @@ namespace cxxnet{
                                     mshadow::Random<xpu> &rnd, 
                                     mshadow::Tensor<xpu,dim> &weight, 
                                     mshadow::Tensor<xpu,dim> &wgrad,
-                                    const char *tag ){
+                                    const char *tag ){        
         if( !strcmp( type, "sgd" ) ) return new SGDUpdater<xpu,dim>( weight, wgrad, tag );
         if( !strcmp( type, "sghmc" ) ) return new SGHMCUpdater<xpu,dim>( rnd, weight, wgrad, tag );
         Error("unknown updater type");

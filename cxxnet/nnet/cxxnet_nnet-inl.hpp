@@ -105,6 +105,7 @@ namespace cxxnet {
         inline void SetParam( const char *name, const char *val ){
             meta.SetParam( name, val );
             if( !strcmp( name, "batch_size" ) ) batch_size = atoi( val );
+            if( !strcmp( name, "updater" ) )    updater_type = val;
             if( !strcmp( name, "netconfig" ) && !strcmp( val, "start") ) netcfg_mode = 1;
             if( !strcmp( name, "netconfig" ) && !strcmp( val, "end") )   netcfg_mode = 0;
 
@@ -175,6 +176,9 @@ namespace cxxnet {
                         updaters[j]->SetParam( name, val );
                     }
                 }
+            }
+            for( size_t i = 0; i < updaters.size(); ++ i ){
+                updaters[i]->Init();
             }
         }
     private:
@@ -474,7 +478,7 @@ namespace cxxnet {
     class CXXAvgNetTrainer: public CXXNetTrainer<xpu>{
     public:
         CXXAvgNetTrainer( void ){
-            num_burn = 10;
+            num_burn = INT_MAX;
             num_avg_record = 0;
         }
         virtual ~CXXAvgNetTrainer( void ){}
