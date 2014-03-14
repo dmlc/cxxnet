@@ -33,7 +33,7 @@ namespace cxxnet{
         UpdaterParam( void ){
             learning_rate = 0.01f;
             wd = 0.0f;
-            momentum = 1.0f;
+            momentum = 0.9f;
             silent = 0;
         }
         /*!
