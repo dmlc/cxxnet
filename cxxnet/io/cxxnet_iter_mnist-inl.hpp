@@ -51,11 +51,11 @@ namespace cxxnet {
             this->loc_ = 0;
         }
         virtual bool Next( void ) {
-            if( loc_ + batch_size_ < img_.shape[2] ){
-                loc_ += batch_size_;
+            if( loc_ + batch_size_ <= img_.shape[2] ){
                 out_.data.dptr = img_[ loc_ ].dptr;
                 out_.labels = &labels_[ loc_ ];
                 out_.inst_index = &inst_[ loc_ ];
+                loc_ += batch_size_;
                 return true;
             } else{
                 return false;

@@ -13,15 +13,34 @@ namespace cxxnet {
 };
 
 #include "cxxnet_data.h"
+#include "../utils/cxxnet_utils.h"
 #include "../utils/cxxnet_io_utils.h"
 #include "cxxnet_iter_mnist-inl.hpp"
+#include "cxxnet_iter_spfeat-inl.hpp"
 
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
-        IIterator<DataBatch>* it = new MNISTIterator();
-        for( size_t i = 0; i < cfg.size(); ++ i ){
-            it->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );
+        size_t i = 0;
+        IIterator<DataBatch>* it = NULL;
+        for(; i < cfg.size(); ++i ){
+            const char* name = cfg[i].first.c_str();
+            const char* val  = cfg[i].second.c_str();
+            if( !strcmp( name, "iter" ) ){
+                if( !strcmp( val, "mnist") ){
+                    utils::Assert( it == NULL );
+                    it = new MNISTIterator(); continue;
+                }
+                if( !strcmp( val, "spfeat") ){
+                    utils::Assert( it == NULL );
+                    it = new SpFeatIterator(); continue;
+                }
+                utils::Error("unknown iterator type" );
+            }
+            if( it != NULL ){
+                it->SetParam( name, val );
+            }
         }
+        utils::Assert( it != NULL, "must specify iterator by iter=itername" );
         return it;
     }
 };

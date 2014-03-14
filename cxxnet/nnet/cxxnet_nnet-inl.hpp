@@ -375,16 +375,16 @@ namespace cxxnet {
         }
         virtual void Update ( const DataBatch& batch ) {
             net.in().Pin();
-            mshadow::Copy( net.in().data, batch.data );
+            mshadow::Copy( net.in().data, batch.data );            
             net.in().Unpin();
-
+ 
             net.Forward( true );
             this->SyncOuput();
-
+            
             net.out().Pin();
             mshadow::Copy( net.out().data[0][0], temp );
             net.out().Unpin();
-
+            
             this->SetLoss( batch.labels );
             net.Backprop();
             net.Update();
@@ -428,6 +428,7 @@ namespace cxxnet {
             switch( loss_type ){
             case 0: return GetMaxIndex( pred );
             case 1: return pred[0];
+            case 2: return 1.0f/(1.0f+std::exp(-pred[0]));
             default: Error("unknown loss type"); return 0.0f;
             }
         }
@@ -435,11 +436,12 @@ namespace cxxnet {
             switch( loss_type ){
             case 0: pred[ static_cast<int>(label) ] -= 1.0f; break;
             case 1: pred[ 0 ] -=  label; break;
+            case 2: pred[ 0 ] = 1.0f/(1.0f+std::exp(-pred[0])) - label; break;
             default: Error("unknown loss type");
             }
         }
         inline void SetLoss( const float* labels ){
-            if( loss_type == 1 ){
+            if( loss_type == 1 || loss_type == 2 ){
                 Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
             }
             for( index_t i = 0; i <temp.shape[1]; ++i ){

@@ -77,8 +77,8 @@ namespace cxxnet{
             }
             virtual void AddEval( const float* preds, const float* labels, int ndata ){
                 for( int i = 0; i < ndata; ++ i ){
-                    const float x = preds[i];
-                    const float y = labels[i];
+                    const float x = preds[i] - 0.5f;
+                    const float y = labels[i] - 0.5f;
                     sum_x += x; sum_y += y;
                     sum_xsqr += x * x;
                     sum_ysqr += y * y;
@@ -88,16 +88,21 @@ namespace cxxnet{
             }
             virtual double Get( void ) const{
                 double mean_x = sum_x / cnt_inst;
-                double mean_y = sum_y / cnt_inst;
+                double mean_y = sum_y / cnt_inst;                
                 double corr = sum_xyprod / cnt_inst - mean_x*mean_y;
                 double xvar = sum_xsqr / cnt_inst  - mean_x*mean_x;
-                double yvar = sum_ysqr / cnt_inst  - mean_y*mean_y;
-                return corr * corr / ( xvar * yvar );
+                double yvar = sum_ysqr / cnt_inst  - mean_y*mean_y;                
+                double res =  corr * corr / ( xvar * yvar );
+
+                return res;
             }
             virtual const char *Name( void ) const{
                 return "r2";
             }
         private:
+            inline static float sqr( float x ){
+                return x*x;
+            }
             double sum_x, sum_y;
             double sum_xsqr, sum_ysqr;
             double sum_xyprod;

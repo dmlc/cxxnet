@@ -57,14 +57,16 @@ namespace cxxnet {
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
             out_.mat()  = dot( in_.mat(), wmat_ );
-            out_.mat() += repmat( bias_, nbatch );
+            out_.mat() += repmat( bias_, nbatch );            
         }
         virtual void Backprop(bool is_firstlayer){
             index_t nbatch = in_.data.shape[1];
             real_t scale = 1.0f / nbatch;
+
             // accumulates gradient, instead of set gradient
             gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
             gbias_ += scale * sum_rows( out_.mat() );
+
             // backprop
             if( is_firstlayer ){
                 in_.mat() = dot( out_.mat(), wmat_.T() );
@@ -149,9 +151,7 @@ namespace cxxnet {
         virtual void Forward(bool is_train){
             mshadow::Softmax( out_.mat(), out_.mat() );
         }
-        virtual void Backprop(bool is_firstlayer){
-            // do nothing
-        }
+        virtual void Backprop(bool is_firstlayer){}
     private:
         /*! \brief only transform on out */
         Node<xpu> &out_;
