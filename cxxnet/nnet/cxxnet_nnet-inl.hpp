@@ -536,4 +536,16 @@ namespace cxxnet {
         mshadow::TensorContainer<cpu,2> avg_pred;
     };
 }; // namespace cxxnet
+
+namespace cxxnet{
+    template<typename xpu>
+    INetTrainer* CreateNet_( int net_type ){
+        switch( net_type ){
+        case 0: return new CXXNetTrainer<xpu>();
+        case 1: return new CXXAvgNetTrainer<xpu>();
+        default: Error("unknown net type");
+        }
+        return NULL;
+    }
+}; // namespace cxxnet
 #endif // CXXNET_NET_INL_HPP

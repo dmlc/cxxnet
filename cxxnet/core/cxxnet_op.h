@@ -26,6 +26,7 @@ namespace cxxnet {
                    https://en.wikipedia.org/wiki/Rectifier_(neural_networks) */
         struct relu {
             MSHADOW_XINLINE static real_t Map(real_t a) {
+                using namespace std;
                 return max( a, 0.0f );
             }
         };

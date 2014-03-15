@@ -4,12 +4,12 @@ export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
 export CFLAGS = -Wall -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow
-export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand
+export LDFLAGS= -lm -lz -lcudart -lcublas -lcurand -lmkl_core  -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread 
 export NVCCFLAGS = -O3 -ccbin $(CXX)
 
-# specify tensor path
+
 BIN = cxxnet_learner
-OBJ = cxxnet_data.o
+OBJ = cxxnet_data.o 
 CUOBJ = cxxnet_nnet.o 
 CUBIN =
 .PHONY: clean all
@@ -20,8 +20,9 @@ cxxnet_nnet.o: cxxnet/nnet/cxxnet_nnet.cu cxxnet/core/*.hpp cxxnet/core/*.h cxxn
 cxxnet_data.o: cxxnet/io/cxxnet_data.cpp cxxnet/io/*.hpp cxxnet/utils/cxxnet_io_utils.h
 cxxnet_learner: cxxnet/cxxnet_main.cpp cxxnet_data.o cxxnet_nnet.o
 
+
 $(BIN) :
-	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.cpp %.o %.c, $^)
+	$(CXX) $(CFLAGS)  $(filter %.cpp %.o %.c, $^) -o $@ $(LDFLAGS)
 
 $(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )

@@ -6,6 +6,7 @@
  * \brief implementation of updaters
  * \author Tianqi Chen
  */
+#include <climits>
 #include "cxxnet_core.h"
 #include "mshadow/tensor_container.h"
 #include "../utils/cxxnet_global_random.h"
