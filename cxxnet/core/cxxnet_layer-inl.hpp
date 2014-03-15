@@ -11,6 +11,10 @@
 #include "cxxnet_op.h"
 #include "mshadow/tensor_container.h"
 
+#if CXXNET_ADAPT_CAFFE 
+#include "cxxnet_caffe_adapter-inl.hpp"
+#endif
+
 namespace cxxnet{
     // expr is needed to use expression
     using namespace mshadow::expr;
@@ -59,7 +63,7 @@ namespace cxxnet {
             out_.mat()  = dot( in_.mat(), wmat_ );
             out_.mat() += repmat( bias_, nbatch );            
         }
-        virtual void Backprop(bool is_firstlayer){
+        virtual void Backprop(bool prop_grad){
             index_t nbatch = in_.data.shape[1];
             real_t scale = 1.0f / nbatch;
 
@@ -68,7 +72,7 @@ namespace cxxnet {
             gbias_ += scale * sum_rows( out_.mat() );
 
             // backprop
-            if( is_firstlayer ){
+            if( prop_grad ){
                 in_.mat() = dot( out_.mat(), wmat_.T() );
             }
         }
@@ -151,7 +155,7 @@ namespace cxxnet {
         virtual void Forward(bool is_train){
             mshadow::Softmax( out_.mat(), out_.mat() );
         }
-        virtual void Backprop(bool is_firstlayer){}
+        virtual void Backprop(bool prop_grad){}
     private:
         /*! \brief only transform on out */
         Node<xpu> &out_;
@@ -171,7 +175,7 @@ namespace cxxnet {
             in_.mat() = F<ForwardOp>( in_.mat() );
             mshadow::Copy( out_.mat(), in_.mat() );
         }
-        virtual void Backprop( bool is_firstlayer ){
+        virtual void Backprop( bool prop_grad ){
             in_.mat() = F<BackOp>( in_.mat() ) * out_.mat();
         }
         virtual void AdjustNodeShape( void ) {
@@ -198,9 +202,9 @@ namespace cxxnet{
             base_->Forward( is_train );
             in_.Unpin(); out_.Unpin();
         }
-        virtual void Backprop( bool is_firstlayer ){
+        virtual void Backprop( bool prop_grad ){
             in_.Pin(); out_.Pin();
-            base_->Backprop( is_firstlayer );
+            base_->Backprop( prop_grad );
             in_.Unpin(); out_.Unpin();
         }
     public:
@@ -237,6 +241,7 @@ namespace cxxnet{
         if( !strcmp( type, "sigmoid") ) return kSigmoid;
         if( !strcmp( type, "tanh") ) return kTanh;
         if( !strcmp( type, "softplus") ) return kSoftplus;
+        if( !strcmp( type, "caffe") ) return kCaffe;
         return 0;
     }
 
@@ -250,6 +255,9 @@ namespace cxxnet{
         case kTanh    : return new ActivationLayer<xpu,op::tanh,op::tanh_grad>(in, out);
         case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
         case kSoftplus: return new ActivationLayer<xpu,op::softplus,op::softplus_grad>(in, out);
+#if CXXNET_ADAPT_CAFFE            
+        case kCaffe: return new CaffeLayer<xpu>(in,out);
+#endif
         default: Error("unknown layer type");
         }
         return NULL;

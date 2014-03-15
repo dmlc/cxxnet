@@ -60,7 +60,7 @@ namespace cxxnet{
         private:
             FILE *fi;        
             char ch_buf;
-            char s_name[256],s_val[256],s_buf[246];
+            char s_name[100000],s_val[100000],s_buf[100000];
             
             inline void SkipLine(){           
                 do{
@@ -74,9 +74,7 @@ namespace cxxnet{
                     switch( ch_buf ){
                     case '\\': tok[i++] = fgetc( fi ); break;
                     case '\"': tok[i++] = '\0'; 
-						return;                        
-                    case '\r':
-                    case '\n': Error("unterminated string"); break;
+						return;
                     default: tok[i++] = ch_buf;
                     }
                 }

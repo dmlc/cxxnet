@@ -7,6 +7,12 @@
  *        data type, everything used to construct a network
  * \author Tianqi Chen, Bing Xu
  */
+
+/*! \brief whether to adapt caffe layers */
+#ifndef CXXNET_ADAPT_CAFFE 
+#define CXXNET_ADAPT_CAFFE 0
+#endif
+
 #include <vector>
 #include <limits>
 #include <queue>
@@ -55,9 +61,9 @@ namespace cxxnet {
         virtual void Forward(bool is_train) = 0;
         /*!
          * \brief Back propagation from out_node to in_node, generate the gradient, out_node already stores gradient value
-         * \param is_firstlayer if true, then the layer will not propagate gradient back to its input node
+         * \param prop_grad if true, then the layer will propagate gradient back to its input node
          */
-        virtual void Backprop(bool is_firstlayer) = 0;
+        virtual void Backprop(bool prop_grad) = 0;
     public:
         // interface code that not needed to be implemented by all nodes
         /*!
@@ -256,6 +262,7 @@ namespace cxxnet {
         const int kSigmoid = 3;
         const int kTanh = 4;
         const int kSoftplus = 5;
+        const int kCaffe = 6;
     };
     /*! \brief namespace for type of random init method */
     namespace rnd_type {
