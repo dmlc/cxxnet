@@ -7,6 +7,7 @@
  * \author Tianqi Chen
  */
 #include <climits>
+#include <string>
 #include "cxxnet_core.h"
 #include "mshadow/tensor_container.h"
 #include "../utils/cxxnet_global_random.h"
@@ -19,7 +20,7 @@ namespace cxxnet{
     /*! \brief potential parameters for each layer */
     struct UpdaterParam{
         /*! \brief tag of current parameter group */
-        const char *tag;
+        std::string tag;
         /*! \brief current round */
         int round;
         /*! \brief whether can print messages */
@@ -45,9 +46,8 @@ namespace cxxnet{
         inline void SetParam( const char *name, const char* val ) {
             // if we set "bias:wd = 0.0", and tag == "bias", the it will set wd in current updater param
             // but will not affect settings with other tags
-            if( !strncmp( name, tag, strlen(tag) ) ){
-                int ltag = strlen(tag);
-                if( name[ltag] == ':' ) name += ltag + 1;
+            if( !strncmp( name, tag.c_str(), tag.length() ) ){
+                if( name[tag.length()] == ':' ) name += tag.length() + 1;
             }
             if( !strcmp( name, "lr") )  learning_rate = (float)atof(val);
             if( !strcmp( name, "eta") ) learning_rate = (float)atof(val);
@@ -65,6 +65,7 @@ namespace cxxnet{
         SGDUpdater( mshadow::Tensor<xpu,dim> &w, mshadow::Tensor<xpu,dim> &dw, const char *tag )
             :w(w), dw(dw){
             param.tag = tag;
+            m_w.Resize( w.shape, 0.0f );
         }
         virtual ~SGDUpdater( void ){}
         virtual void Init( void ){
@@ -73,9 +74,9 @@ namespace cxxnet{
             }
         }
         virtual void Update( void ){
-            dw += param.wd * w;
-            w  += (-param.learning_rate) * dw;
-            dw *= param.momentum;
+            m_w *= param.momentum;
+            m_w += (-param.learning_rate) * ( dw + param.wd * w );
+            w += m_w;
         }
         virtual void StartRound( int round ) {
             param.round = round;
@@ -86,6 +87,8 @@ namespace cxxnet{
     private:
         UpdaterParam param;
         mshadow::Tensor<xpu,dim> &w, &dw; 
+        // momentum variable
+        mshadow::TensorContainer<xpu,dim> m_w;
     };
 }; // namespace cxxnet
 
@@ -188,9 +191,8 @@ namespace cxxnet{
             }
             inline void SetParam( const char *name, const char* val ) {
                 UpdaterParam::SetParam( name, val );
-                if( !strncmp( name, tag, strlen(tag) ) ){
-                    int ltag = strlen(tag);
-                    if( name[ltag] == ':' ) name += ltag + 1;
+                if( !strncmp( name, tag.c_str(), tag.length() ) ){
+                    if( name[tag.length()] == ':' ) name += tag.length() + 1;
                 }
                 if( !strcmp( "start_sample", name ) )  start_sample = atoi( val );
                 if( !strcmp( "start_hsample", name ) ) start_hsample = atoi( val );

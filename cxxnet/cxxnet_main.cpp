@@ -29,6 +29,7 @@ namespace cxxnet{
             name_pred     = "pred.txt";
             print_step    = 100;
             eval_train = 0;
+            this->SetParam("dev", "gpu");
         }
         ~CXXNetLearnTask( void ){
             if( net_trainer != NULL ) delete net_trainer;

@@ -67,9 +67,8 @@ namespace cxxnet {
             index_t nbatch = in_.data.shape[1];
             real_t scale = 1.0f / nbatch;
 
-            // accumulates gradient, instead of set gradient
-            gwmat_ += scale * dot( in_.mat().T(), out_.mat() );
-            gbias_ += scale * sum_rows( out_.mat() );
+            gwmat_ = scale * dot( in_.mat().T(), out_.mat() );
+            gbias_ = scale * sum_rows( out_.mat() );
 
             // backprop
             if( prop_grad ){
@@ -256,7 +255,7 @@ namespace cxxnet{
         case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
         case kSoftplus: return new ActivationLayer<xpu,op::softplus,op::softplus_grad>(in, out);
 #if CXXNET_ADAPT_CAFFE            
-        case kCaffe: return new CaffeLayer<xpu>(in,out);
+        case kCaffe: return new CaffeLayer<xpu>(rnd,in,out);
 #endif
         default: Error("unknown layer type");
         }
