@@ -262,7 +262,8 @@ namespace cxxnet {
         const int kSigmoid = 3;
         const int kTanh = 4;
         const int kSoftplus = 5;
-        const int kCaffe = 6;
+        const int kFlatten  = 6;
+        const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */
     namespace rnd_type {

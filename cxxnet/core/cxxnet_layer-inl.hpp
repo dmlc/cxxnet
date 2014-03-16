@@ -196,10 +196,12 @@ namespace cxxnet{
         }
         virtual ~FlattenLayer( void ){}
         virtual void Forward( bool is_train ) {
-            // TODO
+            out_.data = reshape( in_.data, out_.data.shape );
         }
         virtual void Backprop( bool prop_grad ){
-            // TODO
+            if( prop_grad ){
+                in_.data = reshape( out_.data, in_.data.shape );
+            }
         }
         virtual void AdjustNodeShape( void ) {
             mshadow::Shape<4> ishape = in_.data.shape;
@@ -265,7 +267,9 @@ namespace cxxnet{
         if( !strcmp( type, "sigmoid") ) return kSigmoid;
         if( !strcmp( type, "tanh") ) return kTanh;
         if( !strcmp( type, "softplus") ) return kSoftplus;
+        if( !strcmp( type, "flatten") )  return kFlatten;
         if( !strcmp( type, "caffe") ) return kCaffe;
+        Error("unknown layer type" );
         return 0;
     }
 
@@ -279,6 +283,7 @@ namespace cxxnet{
         case kTanh    : return new ActivationLayer<xpu,op::tanh,op::tanh_grad>(in, out);
         case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
         case kSoftplus: return new ActivationLayer<xpu,op::softplus,op::softplus_grad>(in, out);
+        case kFlatten:  return new FlattenLayer<xpu>( in, out );
 #if CXXNET_ADAPT_CAFFE            
         case kCaffe: return new CaffeLayer<xpu>(rnd,in,out);
 #endif
