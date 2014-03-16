@@ -73,8 +73,21 @@ namespace cxxnet{
                 while( (ch_buf = fgetc(fi)) != EOF ){
                     switch( ch_buf ){
                     case '\\': tok[i++] = fgetc( fi ); break;
-                    case '\"': tok[i++] = '\0'; 
-						return;
+                    case '\"': tok[i++] = '\0'; return;
+                    case '\r':
+                    case '\n': Error("unterminated string"); 
+                    default: tok[i++] = ch_buf;
+                    }
+                }
+                Error("unterminated string"); 
+            }
+
+            inline void ParseStrML( char tok[] ){
+                int i = 0; 
+                while( (ch_buf = fgetc(fi)) != EOF ){
+                    switch( ch_buf ){
+                    case '\\': tok[i++] = fgetc( fi ); break;
+                    case '\'': tok[i++] = '\0'; return;
                     default: tok[i++] = ch_buf;
                     }
                 }
@@ -90,6 +103,12 @@ namespace cxxnet{
                     case '\"':
                         if( i == 0 ){
                             ParseStr( tok );ch_buf = fgetc(fi); return new_line;
+                        }else{
+                            Error("token followed directly by string"); 
+                        }
+                    case '\'':
+                        if( i == 0 ){
+                            ParseStrML( tok );ch_buf = fgetc(fi); return new_line;
                         }else{
                             Error("token followed directly by string"); 
                         }

@@ -10,11 +10,11 @@
 #include "caffe/caffe.hpp"
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_container.h"
+#include <google/protobuf/text_format.h>
 
 namespace cxxnet{
     using namespace mshadow::expr;
-    using namespace mshadow::utils;
-    
+    using namespace mshadow::utils;    
     /*! 
      * \brief adapter from caffe, will cost a extra blob memory, 
      *        but allows some correct comparisons
@@ -46,7 +46,6 @@ namespace cxxnet{
             this->mode_ = -1;
             this->blb_in_ = NULL;
             this->blb_out_ = NULL;
-            this->oshape_[0] = 0;
         }
         virtual ~CaffeLayer( void ){
             this->FreeSpace();
@@ -93,31 +92,37 @@ namespace cxxnet{
         }
         virtual void AdjustNodeShape( void ){ 
             utils::Assert( mode_ != -1, "CaffeLayer: must specify mode: 0:flatten, 1:conv-channels" );
-            utils::Assert( oshape_[0] != 0, "CaffeLayer: must specify oshape" );
             if( mode_ == 0 ){
-                out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], oshape_[0] );
                 blb_in_  = new caffe::Blob<real_t>( in_.data.shape[1], in_.data.shape[0], 1, 1 );
-                blb_out_ = new caffe::Blob<real_t>( out_.data.shape[1], out_.data.shape[0], 1, 1 );
+                blb_out_ = new caffe::Blob<real_t>();
             }else{
-                out_.data.shape = mshadow::Shape4( in_.data.shape[4], oshape_[2], oshape_[1], oshape_[0] );
                 blb_in_  = new caffe::Blob<real_t>( in_.data.shape[3], in_.data.shape[2], in_.data.shape[1], in_.data.shape[0] );
-                blb_out_ = new caffe::Blob<real_t>( out_.data.shape[3], out_.data.shape[2], out_.data.shape[1], out_.data.shape[0] );
+                blb_out_ = new caffe::Blob<real_t>();
             }
             vec_in_.clear(); vec_in_.push_back( blb_in_ );
-            vec_out_.clear(); vec_out_.push_back( blb_out_ );            
+            vec_out_.clear(); vec_out_.push_back( blb_out_ ); 
+
+            if( base_ == NULL ){
+                base_ = caffe::GetLayer<real_t>( param_ );
+            }
+
             base_->SetUp( vec_in_, &vec_out_ ); 
+            if( mode_ == 0 ){
+                out_.data.shape = mshadow::Shape4( 1, 1, blb_out_->num(), blb_out_->channels() );
+            }else{
+                out_.data.shape = mshadow::Shape4( blb_out_->num(), blb_out_->channels(), blb_out_->height(), blb_out_->width() );
+            }
         }   
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
             updaters.push_back( new CaffeUpdater( base_ ) );
         }   
         virtual void SetParam( const char *name, const char* val ) {
             if( !strcmp( name, "proto") ){
-                param_.ParseFromString( val );
+                google::protobuf::TextFormat::ParseFromString( std::string(val), &param_ );
             }
-            if( !strcmp( name, "oshape") ){
-                unsigned zmax, ymax, xmax;
-                utils::Assert( sscanf( val, "%u,%u,%u", &zmax, &ymax, &xmax ) == 3, "CaffeLayer::SetParam" );
-                oshape_ =  mshadow::Shape3( zmax, ymax, xmax );
+            
+            if( !strcmp( name, "mode" ) ){
+                mode_ = atoi( val );
             }
             if( !strcmp( name, "dev" ) ){
                 if( !strcmp( val, "cpu") ) caffe::Caffe::set_mode( caffe::Caffe::CPU );
@@ -125,8 +130,6 @@ namespace cxxnet{
             }
         }
         virtual void InitModel(void) {
-            this->FreeSpace();
-            base_ = caffe::GetLayer<real_t>( param_ );            
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const {
             std::vector<char> buf;
@@ -155,8 +158,6 @@ namespace cxxnet{
     private:
         /*!\brief whether it is fullc or convolutional layer */
         int mode_;
-        /*! \brief shape of output except batch size */
-        mshadow::Shape<3> oshape_;
         /*! \brief caffe's layer parametes */
         caffe::LayerParameter param_;
         /*! \brief caffe's impelementation */
