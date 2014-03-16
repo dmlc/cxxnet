@@ -162,7 +162,6 @@ namespace cxxnet {
 }; // namespace cxxnet
 
 namespace cxxnet {
-
     template<typename xpu,typename ForwardOp, typename BackOp >
     class ActivationLayer : public ILayer{
     public:
@@ -179,6 +178,32 @@ namespace cxxnet {
         }
         virtual void AdjustNodeShape( void ) {
             out_.data.shape = in_.data.shape;
+        }
+    private:
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+    };
+};
+
+namespace cxxnet{
+    template<typename xpu>
+    class FlattenLayer : public ILayer{
+    public:
+        FlattenLayer( Node<xpu> &in, Node<xpu> &out )
+            :in_(in), out_(out) {
+        }
+        virtual ~FlattenLayer( void ){}
+        virtual void Forward( bool is_train ) {
+            // TODO
+        }
+        virtual void Backprop( bool prop_grad ){
+            // TODO
+        }
+        virtual void AdjustNodeShape( void ) {
+            mshadow::Shape<4> ishape = in_.data.shape;
+            out_.data.shape = mshadow::Shape4( 1, 1, ishape[3], ishape[2]*ishape[1]*ishape[0] );
         }
     private:
         /*! \brief input node */

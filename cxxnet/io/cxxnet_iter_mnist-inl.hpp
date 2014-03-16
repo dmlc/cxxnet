@@ -12,7 +12,7 @@ namespace cxxnet {
     public:
         MNISTIterator( void ){
             img_.dptr = NULL;
-            mode_ = 0;
+            mode_ = 1;
             inst_offset_ = 0;
             silent_ = 0;
             shuffle_ = 0;
@@ -23,7 +23,7 @@ namespace cxxnet {
         virtual void SetParam( const char *name, const char *val ) {
             if( !strcmp( name, "silent") )       silent_ = atoi( val );            
             if( !strcmp( name, "batch_size") )   batch_size_ = (index_t)atoi( val ); 
-            if( !strcmp( name, "mode") )         mode_ = atoi( val );
+            if( !strcmp( name, "input_flat") )   mode_ = atoi( val );
             if( !strcmp( name, "shuffle") )      shuffle_ = atoi( val );
             if( !strcmp( name, "index_offset") ) inst_offset_ = atoi( val );
             if( !strcmp( name, "path_img") )     path_img = val;
@@ -33,7 +33,7 @@ namespace cxxnet {
         virtual void Init( void ) {
             this->LoadImage();
             this->LoadLabel();
-            if( mode_ == 0 ){
+            if( mode_ == 1 ){
                 out_.data.shape = mshadow::Shape4(1,1,batch_size_,img_.shape[1] * img_.shape[0] );
             }else{
                 out_.data.shape = mshadow::Shape4( batch_size_, 1, img_.shape[1], img_.shape[0] );

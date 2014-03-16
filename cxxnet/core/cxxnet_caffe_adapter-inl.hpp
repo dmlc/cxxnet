@@ -91,17 +91,15 @@ namespace cxxnet{
             if( xpu::kDevCPU ){
                 mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_cpu_data(), shape_in );
                 mshadow::Copy( tbin, in_.data );
-                base_->Forward( vec_in_, &vec_out_ );
-
+                base_->Forward( vec_in_, &vec_out_ );                
                 mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_cpu_data(), shape_ou );
                 mshadow::Copy( out_.data, tbout );
             }else{
                 mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_gpu_data(), shape_in );
                 mshadow::Copy( tbin, in_.data );
                 base_->Forward( vec_in_, &vec_out_ );
-                
                 mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_gpu_data(), shape_ou );
-                mshadow::Copy( out_.data, tbout );             
+                mshadow::Copy( out_.data, tbout ); 
             }
         }
         virtual void Backprop( bool prop_grad ){
@@ -116,24 +114,26 @@ namespace cxxnet{
                     mshadow::Copy( in_.data, tbin );
                 }
             }else{
-                mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_cpu_diff(), shape_ou );
+                mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_gpu_diff(), shape_ou );
                 mshadow::Copy( tbout, out_.data );
                 base_->Backward( vec_out_, prop_grad, &vec_in_ );
                 if( prop_grad ){
-                    mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_cpu_diff(), shape_in );
+                    mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_gpu_diff(), shape_in );
                     mshadow::Copy( in_.data, tbin );
                 }
             }            
         }
         virtual void AdjustNodeShape( void ){ 
             utils::Assert( mode_ != -1, "CaffeLayer: must specify mode: 0:flatten, 1:conv-channels" );
+            mshadow::Shape<4> ishape = in_.data.shape;
             if( mode_ == 0 ){
-                batch_size_ = in_.data.shape[1];
-                blb_in_  = new caffe::Blob<real_t>( in_.data.shape[1], in_.data.shape[0], 1, 1 );
+                utils::Assert( ishape[3] == 1 && ishape[2] == 1, "the input is not flattened, forget a FlattenLayer?" );
+                batch_size_ = ishape[1];
+                blb_in_  = new caffe::Blob<real_t>( ishape[1], ishape[0], 1, 1 );
                 blb_out_ = new caffe::Blob<real_t>();
             }else{
                 batch_size_ = in_.data.shape[3];
-                blb_in_  = new caffe::Blob<real_t>( in_.data.shape[3], in_.data.shape[2], in_.data.shape[1], in_.data.shape[0] );
+                blb_in_  = new caffe::Blob<real_t>( ishape[3], ishape[2], ishape[1], ishape[0] );
                 blb_out_ = new caffe::Blob<real_t>();
             }
             vec_in_.clear(); vec_in_.push_back( blb_in_ );
@@ -144,7 +144,7 @@ namespace cxxnet{
             }
 
             base_->SetUp( vec_in_, &vec_out_ ); 
-            if( mode_ == 0 ){
+            if( mode_ == 0 || mode_ == 2 ){
                 out_.data.shape = mshadow::Shape4( 1, 1, blb_out_->num(), blb_out_->channels() );
             }else{
                 out_.data.shape = mshadow::Shape4( blb_out_->num(), blb_out_->channels(), blb_out_->height(), blb_out_->width() );
