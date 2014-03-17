@@ -246,7 +246,7 @@ namespace cxxnet {
         }
         virtual void Backprop( bool prop_grad ) {
             if (prop_grad) {
-                in_.mat() = out_.mat() * in_.mat();
+                in_.mat() = out_.mat() * mask_;
             }
         }
         virtual void AdjustNodeShape( void ) {
