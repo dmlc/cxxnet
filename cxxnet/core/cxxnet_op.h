@@ -60,4 +60,14 @@ namespace cxxnet {
 
 }; //namespace cxxnet
 
+namespace cxxnet {
+    namespace op {
+        /*! \brief used for generate Bernoulli mask */
+        struct threshold {
+            MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
+                return a <= b ? 1 : 0;
+            }
+        };
+    }; // namespace op
+}; // namespace cxxnet
 #endif // CXXNET_OP_H

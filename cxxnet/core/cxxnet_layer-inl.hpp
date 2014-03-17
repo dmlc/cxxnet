@@ -11,7 +11,7 @@
 #include "cxxnet_op.h"
 #include "mshadow/tensor_container.h"
 
-#if CXXNET_ADAPT_CAFFE 
+#if CXXNET_ADAPT_CAFFE
 #include "cxxnet_caffe_adapter-inl.hpp"
 #endif
 
@@ -29,10 +29,13 @@ namespace cxxnet{
         float init_sigma;
         /*! \brief initialization random type */
         int random_type;
+        /*! \brief dropout threshold  */
+        real_t dropout_threshold;
         LayerParam( void ){
             init_sigma = 0.01f;
             num_hidden = 0;
             random_type = 0;
+            dropout_threshold = 0;
         }
         /*!
          * \brief Set param for the layer from string
@@ -43,6 +46,7 @@ namespace cxxnet{
             if( !strcmp( name, "init_sigma") ) init_sigma = (float)atof(val);
             if( !strcmp( name, "nhidden") ) num_hidden = atoi(val);
             if( !strcmp( name, "random_type")) random_type = atoi(val);
+            if( !strcmp( name, "threshold")) dropout_threshold = (float)atof(val);
         }
     };
 };
@@ -61,7 +65,7 @@ namespace cxxnet {
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
             out_.mat()  = dot( in_.mat(), wmat_ );
-            out_.mat() += repmat( bias_, nbatch );            
+            out_.mat() += repmat( bias_, nbatch );
         }
         virtual void Backprop(bool prop_grad){
             index_t nbatch = in_.data.shape[1];
@@ -215,6 +219,54 @@ namespace cxxnet{
     };
 };
 
+namespace cxxnet {
+    template<typename xpu>
+    class DropoutLayer : public ILayer {
+    public:
+        DropoutLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
+            :rnd_(rnd), in_(in), out_(out) {
+        }
+        virtual void InitModel() {
+            mask_.Resize(in_.mat().shape);
+        }
+        virtual void SetParam(const char *name, const char* val){
+            param_.SetParam( name, val );
+        }
+        virtual void Forward( bool is_train ) {
+            if (is_train) {
+                utils::Assert(param_.dropout_threshold > 0 && param_.dropout_threshold < 1, "Invalid dropout threshold\n");
+                scale_ = 1.0f / (1.0f - param_.dropout_threshold);
+                rnd_.SampleUniform(mask_, 0, 1);
+                F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
+                in_.mat() = in_.mat() * mask_ * scale_;
+            } else {
+                in_.mat() = in_.mat();
+            }
+            mshadow::Copy( out_.mat(), in_.mat() );
+        }
+        virtual void Backprop( bool prop_grad ) {
+            if (prop_grad) {
+                in_.mat() = out_.mat() * in_.mat();
+            }
+        }
+        virtual void AdjustNodeShape( void ) {
+            out_.data.shape = in_.data.shape;
+        }
+    private:
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+        /*! \brief dropout mask */
+        mshadow::TensorContainer<xpu, 2> mask_;
+        /*! \brief random number generator */
+        mshadow::Random<xpu> &rnd_;
+        /*! \brief parameters that potentially be useful */
+        LayerParam param_;
+        /*! \brief scale from caffe, TODO: check other dropout */
+        real_t scale_;
+    }; // class DropoutLayer
+}; // namespace cxxnet
 namespace cxxnet{
     /* layer patch that handles memory issues */
     template<typename xpu>
@@ -268,6 +320,8 @@ namespace cxxnet{
         if( !strcmp( type, "tanh") ) return kTanh;
         if( !strcmp( type, "softplus") ) return kSoftplus;
         if( !strcmp( type, "flatten") )  return kFlatten;
+        if( !strcmp( type, "dropout") ) return kDropout;
+        if( !strcmp( type, "dropconn") ) return kDropConn;
         if( !strcmp( type, "caffe") ) return kCaffe;
         Error("unknown layer type" );
         return 0;
@@ -284,7 +338,9 @@ namespace cxxnet{
         case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
         case kSoftplus: return new ActivationLayer<xpu,op::softplus,op::softplus_grad>(in, out);
         case kFlatten:  return new FlattenLayer<xpu>( in, out );
-#if CXXNET_ADAPT_CAFFE            
+        // TODO:
+        case kDropout: return new DropoutLayer<xpu>(rnd, in, out);
+#if CXXNET_ADAPT_CAFFE
         case kCaffe: return new CaffeLayer<xpu>(rnd,in,out);
 #endif
         default: Error("unknown layer type");

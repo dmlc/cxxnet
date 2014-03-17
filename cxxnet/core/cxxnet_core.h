@@ -9,7 +9,7 @@
  */
 
 /*! \brief whether to adapt caffe layers */
-#ifndef CXXNET_ADAPT_CAFFE 
+#ifndef CXXNET_ADAPT_CAFFE
 #define CXXNET_ADAPT_CAFFE 0
 #endif
 
@@ -35,7 +35,7 @@ namespace cxxnet {
     class IUpdater{
     public:
         /*!\brief virtual destructor */
-        virtual ~IUpdater( void ){} 
+        virtual ~IUpdater( void ){}
         /*! \brief intialize, print information about updater if not silent */
         virtual void Init( void ) = 0;
         /*! \brief update parameter */
@@ -263,6 +263,8 @@ namespace cxxnet {
         const int kTanh = 4;
         const int kSoftplus = 5;
         const int kFlatten  = 6;
+        const int kDropout = 7;
+        const int kDropConn = 8;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */
