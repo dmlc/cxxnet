@@ -265,6 +265,7 @@ namespace cxxnet {
         const int kFlatten  = 6;
         const int kDropout = 7;
         const int kDropConn = 8;
+        const int kConv = 9;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */
