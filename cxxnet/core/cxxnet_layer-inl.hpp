@@ -34,7 +34,7 @@ namespace cxxnet{
         /*! \brief kernel size */
         int kernel_size;
         /*! \brief stride prameter */
-        int stride; 
+        int stride;
         /*! \brief whether not include bias term */
         int no_bias;
         /*! \brief dropout threshold  */
@@ -196,11 +196,11 @@ namespace cxxnet {
         }
         virtual void Backprop(bool prop_grad){
             index_t nbatch = in_.data.shape[1];
-            real_t scale = 1.0f / nbatch;            
+            real_t scale = 1.0f / nbatch;
             gwmat_ = 0.0f;
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
-                mshadow::UnpackPatchToCol( temp_col_, in_.data[i], param_.kernel_size, param_.stride );                
+                mshadow::UnpackPatchToCol( temp_col_, in_.data[i], param_.kernel_size, param_.stride );
                 gwmat_ += scale * dot( temp_dst_, temp_col_.T() );
                 if( param_.no_bias != 0 ){
                     // TODO
@@ -213,16 +213,16 @@ namespace cxxnet {
         }
         virtual void AdjustNodeShape( void ) {
             const index_t ksize   = static_cast<index_t>( param_.kernel_size );
-            const index_t kstride = static_cast<index_t>( param_.stride ); 
+            const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( param_.num_channel > 0, "must set nchannel correctly" );
             Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
-            Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" ); 
+            Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], param_.num_channel,
                         (in_.data.shape[1] - ksize)/kstride + 1,
                         (in_.data.shape[0] - ksize)/kstride + 1 );
             out_.data.shape = oshape;
-            
+
             // helper structure
             temp_col_.Resize( mshadow::Shape2( in_.data.shape[2]*ksize*ksize, oshape[1]*oshape[0] ) );
             temp_dst_.Resize( mshadow::Shape2( param_.num_channel, oshape[1]*oshape[0] ) );
@@ -275,7 +275,7 @@ namespace cxxnet {
         /*! \brief accumulates the gradient of weight matrix */
         mshadow::TensorContainer<xpu,2> gwmat_;
         /*! \brief accumulates the gradient of bias */
-        mshadow::TensorContainer<xpu,1> gbias_; 
+        mshadow::TensorContainer<xpu,1> gbias_;
         /*! \brief temporary data structure to store patches */
         mshadow::TensorContainer<xpu,2> temp_col_;
         /*! \brief temporary data structure to store results */
@@ -342,19 +342,15 @@ namespace cxxnet {
         DropoutLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
             :rnd_(rnd), in_(in), out_(out) {
         }
-        virtual void InitModel() {
-            mask_.Resize(in_.mat().shape);
-        }
         virtual void SetParam(const char *name, const char* val){
             param_.SetParam( name, val );
         }
         virtual void Forward( bool is_train ) {
             if (is_train) {
-                utils::Assert(param_.dropout_threshold > 0 && param_.dropout_threshold < 1, "Invalid dropout threshold\n");
-                scale_ = 1.0f / (1.0f - param_.dropout_threshold);
+                utils::Assert(param_.dropout_threshold >= 0 && param_.dropout_threshold < 1, "Invalid dropout threshold\n");
                 rnd_.SampleUniform(mask_, 0, 1);
-                F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
-                in_.mat() = in_.mat() * mask_ * scale_;
+                mask_ = F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
+                in_.mat() = in_.mat() * mask_;
             } else {
                 in_.mat() = in_.mat();
             }
@@ -367,6 +363,7 @@ namespace cxxnet {
         }
         virtual void AdjustNodeShape( void ) {
             out_.data.shape = in_.data.shape;
+            mask_.Resize(in_.mat().shape);
         }
     private:
         /*! \brief input node */
