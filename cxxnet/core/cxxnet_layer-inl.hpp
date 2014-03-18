@@ -188,23 +188,25 @@ namespace cxxnet {
             for( index_t i = 0; i < nbatch; ++ i ){
                 mshadow::UnpackPatchToCol( temp_col_, in_.data[i], param_.kernel_size, param_.stride );
                 temp_dst_ = dot( wmat_, temp_col_ );
-                if( param_.no_bias != 0 ){
-                    Error("bias not supported yet in conv, set no_bias=1" );
-                }
                 out_.data[i] = reshape( temp_dst_, out_.data[i].shape );
+            }
+            if( param_.no_bias != 0 ){
+                // add bias, broadcast bias to dim 2: channel
+                out_.data += broadcast<2>( bias_, out_.data.shape );
             }
         }
         virtual void Backprop(bool prop_grad){
             index_t nbatch = in_.data.shape[1];
             real_t scale = 1.0f / nbatch;            
+            
+            if( param_.no_bias != 0 ){
+                gbias_ = scale * sumall_except_dim<2>( out_.data );
+            }
             gwmat_ = 0.0f;
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
                 mshadow::UnpackPatchToCol( temp_col_, in_.data[i], param_.kernel_size, param_.stride );                
                 gwmat_ += scale * dot( temp_dst_, temp_col_.T() );
-                if( param_.no_bias != 0 ){
-                    // TODO
-                }
                 if( prop_grad ){
                     temp_col_ = dot( temp_dst_.T(), wmat_ );
                     mshadow::PackPatchFromCol( in_.data[i], temp_col_, param_.kernel_size, param_.stride );
