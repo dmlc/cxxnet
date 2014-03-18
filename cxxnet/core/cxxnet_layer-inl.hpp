@@ -205,7 +205,8 @@ namespace cxxnet {
             gwmat_ = 0.0f;
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
-                mshadow::UnpackPatchToCol( temp_col_, in_.data[i], param_.kernel_size, param_.stride );                
+                temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+
                 gwmat_ += scale * dot( temp_dst_, temp_col_.T() );
                 if( prop_grad ){
                     temp_col_ = dot( temp_dst_.T(), wmat_ );
