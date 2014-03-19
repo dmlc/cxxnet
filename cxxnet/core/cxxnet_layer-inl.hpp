@@ -16,6 +16,12 @@
 #endif
 
 namespace cxxnet{
+    template<typename xpu>
+    inline ILayer* CreateLayer_( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out );
+
+};
+
+namespace cxxnet{
     // expr is needed to use expression
     using namespace mshadow::expr;
     using namespace mshadow::utils;
@@ -385,6 +391,76 @@ namespace cxxnet {
 }; // namespace cxxnet
 
 namespace cxxnet{
+    template<typename xpu> 
+    struct PairTestLayer : public ILayer{
+    public:
+        PairTestLayer( mshadow::Random<xpu> &rnd, Node<xpu>&in, Node<xpu>& out,
+                       int tmaster, int tslave ):in_(in),out_(out){
+            master_ = CreateLayer_( tmaster, rnd, in, out ) ;
+            slave_  = CreateLayer_( tslave, rnd, slv_in_, slv_out_ );
+        }
+        virtual ~PairTestLayer( void ){ 
+            delete master_; delete slave_;
+            slv_in_.FreeSpace(); slv_out_.FreeSpace();
+        }
+        virtual void Forward( bool is_train ){
+            Copy( slv_in_.data, in_.data );
+            master_->Forward( is_train );
+            slave_->Forward( is_train );
+            this->CmpResult( out_.data, slv_out_.data, "forward" );
+        }
+        virtual void Backprop( bool prop_grad ){
+            Copy( slv_out_.data, out_.data );
+            master_->Backprop( prop_grad );
+            slave_->Backprop( prop_grad );
+            if( prop_grad ){
+                this->CmpResult( in_.data, slv_in_.data, "backprop" );
+            }
+        }
+    public:
+        virtual void AdjustNodeShape( void ){
+            slv_in_.data.shape = in_.data.shape;
+            master_->AdjustNodeShape();
+            slave_->AdjustNodeShape();
+            utils::Assert( slv_out_.data.shape == out_.data.shape, "PairTestLayer:AdjustNodeShape mismatch" );
+            AllocSpace( slv_in_.data );
+            AllocSpace( slv_out_.data );
+        }
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
+            // TODO: compare updater results
+            master_->GetUpdaters( updater, updaters );
+        }
+        virtual void SetParam( const char *name, const char* val ) {
+            master_->SetParam( name, val );
+            slave_->SetParam( name, val );
+            if( !strncmp( name, "master:", 7 ) ) master_->SetParam( name+7, val );
+            if( !strncmp( name, "slave:", 6 ) ) slave_->SetParam( name+7, val );           
+        }
+        virtual void InitModel(void) {
+            master_->InitModel();
+            slave_->InitModel();
+        }
+        virtual void SaveModel(mshadow::utils::IStream &fo) const {
+            master_->SaveModel( fo );
+            slave_->SaveModel( fo );
+        }
+        virtual void LoadModel(mshadow::utils::IStream &fi) {
+            master_->LoadModel( fi );
+            slave_->LoadModel( fi );
+        }
+    private:
+        inline void CmpResult( mshadow::Tensor<xpu,4> dmaster, mshadow::Tensor<xpu,4> dslave, const char *tag ){
+            // TODO
+        }
+    private:
+        ILayer *master_, *slave_;
+        Node<xpu> &in_, &out_;   
+        // data that slave takes
+        Node<xpu> slv_in_, slv_out_;
+    }; 
+};
+
+namespace cxxnet{
     /* layer patch that handles memory issues */
     template<typename xpu>
     struct LayerPatch: public ILayer{
@@ -472,6 +548,11 @@ namespace cxxnet{
     }
     template<typename xpu>
     inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
+        if( !strncmp( type, "pairtest-", 9 ) ){
+            char tmaster[256], tslave[256];
+            sscanf( type + 9, "%[^-]-%[^:]", tmaster, tslave );
+            return new LayerPatch<xpu>( new PairTestLayer<xpu>( rnd, in, out, GetLayerType(tmaster), GetLayerType(tslave) ), in, out );            
+        }
         return CreateLayer( GetLayerType(type), rnd, in, out );
     }
 };

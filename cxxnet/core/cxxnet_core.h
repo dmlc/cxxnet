@@ -39,7 +39,7 @@ namespace cxxnet {
         /*! \brief intialize, print information about updater if not silent */
         virtual void Init( void ) = 0;
         /*! \brief update parameter */
-        virtual void Update( void ) = 0;
+        virtual void Update( void ) = 0;        
         /*!
          * \brief inform the updater that starting round iteration over data
          * \param round round counter
@@ -214,6 +214,12 @@ namespace cxxnet {
             if( !pinned_ ) return;
             pinned_ = false;
             parent_->RegUnpin( this );
+        }
+    public:
+        /* public constructor, use with caution */
+        Node( void ){
+            data.dptr = NULL;
+            backup_.dptr = NULL;
         }
     private:
         /*! \brief allow factory to see node */
