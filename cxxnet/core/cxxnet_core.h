@@ -39,7 +39,7 @@ namespace cxxnet {
         /*! \brief intialize, print information about updater if not silent */
         virtual void Init( void ) = 0;
         /*! \brief update parameter */
-        virtual void Update( void ) = 0;        
+        virtual void Update( void ) = 0;
         /*!
          * \brief inform the updater that starting round iteration over data
          * \param round round counter
@@ -48,19 +48,19 @@ namespace cxxnet {
         /*!\ brief set parameters that could be spefic to this updater */
         virtual void SetParam( const char *name, const char *val ) = 0;
     public:
-        /*! 
-         * \brief copy parameters(after FlatTo2D) into the two tensor containers, used for debug 
+        /*!
+         * \brief copy parameters(after FlatTo2D) into the two tensor containers, used for debug
          * \param weight weight variable
          * \param gradient gradient variable
          */
-        virtual void GetData( mshadow::TensorContainer<cpu,2>& weight,  
+        virtual void GetData( mshadow::TensorContainer<cpu,2>& weight,
                               mshadow::TensorContainer<cpu,2>& gradient ) const = 0;
-        /*! 
+        /*!
          * \brief set parameters data content as what passed in, used for debug
          * \param weight weight variable
          * \param gradient gradient variable
          */
-        virtual void SetData( const mshadow::Tensor<cpu,2>& weight, 
+        virtual void SetData( const mshadow::Tensor<cpu,2>& weight,
                               const mshadow::Tensor<cpu,2>& gradient ) = 0;
     };
 
@@ -277,16 +277,16 @@ namespace cxxnet {
 namespace cxxnet {
     /*! \brief namespace for type of layer */
     namespace layer_type{
-        const int kFullConnect = 0;
-        const int kSoftmax     = 1;
-        const int kRectifiedLinear = 2;
-        const int kSigmoid = 3;
-        const int kTanh = 4;
-        const int kSoftplus = 5;
-        const int kFlatten  = 6;
-        const int kDropout = 7;
-        const int kDropConn = 8;
-        const int kConv = 9;
+        const int kFullConnect = 1;
+        const int kSoftmax     = 2;
+        const int kRectifiedLinear = 3;
+        const int kSigmoid = 4;
+        const int kTanh = 5;
+        const int kSoftplus = 6;
+        const int kFlatten  = 7;
+        const int kDropout = 8;
+        const int kDropConn = 9;
+        const int kConv = 10;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */

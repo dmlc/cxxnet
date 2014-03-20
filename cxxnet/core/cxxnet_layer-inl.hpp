@@ -84,7 +84,7 @@ namespace cxxnet {
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
             out_.mat()  = dot( in_.mat(), wmat_ );
-            if( param_.no_bias != 0 ){
+            if( param_.no_bias == 0 ){
                 out_.mat() += repmat( bias_, nbatch );
             }
         }
@@ -92,7 +92,7 @@ namespace cxxnet {
             index_t nbatch = in_.data.shape[1];
             real_t scale = 1.0f / nbatch;
             gwmat_ = scale * dot( in_.mat().T(), out_.mat() );
-            if( param_.no_bias != 0 ){
+            if( param_.no_bias == 0 ){
                 gbias_ = scale * sum_rows( out_.mat() );
             }
             // backprop
@@ -107,7 +107,7 @@ namespace cxxnet {
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
             updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
-            if( param_.no_bias != 0 ){
+            if( param_.no_bias == 0 ){
                 updaters.push_back( CreateUpdater( updater, rnd_, bias_, gbias_, "bias" ) );
             }
         }
@@ -196,16 +196,16 @@ namespace cxxnet {
                 temp_dst_ = dot( wmat_, temp_col_ );
                 out_.data[i] = reshape( temp_dst_, out_.data[i].shape );
             }
-            if( param_.no_bias != 0 ){
+            if( param_.no_bias == 0 ){
                 // add bias, broadcast bias to dim 2: channel
                 out_.data += broadcast<2>( bias_, out_.data.shape );
             }
         }
         virtual void Backprop(bool prop_grad){
             index_t nbatch = in_.data.shape[1];
-            real_t scale = 1.0f / nbatch;            
-            
-            if( param_.no_bias != 0 ){
+            real_t scale = 1.0f / nbatch;
+
+            if( param_.no_bias == 0 ){
                 gbias_ = scale * sumall_except_dim<2>( out_.data );
             }
             gwmat_ = 0.0f;
@@ -238,7 +238,7 @@ namespace cxxnet {
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
             updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
-            if( param_.no_bias != 0 ){
+            if( param_.no_bias == 0 ){
                 updaters.push_back( CreateUpdater( updater, rnd_, bias_, gbias_, "bias" ) );
             }
         }
@@ -391,7 +391,7 @@ namespace cxxnet {
 }; // namespace cxxnet
 
 namespace cxxnet{
-    template<typename xpu> 
+    template<typename xpu>
     struct PairTestLayer : public ILayer{
     protected:
         class PairTestUpdater: public IUpdater{
@@ -409,7 +409,7 @@ namespace cxxnet{
                 umaster_->Init(); uslave_->Init();
             }
             virtual void Update( void ){
-                umaster_->Update();  uslave_->Update();                
+                umaster_->Update();  uslave_->Update();
                 umaster_->GetData( w_mst_, g_mst_ );
                 uslave_->GetData( w_slv_, g_slv_ );
                 CmpResult( w_mst_, w_slv_, "update:weight" );
@@ -423,11 +423,16 @@ namespace cxxnet{
                 umaster_->SetParam( name, val );
                 uslave_->SetParam( name, val );
             }
-            
+            virtual void SetData(const mshadow::Tensor<cpu,2>& weight,
+                                 const mshadow::Tensor<cpu,2>& gradient) {
+            }
+            virtual void GetData(mshadow::TensorContainer<cpu,2>& weight,
+                                 mshadow::TensorContainer<cpu,2>& gradient ) const {
+            }
         private:
             IUpdater *umaster_, *uslave_;
             mshadow::TensorContainer<cpu,2> w_mst_, w_slv_;
-            mshadow::TensorContainer<cpu,2> g_mst_, g_slv_;            
+            mshadow::TensorContainer<cpu,2> g_mst_, g_slv_;
         };
     public:
         PairTestLayer( mshadow::Random<xpu> &rnd, Node<xpu>&in, Node<xpu>& out,
@@ -435,7 +440,7 @@ namespace cxxnet{
             master_ = CreateLayer_( tmaster, rnd, in, out ) ;
             slave_  = CreateLayer_( tslave, rnd, slv_in_, slv_out_ );
         }
-        virtual ~PairTestLayer( void ){ 
+        virtual ~PairTestLayer( void ){
             delete master_; delete slave_;
             slv_in_.FreeSpace(); slv_out_.FreeSpace();
         }
@@ -466,6 +471,7 @@ namespace cxxnet{
             std::vector<IUpdater*> umaster, uslave;
             master_->GetUpdaters( updater, umaster );
             slave_->GetUpdaters( updater, uslave );
+            printf("%d-%d\n", umaster.size(), uslave.size());
             utils::Assert( umaster.size() == uslave.size(), "PairTestLayer: number of updaters not match" );
             for( size_t i = 0; i < umaster.size(); ++i ){
                 PairTestUpdater *up = new PairTestUpdater( umaster[i], uslave[i] );
@@ -476,7 +482,7 @@ namespace cxxnet{
             master_->SetParam( name, val );
             slave_->SetParam( name, val );
             if( !strncmp( name, "master:", 7 ) ) master_->SetParam( name+7, val );
-            if( !strncmp( name, "slave:", 6 ) ) slave_->SetParam( name+7, val );           
+            if( !strncmp( name, "slave:", 6 ) ) slave_->SetParam( name+7, val );
         }
         virtual void InitModel(void) {
             master_->InitModel();
@@ -499,7 +505,7 @@ namespace cxxnet{
             index_t count = tmst.shape.Size();
             double diff = 0.0, ssum = 0.0;
             for( index_t i = 0; i < count; ++i ){
-                diff += std::abs( tmst.dptr[i] - tslv.dptr[i] ); 
+                diff += std::abs( tmst.dptr[i] - tslv.dptr[i] );
                 ssum += std::abs( tmst.dptr[i] );
             }
             // relative absolute error
@@ -510,10 +516,10 @@ namespace cxxnet{
         }
     private:
         ILayer *master_, *slave_;
-        Node<xpu> &in_, &out_;   
+        Node<xpu> &in_, &out_;
         // data that slave takes
         Node<xpu> slv_in_, slv_out_;
-    }; 
+    };
 };
 
 namespace cxxnet{
@@ -564,7 +570,7 @@ namespace cxxnet{
         if( !strncmp( type, "pairtest-", 9 ) ){
             char tmaster[256], tslave[256];
             sscanf( type + 9, "%[^-]-%[^:]", tmaster, tslave );
-            return 10000 + GetLayerType(tmaster) * 100  + GetLayerType(tslave);
+            return GetLayerType(tmaster) * 1000  + GetLayerType(tslave);
         }
         using namespace layer_type;
         if( !strcmp( type, "fullc") )   return kFullConnect;
@@ -585,9 +591,9 @@ namespace cxxnet{
     template<typename xpu>
     inline ILayer* CreateLayer_( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
         using namespace layer_type;
-        if( type >= 10000 ){
-            return new PairTestLayer<xpu>( rnd, in, out, (type/100)%100, type%100 );
-        } 
+        if( type >= 1000 ){
+            return new PairTestLayer<xpu>( rnd, in, out, type/1000, type % 1000);
+        }
         switch( type ){
         case kFullConnect: return new FullConnectLayer<xpu>( rnd, in, out );
         case kSoftmax    : return new SoftmaxLayer<xpu>( rnd, in, out );
