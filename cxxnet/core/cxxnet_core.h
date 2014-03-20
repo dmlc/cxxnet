@@ -47,6 +47,21 @@ namespace cxxnet {
         virtual void StartRound( int round ) = 0;
         /*!\ brief set parameters that could be spefic to this updater */
         virtual void SetParam( const char *name, const char *val ) = 0;
+    public:
+        /*! 
+         * \brief copy parameters(after FlatTo2D) into the two tensor containers, used for debug 
+         * \param weight weight variable
+         * \param gradient gradient variable
+         */
+        virtual void GetData( mshadow::TensorContainer<cpu,2>& weight,  
+                              mshadow::TensorContainer<cpu,2>& gradient ) const = 0;
+        /*! 
+         * \brief set parameters data content as what passed in, used for debug
+         * \param weight weight variable
+         * \param gradient gradient variable
+         */
+        virtual void SetData( const mshadow::Tensor<cpu,2>& weight, 
+                              const mshadow::Tensor<cpu,2>& gradient ) = 0;
     };
 
     /*! \brief interface of layer */

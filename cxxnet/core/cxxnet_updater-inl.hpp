@@ -84,9 +84,26 @@ namespace cxxnet{
         virtual void SetParam( const char *name, const char *val ){
             param.SetParam( name, val );
         }
+        virtual void GetData( mshadow::TensorContainer<cpu,2>& weight,  
+                              mshadow::TensorContainer<cpu,2>& gradient ) const {
+            weight.Resize( w.shape.FlatTo2D() );
+            gradient.Resize( weight.shape );            
+            mshadow::Copy( weight, w.FlatTo2D() ); 
+            mshadow::Copy( gradient, dw.FlatTo2D() );
+        }
+        virtual void SetData( const mshadow::Tensor<cpu,2>& weight,  
+                              const mshadow::Tensor<cpu,2>& gradient ) {
+            mshadow::TensorContainer<xpu,2> tmp_w( weight.shape );
+            mshadow::TensorContainer<xpu,2> tmp_dw( gradient.shape );
+            mshadow::Copy( tmp_w, weight ); 
+            mshadow::Copy( tmp_dw, gradient );            
+            w = reshape( tmp_w, w.shape ); 
+            dw = reshape( tmp_dw, dw.shape );
+        }
     private:
         UpdaterParam param;
-        mshadow::Tensor<xpu,dim> &w, &dw; 
+        // variales
+        mshadow::Tensor<xpu,dim> &w, &dw;         
         // momentum variable
         mshadow::TensorContainer<xpu,dim> m_w;
     };
@@ -97,7 +114,7 @@ namespace cxxnet{
     class SGHMCUpdater : public IUpdater{
     public:
         SGHMCUpdater( mshadow::Random<xpu> &rnd, mshadow::Tensor<xpu,dim> &w, mshadow::Tensor<xpu,dim> &dw, const char *tag )
-            :rnd(rnd), w(w), dw(dw){
+            :rnd(rnd),w(w),dw(dw){
             param.tag = tag;
             m_w.Resize( w.shape, 0.0f );
             temp.Resize( w.shape );
@@ -157,6 +174,22 @@ namespace cxxnet{
         }
         virtual void SetParam( const char *name, const char *val ){
             param.SetParam( name, val );            
+        }
+        virtual void GetData( mshadow::TensorContainer<cpu,2>& weight,  
+                              mshadow::TensorContainer<cpu,2>& gradient ) const {
+            weight.Resize( w.shape.FlatTo2D() );
+            gradient.Resize( weight.shape );            
+            mshadow::Copy( weight, w.FlatTo2D() ); 
+            mshadow::Copy( gradient, dw.FlatTo2D() );
+        }
+        virtual void SetData( const mshadow::Tensor<cpu,2>& weight,  
+                              const mshadow::Tensor<cpu,2>& gradient ) {
+            mshadow::TensorContainer<xpu,2> tmp_w( weight.shape );
+            mshadow::TensorContainer<xpu,2> tmp_dw( gradient.shape );
+            mshadow::Copy( tmp_w, weight ); 
+            mshadow::Copy( tmp_dw, gradient );            
+            w = reshape( tmp_w, w.shape ); 
+            dw = reshape( tmp_dw, dw.shape );
         }
     protected:
         struct HMCParam : public UpdaterParam {
@@ -227,8 +260,7 @@ namespace cxxnet{
         mshadow::TensorContainer<cpu,dim> temp;
         // PRNG
         mshadow::Random<xpu> &rnd;
-        // weights, gradient accumulater
-        mshadow::Tensor<xpu,dim> &w, &dw;
+        mshadow::Tensor<xpu,dim> &w, &dw;         
     };
 };
 

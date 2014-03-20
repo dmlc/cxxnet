@@ -393,6 +393,41 @@ namespace cxxnet {
 namespace cxxnet{
     template<typename xpu> 
     struct PairTestLayer : public ILayer{
+    protected:
+        class PairTestUpdater: public IUpdater{
+        public:
+            PairTestUpdater( IUpdater *umaster, IUpdater *uslave )
+                :umaster_(umaster), uslave_(uslave){
+                w_mst_.set_pad( false ); w_slv_.set_pad( false );
+                g_mst_.set_pad( false ); g_slv_.set_pad( false );
+            }
+            inline void Sync( void ){
+                umaster_->GetData( w_mst_, g_mst_ );
+                uslave_->SetData( w_mst_, g_mst_ );
+            }
+            virtual void Init( void ){
+                umaster_->Init(); uslave_->Init();
+            }
+            virtual void Update( void ){
+                umaster_->Update();  uslave_->Update();                
+                umaster_->GetData( w_mst_, g_mst_ );
+                uslave_->GetData( w_slv_, g_slv_ );
+                CmpResult( w_mst_, w_slv_, "update:weight" );
+                CmpResult( g_mst_, g_slv_, "update:gradient" );
+            }
+            virtual void StartRound( int round ) {
+                umaster_->StartRound( round );
+                uslave_->StartRound( round );
+            }
+            virtual void SetParam( const char *name, const char *val ) {
+                umaster_->SetParam( name, val );
+                uslave_->SetParam( name, val );
+            }            
+        private:
+            IUpdater *umaster_, *uslave_;
+            mshadow::TensorContainer<cpu,2> w_mst_, w_slv_;
+            mshadow::TensorContainer<cpu,2> g_mst_, g_slv_;            
+        };
     public:
         PairTestLayer( mshadow::Random<xpu> &rnd, Node<xpu>&in, Node<xpu>& out,
                        int tmaster, int tslave ):in_(in),out_(out){
@@ -407,14 +442,14 @@ namespace cxxnet{
             Copy( slv_in_.data, in_.data );
             master_->Forward( is_train );
             slave_->Forward( is_train );
-            this->CmpResult( out_.data, slv_out_.data, "forward" );
+            CmpResult( out_.data.FlatTo2D(), slv_out_.data.FlatTo2D(), "forward" );
         }
         virtual void Backprop( bool prop_grad ){
             Copy( slv_out_.data, out_.data );
             master_->Backprop( prop_grad );
             slave_->Backprop( prop_grad );
             if( prop_grad ){
-                this->CmpResult( in_.data, slv_in_.data, "backprop" );
+                CmpResult( in_.data.FlatTo2D(), slv_in_.data.FlatTo2D(), "backprop" );
             }
         }
     public:
@@ -427,8 +462,13 @@ namespace cxxnet{
             AllocSpace( slv_out_.data );
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
-            // TODO: compare updater results
-            master_->GetUpdaters( updater, updaters );
+            std::vector<IUpdater*> umaster, uslave;
+            master_->GetUpdaters( updater, umaster );
+            slave_->GetUpdaters( updater, uslave );
+            utils::Assert( umaster.size() == uslave.size(), "PairTestLayer: number of updaters not match" );
+            for( size_t i = 0; i < umaster.size(); ++i ){
+                updaters.push_back( new PairTestUpdater( umaster[i], uslave[i] ) );
+            }
         }
         virtual void SetParam( const char *name, const char* val ) {
             master_->SetParam( name, val );
@@ -449,8 +489,22 @@ namespace cxxnet{
             slave_->LoadModel( fi );
         }
     private:
-        inline void CmpResult( mshadow::Tensor<xpu,4> dmaster, mshadow::Tensor<xpu,4> dslave, const char *tag ){
-            // TODO
+        template<typename xxpu>
+        inline static void CmpResult( mshadow::Tensor<xxpu,2> dmaster, mshadow::Tensor<xxpu,2> dslave, const char *tag ){
+            mshadow::TensorContainer<cpu, 2> tmst(false), tslv(false);
+            tmst.Resize( dmaster.shape ); tslv.Resize( dslave.shape );
+            mshadow::Copy( tmst, dmaster ); mshadow::Copy( tslv, dslave );
+            index_t count = tmst.shape.Size();
+            double diff = 0.0, ssum = 0.0;
+            for( index_t i = 0; i < count; ++i ){
+                diff += std::abs( tmst.dptr[i] - tslv.dptr[i] ); 
+                ssum += std::abs( tmst.dptr[i] );
+            }
+            // relative absolute error
+            double rerr = diff / ssum;
+            if( rerr > 1e-6 ){
+                fprintf( stderr, "%s: err=%f\n", tag, rerr );
+            }
         }
     private:
         ILayer *master_, *slave_;
