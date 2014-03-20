@@ -467,7 +467,8 @@ namespace cxxnet{
             slave_->GetUpdaters( updater, uslave );
             utils::Assert( umaster.size() == uslave.size(), "PairTestLayer: number of updaters not match" );
             for( size_t i = 0; i < umaster.size(); ++i ){
-                updaters.push_back( new PairTestUpdater( umaster[i], uslave[i] ) );
+                PairTestUpdater *up = new PairTestUpdater( umaster[i], uslave[i] );
+                up->Sync(); updaters.push_back( up );
             }
         }
         virtual void SetParam( const char *name, const char* val ) {
