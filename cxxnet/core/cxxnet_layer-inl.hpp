@@ -422,7 +422,8 @@ namespace cxxnet{
             virtual void SetParam( const char *name, const char *val ) {
                 umaster_->SetParam( name, val );
                 uslave_->SetParam( name, val );
-            }            
+            }
+            
         private:
             IUpdater *umaster_, *uslave_;
             mshadow::TensorContainer<cpu,2> w_mst_, w_slv_;
@@ -560,6 +561,11 @@ namespace cxxnet{
 
 namespace cxxnet{
     inline int GetLayerType( const char *type ){
+        if( !strncmp( type, "pairtest-", 9 ) ){
+            char tmaster[256], tslave[256];
+            sscanf( type + 9, "%[^-]-%[^:]", tmaster, tslave );
+            return 10000 + GetLayerType(tmaster) * 100  + GetLayerType(tslave);
+        }
         using namespace layer_type;
         if( !strcmp( type, "fullc") )   return kFullConnect;
         if( !strcmp( type, "softmax") ) return kSoftmax;
@@ -579,6 +585,9 @@ namespace cxxnet{
     template<typename xpu>
     inline ILayer* CreateLayer_( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
         using namespace layer_type;
+        if( type >= 10000 ){
+            return new PairTestLayer<xpu>( rnd, in, out, (type/100)%100, type%100 );
+        } 
         switch( type ){
         case kFullConnect: return new FullConnectLayer<xpu>( rnd, in, out );
         case kSoftmax    : return new SoftmaxLayer<xpu>( rnd, in, out );
@@ -603,11 +612,6 @@ namespace cxxnet{
     }
     template<typename xpu>
     inline ILayer* CreateLayer( const char *type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out ){
-        if( !strncmp( type, "pairtest-", 9 ) ){
-            char tmaster[256], tslave[256];
-            sscanf( type + 9, "%[^-]-%[^:]", tmaster, tslave );
-            return new LayerPatch<xpu>( new PairTestLayer<xpu>( rnd, in, out, GetLayerType(tmaster), GetLayerType(tslave) ), in, out );            
-        }
         return CreateLayer( GetLayerType(type), rnd, in, out );
     }
 };
