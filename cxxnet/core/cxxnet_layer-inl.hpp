@@ -192,7 +192,7 @@ namespace cxxnet {
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[3];
             for( index_t i = 0; i < nbatch; ++ i ){
-                mshadow::UnpackPatchToCol( temp_col_, in_.data[i], param_.kernel_size, param_.stride );
+                temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
                 temp_dst_ = dot( wmat_, temp_col_ );
                 out_.data[i] = reshape( temp_dst_, out_.data[i].shape );
             }
