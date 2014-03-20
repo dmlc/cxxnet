@@ -3,7 +3,7 @@
 #pragma once
 /*!
  * \file cxxnet_caffee_adapter-inl.hpp
- * \brief try to adapt caffe layers 
+ * \brief try to adapt caffe layers
  * \author Tianqi Chen
  */
 #include <climits>
@@ -14,9 +14,9 @@
 
 namespace cxxnet{
     using namespace mshadow::expr;
-    using namespace mshadow::utils;    
-    /*! 
-     * \brief adapter from caffe, will cost a extra blob memory, 
+    using namespace mshadow::utils;
+    /*!
+     * \brief adapter from caffe, will cost a extra blob memory,
      *        but allows some correct comparisons
      */
     template<typename xpu>
@@ -24,9 +24,10 @@ namespace cxxnet{
     private:
         class CaffeUpdater: public IUpdater{
         public:
-            CaffeUpdater( const char *updater, mshadow::Random<xpu> &rnd, 
+            CaffeUpdater( const char *updater, mshadow::Random<xpu> &rnd,
                           caffe::Blob<real_t>* blb, const char *tag, int batch_size )
                 :blb_(blb), batch_size_(batch_size){
+                this->tag = tag;
                 if( xpu::kDevCPU ){
                     weight_.dptr = blb->mutable_cpu_data();
                     grad_.dptr = blb->mutable_cpu_diff();
@@ -45,7 +46,7 @@ namespace cxxnet{
                 base_->Init();
             }
             virtual void Update( void ) {
-                if( xpu::kDevCPU ){                
+                if( xpu::kDevCPU ){
                     utils::Assert( blb_->mutable_cpu_data() == weight_.dptr, "CaffeUpdater" );
                     utils::Assert( blb_->mutable_cpu_diff() == grad_.dptr, "CaffeUpdater" );
                 }else{
@@ -58,6 +59,9 @@ namespace cxxnet{
                 base_->StartRound( round );
             }
             virtual void SetParam( const char *name, const char *val ){
+                if( !strncmp( name, tag.c_str(), tag.length() ) ){
+                    if( name[tag.length()] == ':' ) name += tag.length() + 1;
+                }
                 if( !strcmp( name, "eta") || !strcmp( name, "lr") ){
                     char tmp[256];
                     sprintf( tmp, "%e", atof(val)/batch_size_ );
@@ -66,11 +70,20 @@ namespace cxxnet{
                     base_->SetParam( name, val );
                 }
             }
+            virtual void SetData(const mshadow::Tensor<cpu,2>& weight,
+                                 const mshadow::Tensor<cpu,2>& gradient) {
+                base_->SetData(weight, gradient);
+            }
+            virtual void GetData(mshadow::TensorContainer<cpu,2>& weight,
+                                 mshadow::TensorContainer<cpu,2>& gradient ) const {
+                base_->GetData(weight, gradient);
+            }
         private:
+            std::string tag;
             IUpdater *base_;
             caffe::Blob<real_t> * blb_;
             int batch_size_;
-            mshadow::Tensor<xpu,1> weight_, grad_; 
+            mshadow::Tensor<xpu,1> weight_, grad_;
         };
     public:
         CaffeLayer( mshadow::Random<xpu> &rnd, Node<xpu>& in, Node<xpu>& out )
@@ -91,7 +104,7 @@ namespace cxxnet{
             if( xpu::kDevCPU ){
                 mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_cpu_data(), shape_in );
                 mshadow::Copy( tbin, in_.data );
-                base_->Forward( vec_in_, &vec_out_ );                
+                base_->Forward( vec_in_, &vec_out_ );
                 mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_cpu_data(), shape_ou );
                 mshadow::Copy( out_.data, tbout );
             }else{
@@ -99,7 +112,7 @@ namespace cxxnet{
                 mshadow::Copy( tbin, in_.data );
                 base_->Forward( vec_in_, &vec_out_ );
                 mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_gpu_data(), shape_ou );
-                mshadow::Copy( out_.data, tbout ); 
+                mshadow::Copy( out_.data, tbout );
             }
         }
         virtual void Backprop( bool prop_grad ){
@@ -121,9 +134,9 @@ namespace cxxnet{
                     mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_gpu_diff(), shape_in );
                     mshadow::Copy( in_.data, tbin );
                 }
-            }            
+            }
         }
-        virtual void AdjustNodeShape( void ){ 
+        virtual void AdjustNodeShape( void ){
             utils::Assert( mode_ != -1, "CaffeLayer: must specify mode: 0:flatten, 1:conv-channels" );
             mshadow::Shape<4> ishape = in_.data.shape;
             if( mode_ == 0 ){
@@ -137,21 +150,21 @@ namespace cxxnet{
                 blb_out_ = new caffe::Blob<real_t>();
             }
             vec_in_.clear(); vec_in_.push_back( blb_in_ );
-            vec_out_.clear(); vec_out_.push_back( blb_out_ ); 
+            vec_out_.clear(); vec_out_.push_back( blb_out_ );
 
             if( base_ == NULL ){
                 base_ = caffe::GetLayer<real_t>( param_ );
             }
 
-            base_->SetUp( vec_in_, &vec_out_ ); 
+            base_->SetUp( vec_in_, &vec_out_ );
             if( mode_ == 0 || mode_ == 2 ){
                 out_.data.shape = mshadow::Shape4( 1, 1, blb_out_->num(), blb_out_->channels() );
             }else{
                 out_.data.shape = mshadow::Shape4( blb_out_->num(), blb_out_->channels(), blb_out_->height(), blb_out_->width() );
             }
-        }   
-        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {            
-            const std::vector<boost::shared_ptr<caffe::Blob<real_t> > > &blobs = base_->blobs();            
+        }
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
+            const std::vector<boost::shared_ptr<caffe::Blob<real_t> > > &blobs = base_->blobs();
             for( size_t i = 0; i < blobs.size(); ++ i ){
                 // Assume that blobs do not change
                 char tag[ 256 ];
@@ -162,7 +175,7 @@ namespace cxxnet{
         virtual void SetParam( const char *name, const char* val ) {
             if( !strcmp( name, "proto") ){
                 google::protobuf::TextFormat::ParseFromString( std::string(val), &param_ );
-            }            
+            }
             if( !strcmp( name, "mode" ) ){
                 mode_ = atoi( val );
             }
@@ -185,7 +198,7 @@ namespace cxxnet{
         virtual void LoadModel(mshadow::utils::IStream &fi) {
             int msize;
             std::vector<char> buf;
-            fi.Read( &msize, sizeof(int) );            
+            fi.Read( &msize, sizeof(int) );
             buf.resize( msize );
             utils::Assert( fi.Read( &buf[0], msize )!= 0, "CaffeLayer::LoadModel" );
             param_.ParseFromArray( &buf[0], msize );
