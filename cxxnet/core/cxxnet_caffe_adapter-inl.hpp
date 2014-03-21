@@ -62,13 +62,7 @@ namespace cxxnet{
                 if( !strncmp( name, tag.c_str(), tag.length() ) ){
                     if( name[tag.length()] == ':' ) name += tag.length() + 1;
                 }
-                if( !strcmp( name, "eta") || !strcmp( name, "lr") ){
-                    char tmp[256];
-                    sprintf( tmp, "%e", atof(val)/batch_size_ );
-                    base_->SetParam( name, tmp );
-                }else{
-                    base_->SetParam( name, val );
-                }
+                base_->SetParam( name, val );
             }
             virtual void SetData(const mshadow::Tensor<cpu,2>& weight,
                                  const mshadow::Tensor<cpu,2>& gradient) {

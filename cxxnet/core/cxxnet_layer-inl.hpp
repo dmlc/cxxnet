@@ -18,7 +18,6 @@
 namespace cxxnet{
     template<typename xpu>
     inline ILayer* CreateLayer_( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out );
-
 };
 
 namespace cxxnet{
@@ -83,21 +82,22 @@ namespace cxxnet {
         virtual ~FullConnectLayer( void ){}
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
-            out_.mat()  = dot( in_.mat(), wmat_ );
+            out_.mat()  = dot( in_.mat(), wmat_.T() );
             if( param_.no_bias == 0 ){
                 out_.mat() += repmat( bias_, nbatch );
             }
         }
         virtual void Backprop(bool prop_grad){
-            index_t nbatch = in_.data.shape[1];
-            real_t scale = 1.0f / nbatch;
-            gwmat_ = scale * dot( in_.mat().T(), out_.mat() );
+            // TODO: Recover after fully test
+            real_t scale = 1.0f;
+            // real_t scale = 1.0f / nbatch;
+            gwmat_ = scale * dot( out_.mat().T(), in_.mat() );
             if( param_.no_bias == 0 ){
                 gbias_ = scale * sum_rows( out_.mat() );
             }
             // backprop
             if( prop_grad ){
-                in_.mat() = dot( out_.mat(), wmat_.T() );
+                in_.mat() = dot( out_.mat(), wmat_ );
             }
         }
         virtual void AdjustNodeShape( void ) {
@@ -116,7 +116,7 @@ namespace cxxnet {
         }
         virtual void InitModel(void){
             // resize to correct shape
-            wmat_.Resize( mshadow::Shape2( in_.data.shape[0], out_.data.shape[0] ) );
+            wmat_.Resize( mshadow::Shape2( out_.data.shape[0], in_.data.shape[0] ) );
             gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
             gbias_.Resize( bias_.shape );
@@ -203,7 +203,9 @@ namespace cxxnet {
         }
         virtual void Backprop(bool prop_grad){
             index_t nbatch = in_.data.shape[1];
-            real_t scale = 1.0f / nbatch;
+            // TODO: recover after fully test
+            // real_t scale = 1.0f / nbatch;
+            real_t scale = 1.0f;
 
             if( param_.no_bias == 0 ){
                 gbias_ = scale * sumall_except_dim<2>( out_.data );
@@ -414,6 +416,7 @@ namespace cxxnet{
                 uslave_->GetData( w_slv_, g_slv_ );
                 CmpResult( w_mst_, w_slv_, "update:weight" );
                 CmpResult( g_mst_, g_slv_, "update:gradient" );
+                this->Sync();
             }
             virtual void StartRound( int round ) {
                 umaster_->StartRound( round );
@@ -471,7 +474,6 @@ namespace cxxnet{
             std::vector<IUpdater*> umaster, uslave;
             master_->GetUpdaters( updater, umaster );
             slave_->GetUpdaters( updater, uslave );
-            printf("%d-%d\n", umaster.size(), uslave.size());
             utils::Assert( umaster.size() == uslave.size(), "PairTestLayer: number of updaters not match" );
             for( size_t i = 0; i < umaster.size(); ++i ){
                 PairTestUpdater *up = new PairTestUpdater( umaster[i], uslave[i] );
@@ -510,8 +512,8 @@ namespace cxxnet{
             }
             // relative absolute error
             double rerr = diff / ssum;
-            if( rerr > 1e-6 ){
-                fprintf( stderr, "%s: err=%f\n", tag, rerr );
+            if( rerr > 1e-5){
+                fprintf( stderr, "%s: err=%f, diff=%f, ssum=%f\n", tag, rerr, diff, ssum );
             }
         }
     private:
