@@ -146,7 +146,7 @@ namespace cxxnet {
             wmat_.LoadBinary( fi );
             bias_.LoadBinary( fi );
         }
-    private:
+    protected:
         /*! \brief parameters that potentially be useful */
         LayerParam param_;
         /*! \brief random number generator */
@@ -293,6 +293,61 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu,2> temp_dst_;
     };
 
+    // Draft, not test yet
+    template<typename xpu>
+    class PoolingLayer : public ILayer {
+    public:
+        PoolingLayer(Node<xpu> &in, Node<xpu> &out, int type)
+            : in_(in), out_(out), type_(type) {
+        }
+        virtual ~PoolingLayer() {}
+        virtual void Forward(bool is_train) {
+            // TODO: draft, not test yet
+            index_t nbatch = in_.data.shape[3];
+            for (index_t i = 0; i < nbatch; ++i) {
+                tmp_[i] = pooling(in_.data[i], param_.kernel_size, param_.stride, type_);
+                out_.data[i] = tmp_[i];
+            }
+        }
+        virtual void Backprop(bool prop_grad) {
+            if (prop_grad) {
+                index_t nbatch = in_.data.shape[3];
+                for (index_t i = 0; i < nbatch; ++i) {
+                    in_.data[i] = unpooling(in_.data[i], tmp_[i], param_.kernel_size, param_.stride, type_) * \
+                                  out_.data[i];
+                }
+            }
+        }
+        virtual void SetParam(const char *name, const char* val) {
+            param_.SetParam( name, val );
+        }
+        virtual void AdjustNodeShape() {
+            const index_t ksize   = static_cast<index_t>( param_.kernel_size );
+            const index_t kstride = static_cast<index_t>( param_.stride );
+            Assert( param_.num_channel > 0, "must set nchannel correctly" );
+            Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
+            Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
+            mshadow::Shape<4> oshape = mshadow::
+                Shape4( in_.data.shape[3], param_.num_channel,
+                        (in_.data.shape[1] - ksize)/kstride + 1,
+                        (in_.data.shape[0] - ksize)/kstride + 1 );
+            tmp_.shape = oshape;
+            out_.data.shape = oshape;
+        }
+    private:
+        /*! \brief parameters that potentially be useful */
+        LayerParam param_;
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+        /*! \brief pooled result */
+        mshadow::TensorContainer<xpu, 4> tmp_;
+        /*! \brief pooling type */
+        int type_;
+    }; // class PoolingLayer
+
+
     template<typename xpu,typename ForwardOp, typename BackOp >
     class ActivationLayer : public ILayer{
     public:
@@ -347,6 +402,49 @@ namespace cxxnet{
 };
 
 namespace cxxnet {
+    // Problem in inherent
+    /*
+    template<typename xpu>
+    class DropconnLayer : public FullConnectLayer<xpu> {
+    public:
+        DropconnLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out) {
+                rnd_ = rnd;
+                in_ = in;
+                out_ = out;
+        }
+        virtual void SetParam(const char *name, const char* val) {
+            param_.SetParam(name, val);
+        }
+        virtual void Forward(bool is_train) {
+            if (is_train) {
+                rnd_.SampleUniform(mask_, 0, 1);
+                mask_ = F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
+                wmat_ = wmat_ * mask_;
+            }
+            out_.mat()  = dot( in_.mat(), wmat_.T() );
+            if( param_.no_bias == 0 ) {
+                out_.mat() += repmat( bias_, nbatch );
+            }
+        }
+        virtual void Backprop(bool prop_grad) {
+            // TODO: Recover after fully test
+            real_t scale = 1.0f;
+            // real_t scale = 1.0f / nbatch;
+            gwmat_ = scale * dot( out_.mat().T(), in_.mat() );
+            gwmat_ = gwmat_ * mask_; // TODO: double check here!
+            if( param_.no_bias == 0 ) {
+                gbias_ = scale * sum_rows( out_.mat() );
+            }
+            // backprop
+            if( prop_grad ){
+                in_.mat() = dot( out_.mat(), wmat_ );
+            }
+        }
+    private:
+        mshadow::TensorContainer<xpu, 2> mask_;
+    }; // class DropconnLayer
+
+    */
     template<typename xpu>
     class DropoutLayer : public ILayer {
     public:
@@ -358,7 +456,6 @@ namespace cxxnet {
         }
         virtual void Forward( bool is_train ) {
             if (is_train) {
-                utils::Assert(param_.dropout_threshold >= 0 && param_.dropout_threshold < 1, "Invalid dropout threshold\n");
                 rnd_.SampleUniform(mask_, 0, 1);
                 mask_ = F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
                 in_.mat() = in_.mat() * mask_;
@@ -373,6 +470,7 @@ namespace cxxnet {
             }
         }
         virtual void AdjustNodeShape( void ) {
+            utils::Assert(param_.dropout_threshold >= 0 && param_.dropout_threshold < 1, "Invalid dropout threshold\n");
             out_.data.shape = in_.data.shape;
             mask_.Resize(in_.mat().shape);
         }
