@@ -56,6 +56,18 @@ namespace cxxnet {
                 return 1.0f / (1.0f + expf(-a));
             }
         };
+        struct bnll {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return a > 0.0f ? a + logf(1.0f + expf(-a)) : logf(1.0f + expf(a));
+            }
+        };
+        struct bnll_grad {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                real_t expval = a > 50.0f ? 50.0f : a; // kBNLL_THRESHOLD = 50.0f
+                expval = expf(-expval);
+                return 1.0f / (1.0f + expval);
+            }
+        };
     }; //namespace op
 
 }; //namespace cxxnet
