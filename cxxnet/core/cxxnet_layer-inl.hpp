@@ -88,12 +88,9 @@ namespace cxxnet {
             }
         }
         virtual void Backprop(bool prop_grad){
-            // TODO: Recover after fully test
-            real_t scale = 1.0f;
-            // real_t scale = 1.0f / nbatch;
-            gwmat_ = scale * dot( out_.mat().T(), in_.mat() );
+            gwmat_ = dot( out_.mat().T(), in_.mat() );
             if( param_.no_bias == 0 ){
-                gbias_ = scale * sum_rows( out_.mat() );
+                gbias_ = sum_rows( out_.mat() );
             }
             // backprop
             if( prop_grad ){
@@ -190,7 +187,8 @@ namespace cxxnet {
         }
         virtual ~ConvolutionLayer( void ){}
         virtual void Forward(bool is_train) {
-            index_t nbatch = in_.data.shape[3];
+            const index_t nbatch = in_.data.shape[3];
+
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
                 temp_dst_ = dot( wmat_, temp_col_ );
@@ -202,20 +200,18 @@ namespace cxxnet {
             }
         }
         virtual void Backprop(bool prop_grad){
-            index_t nbatch = in_.data.shape[1];
-            // TODO: recover after fully test
-            // real_t scale = 1.0f / nbatch;
-            real_t scale = 1.0f;
+            const index_t nbatch = in_.data.shape[3];
 
             if( param_.no_bias == 0 ){
-                gbias_ = scale * sumall_except_dim<2>( out_.data );
+                gbias_ = sumall_except_dim<2>( out_.data );
             }
             gwmat_ = 0.0f;
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
                 temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
 
-                gwmat_ += scale * dot( temp_dst_, temp_col_.T() );
+                gwmat_ += dot( temp_dst_, temp_col_.T() );
+                
                 if( prop_grad ){
                     temp_col_ = dot( temp_dst_.T(), wmat_ );
                     mshadow::PackPatchFromCol( in_.data[i], temp_col_, param_.kernel_size, param_.stride );
@@ -496,10 +492,11 @@ namespace cxxnet{
     protected:
         class PairTestUpdater: public IUpdater{
         public:
-            PairTestUpdater( IUpdater *umaster, IUpdater *uslave )
-                :umaster_(umaster), uslave_(uslave){
+            PairTestUpdater( IUpdater *umaster, IUpdater *uslave, const char *tag )
+                :umaster_(umaster), uslave_(uslave), tag_(tag){
                 w_mst_.set_pad( false ); w_slv_.set_pad( false );
                 g_mst_.set_pad( false ); g_slv_.set_pad( false );
+                sync_weight_  = 1;
             }
             inline void Sync( void ){
                 umaster_->GetData( w_mst_, g_mst_ );
@@ -512,9 +509,9 @@ namespace cxxnet{
                 umaster_->Update();  uslave_->Update();
                 umaster_->GetData( w_mst_, g_mst_ );
                 uslave_->GetData( w_slv_, g_slv_ );
-                CmpResult( w_mst_, w_slv_, "update:weight" );
-                CmpResult( g_mst_, g_slv_, "update:gradient" );
-                this->Sync();
+                CmpResult( w_mst_, w_slv_, "update:weight", tag_ );
+                CmpResult( g_mst_, g_slv_, "update:gradient", tag_ );
+                if( sync_weight_ != 0 ) this->Sync();
             }
             virtual void StartRound( int round ) {
                 umaster_->StartRound( round );
@@ -523,6 +520,7 @@ namespace cxxnet{
             virtual void SetParam( const char *name, const char *val ) {
                 umaster_->SetParam( name, val );
                 uslave_->SetParam( name, val );
+                if( !strcmp( name, "sync_weight") ) sync_weight_ = atoi(val);
             }
             virtual void SetData(const mshadow::Tensor<cpu,2>& weight,
                                  const mshadow::Tensor<cpu,2>& gradient) {
@@ -531,7 +529,9 @@ namespace cxxnet{
                                  mshadow::TensorContainer<cpu,2>& gradient ) const {
             }
         private:
+            int sync_weight_;
             IUpdater *umaster_, *uslave_;
+            const char *tag_;
             mshadow::TensorContainer<cpu,2> w_mst_, w_slv_;
             mshadow::TensorContainer<cpu,2> g_mst_, g_slv_;
         };
@@ -574,7 +574,7 @@ namespace cxxnet{
             slave_->GetUpdaters( updater, uslave );
             utils::Assert( umaster.size() == uslave.size(), "PairTestLayer: number of updaters not match" );
             for( size_t i = 0; i < umaster.size(); ++i ){
-                PairTestUpdater *up = new PairTestUpdater( umaster[i], uslave[i] );
+                PairTestUpdater *up = new PairTestUpdater( umaster[i], uslave[i], i==0?"-wmat":"-bias" );
                 up->Sync(); updaters.push_back( up );
             }
         }
@@ -598,20 +598,26 @@ namespace cxxnet{
         }
     private:
         template<typename xxpu>
-        inline static void CmpResult( mshadow::Tensor<xxpu,2> dmaster, mshadow::Tensor<xxpu,2> dslave, const char *tag ){
+        inline static void CmpResult( mshadow::Tensor<xxpu,2> dmaster, mshadow::Tensor<xxpu,2> dslave, 
+                                      const char *tag, const char *tag2="" ){
             mshadow::TensorContainer<cpu, 2> tmst(false), tslv(false);
             tmst.Resize( dmaster.shape ); tslv.Resize( dslave.shape );
             mshadow::Copy( tmst, dmaster ); mshadow::Copy( tslv, dslave );
             index_t count = tmst.shape.Size();
-            double diff = 0.0, ssum = 0.0;
+            double diff = 0.0, ssum = 0.0, maxdiff = 0.0;
+            index_t mxidx = 0;
             for( index_t i = 0; i < count; ++i ){
-                diff += std::abs( tmst.dptr[i] - tslv.dptr[i] );
+                double d = std::abs( tmst.dptr[i] - tslv.dptr[i] );
+                if( d > maxdiff ){
+                    maxdiff = d; mxidx = i;
+                }
+                diff += d;
                 ssum += std::abs( tmst.dptr[i] );
             }
             // relative absolute error
             double rerr = diff / ssum;
-            if( rerr > 1e-5){
-                fprintf( stderr, "%s: err=%f, diff=%f, ssum=%f\n", tag, rerr, diff, ssum );
+            if( rerr > 1e-5 ){
+                fprintf( stderr, "%s%s: err=%f, maxd[%u]=%f, diff=%f, ssum=%f\n", tag, tag2, rerr, mxidx, maxdiff, diff, ssum );
             }
         }
     private:
