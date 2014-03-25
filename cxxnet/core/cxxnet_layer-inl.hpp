@@ -214,7 +214,7 @@ namespace cxxnet {
                 
                 if( prop_grad ){
                     temp_col_ = dot( temp_dst_.T(), wmat_ );
-                    mshadow::PackPatchFromCol( in_.data[i], temp_col_, param_.kernel_size, param_.stride );
+                    in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
                 }
             }
         }
