@@ -42,6 +42,8 @@ namespace cxxnet{
         int kernel_size;
         /*! \brief stride prameter */
         int stride;
+        /*! \brief padding */
+        int pad;
         /*! \brief whether not include bias term */
         int no_bias;
         /*! \brief dropout threshold  */
@@ -54,7 +56,8 @@ namespace cxxnet{
             num_group = 1;
             kernel_size = 0;
             stride = 1;
-            dropout_threshold = 0;
+            pad = 0;
+            dropout_threshold = 0.0f;
             no_bias = 0;
         }
         /*!
@@ -70,6 +73,7 @@ namespace cxxnet{
             if( !strcmp( name, "num_group") )   num_group = atoi(val);
             if( !strcmp( name, "kernel_size") ) kernel_size = atoi(val);
             if( !strcmp( name, "stride") )      stride      = atoi(val);
+            if( !strcmp( name, "pad") )         pad      = atoi(val);
             if( !strcmp( name, "no_bias") )     no_bias = atoi(val);
             if( !strcmp( name, "threshold"))    dropout_threshold = (float)atof(val);
         }
@@ -197,7 +201,11 @@ namespace cxxnet {
             const index_t nbatch = in_.data.shape[3];
 
             for( index_t i = 0; i < nbatch; ++ i ){
-                temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+                if( param_.pad == 0 ){
+                    temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+                }else{
+                    temp_col_ = unpack_patch2col( padding(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
+                }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
                 for( int gid = 0; gid < param_.num_group; ++ gid ){
@@ -220,7 +228,11 @@ namespace cxxnet {
             gwmat_ = 0.0f;
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
-                temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+                if( param_.pad == 0 ){
+                    temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+                }else{
+                    temp_col_ = unpack_patch2col( padding(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
+                }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
                 for( int gid = 0; gid < param_.num_group; ++ gid ){
@@ -233,7 +245,11 @@ namespace cxxnet {
                         mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
                         tmpc = dot( temp_dst_[gid].T(), wmat_[gid] );
                     }
-                    in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
+                    if( param_.pad == 0 ){
+                        in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
+                    }else{
+                        in_.data[i] = unpadding( pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride ), param_.pad );
+                    }
                 }
             }
         }
@@ -247,8 +263,8 @@ namespace cxxnet {
             Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], param_.num_channel,
-                        (in_.data.shape[1] - ksize)/kstride + 1,
-                        (in_.data.shape[0] - ksize)/kstride + 1 );
+                        (in_.data.shape[1] + 2 * param_.pad - ksize)/kstride + 1,
+                        (in_.data.shape[0] + 2 * param_.pad - ksize)/kstride + 1 );
             out_.data.shape = oshape;
 
             // helper structure
