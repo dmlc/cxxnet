@@ -36,6 +36,8 @@ namespace cxxnet{
         int random_type;
         /*! \brief number of output channel */
         int num_channel;
+        /*! \brief number of parallel group */
+        int num_group;
         /*! \brief kernel size */
         int kernel_size;
         /*! \brief stride prameter */
@@ -49,6 +51,7 @@ namespace cxxnet{
             num_hidden = 0;
             random_type = 0;
             num_channel = 0;
+            num_group = 1;
             kernel_size = 0;
             stride = 1;
             dropout_threshold = 0;
@@ -64,6 +67,7 @@ namespace cxxnet{
             if( !strcmp( name, "nhidden") )     num_hidden = atoi(val);
             if( !strcmp( name, "random_type"))  random_type = atoi(val);
             if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
+            if( !strcmp( name, "num_group") )   num_group = atoi(val);
             if( !strcmp( name, "kernel_size") ) kernel_size = atoi(val);
             if( !strcmp( name, "stride") )      stride      = atoi(val);
             if( !strcmp( name, "no_bias") )     no_bias = atoi(val);
@@ -173,7 +177,10 @@ namespace cxxnet {
         virtual void Forward(bool is_train){
             mshadow::Softmax( out_.mat(), out_.mat() );
         }
-        virtual void Backprop(bool prop_grad){}
+        virtual void Backprop(bool prop_grad){
+            index_t nbatch =  out_.mat().shape[1];
+            out_.mat() *= 1.0f / nbatch;
+        }
     private:
         /*! \brief only transform on out */
         Node<xpu> &out_;
@@ -191,7 +198,12 @@ namespace cxxnet {
 
             for( index_t i = 0; i < nbatch; ++ i ){
                 temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
-                temp_dst_ = dot( wmat_, temp_col_ );
+
+                const index_t gstride = temp_col_.shape[1] / param_.num_group;
+                for( int gid = 0; gid < param_.num_group; ++ gid ){
+                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
+                    temp_dst_[ gid ] = dot( wmat_[gid], tmpc );
+                }
                 out_.data[i] = reshape( temp_dst_, out_.data[i].shape );
             }
             if( param_.no_bias == 0 ){
@@ -210,10 +222,17 @@ namespace cxxnet {
                 temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
                 temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
 
-                gwmat_ += dot( temp_dst_, temp_col_.T() );
-
+                const index_t gstride = temp_col_.shape[1] / param_.num_group;
+                for( int gid = 0; gid < param_.num_group; ++ gid ){
+                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
+                    gwmat_[gid] += dot( temp_dst_[gid], tmpc.T() );
+                }
+                
                 if( prop_grad ){
-                    temp_col_ = dot( temp_dst_.T(), wmat_ );
+                    for( int gid = 0; gid < param_.num_group; ++ gid ){
+                        mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
+                        tmpc = dot( temp_dst_[gid].T(), wmat_[gid] );
+                    }
                     in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
                 }
             }
@@ -221,6 +240,8 @@ namespace cxxnet {
         virtual void AdjustNodeShape( void ) {
             const index_t ksize   = static_cast<index_t>( param_.kernel_size );
             const index_t kstride = static_cast<index_t>( param_.stride );
+            Assert( in_.data.shape[2] % param_.num_group == 0,  "input channels must divide group size" );
+            Assert( param_.num_channel % param_.num_group == 0, "output channels must divide group size" );
             Assert( param_.num_channel > 0, "must set nchannel correctly" );
             Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
             Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
@@ -232,7 +253,7 @@ namespace cxxnet {
 
             // helper structure
             temp_col_.Resize( mshadow::Shape2( in_.data.shape[2]*ksize*ksize, oshape[1]*oshape[0] ) );
-            temp_dst_.Resize( mshadow::Shape2( param_.num_channel, oshape[1]*oshape[0] ) );
+            temp_dst_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[1]*oshape[0] ) );
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
             updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
@@ -245,7 +266,8 @@ namespace cxxnet {
         }
         virtual void InitModel(void){
             // resize to correct shape, use 2d to store the weight, since we use dot
-            wmat_.Resize( mshadow::Shape2( param_.num_channel, param_.kernel_size*param_.kernel_size ) );
+            wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group, 
+                                           in_.data.shape[2] / param_.num_group * param_.kernel_size * param_.kernel_size ) );
             gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
             gbias_.Resize( bias_.shape );
@@ -276,17 +298,17 @@ namespace cxxnet {
         /*! \brief output node */
         Node<xpu> &out_;
         /*! \brief weight matrix */
-        mshadow::TensorContainer<xpu,2> wmat_;
+        mshadow::TensorContainer<xpu,3> wmat_;
         /*! \brief bias */
         mshadow::TensorContainer<xpu,1> bias_;
         /*! \brief accumulates the gradient of weight matrix */
-        mshadow::TensorContainer<xpu,2> gwmat_;
+        mshadow::TensorContainer<xpu,3> gwmat_;
         /*! \brief accumulates the gradient of bias */
         mshadow::TensorContainer<xpu,1> gbias_;
         /*! \brief temporary data structure to store patches */
         mshadow::TensorContainer<xpu,2> temp_col_;
         /*! \brief temporary data structure to store results */
-        mshadow::TensorContainer<xpu,2> temp_dst_;
+        mshadow::TensorContainer<xpu,3> temp_dst_;
     };
 
     template<typename Reducer, typename xpu>
