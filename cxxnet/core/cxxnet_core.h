@@ -287,6 +287,9 @@ namespace cxxnet {
         const int kDropout = 8;
         const int kDropConn = 9;
         const int kConv = 10;
+        const int kMaxPooling = 11;
+        const int kSumPooling = 12;
+        const int kAvgPooling = 13;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */

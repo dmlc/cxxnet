@@ -211,7 +211,7 @@ namespace cxxnet {
                 temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
 
                 gwmat_ += dot( temp_dst_, temp_col_.T() );
-                
+
                 if( prop_grad ){
                     temp_col_ = dot( temp_dst_.T(), wmat_ );
                     in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
@@ -289,29 +289,20 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu,2> temp_dst_;
     };
 
-    // Draft, not test yet
-    template<typename xpu>
+    template<typename Reducer, typename xpu>
     class PoolingLayer : public ILayer {
     public:
-        PoolingLayer(Node<xpu> &in, Node<xpu> &out, int type)
-            : in_(in), out_(out), type_(type) {
+        PoolingLayer(Node<xpu> &in, Node<xpu> &out)
+            : in_(in), out_(out) {
         }
         virtual ~PoolingLayer() {}
         virtual void Forward(bool is_train) {
-            // TODO: draft, not test yet
-            index_t nbatch = in_.data.shape[3];
-            for (index_t i = 0; i < nbatch; ++i) {
-                tmp_[i] = pooling(in_.data[i], param_.kernel_size, param_.stride, type_);
-                out_.data[i] = tmp_[i];
-            }
+            tmp_ = pooling<Reducer>(in_.data, param_.kernel_size, param_.stride);
+            mshadow::Copy( out_.data, tmp_ );
         }
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
-                index_t nbatch = in_.data.shape[3];
-                for (index_t i = 0; i < nbatch; ++i) {
-                    in_.data[i] = unpooling(in_.data[i], tmp_[i], param_.kernel_size, param_.stride, type_) * \
-                                  out_.data[i];
-                }
+                in_.data = unpooling<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride);
             }
         }
         virtual void SetParam(const char *name, const char* val) {
@@ -320,15 +311,13 @@ namespace cxxnet {
         virtual void AdjustNodeShape() {
             const index_t ksize   = static_cast<index_t>( param_.kernel_size );
             const index_t kstride = static_cast<index_t>( param_.stride );
-            Assert( param_.num_channel > 0, "must set nchannel correctly" );
             Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
             Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
             mshadow::Shape<4> oshape = mshadow::
-                Shape4( in_.data.shape[3], param_.num_channel,
+                Shape4( in_.data.shape[3], in_.data.shape[2],
                         (in_.data.shape[1] - ksize)/kstride + 1,
                         (in_.data.shape[0] - ksize)/kstride + 1 );
-            tmp_.shape = oshape;
-            out_.data.shape = oshape;
+            tmp_.Resize( oshape ); out_.data.shape = oshape;
         }
     private:
         /*! \brief parameters that potentially be useful */
@@ -339,8 +328,6 @@ namespace cxxnet {
         Node<xpu> &out_;
         /*! \brief pooled result */
         mshadow::TensorContainer<xpu, 4> tmp_;
-        /*! \brief pooling type */
-        int type_;
     }; // class PoolingLayer
 
 
@@ -598,7 +585,7 @@ namespace cxxnet{
         }
     private:
         template<typename xxpu>
-        inline static void CmpResult( mshadow::Tensor<xxpu,2> dmaster, mshadow::Tensor<xxpu,2> dslave, 
+        inline static void CmpResult( mshadow::Tensor<xxpu,2> dmaster, mshadow::Tensor<xxpu,2> dslave,
                                       const char *tag, const char *tag2="" ){
             mshadow::TensorContainer<cpu, 2> tmst(false), tslv(false);
             tmst.Resize( dmaster.shape ); tslv.Resize( dslave.shape );
@@ -689,6 +676,9 @@ namespace cxxnet{
         if( !strcmp( type, "dropout") ) return kDropout;
         if( !strcmp( type, "dropconn") ) return kDropConn;
         if( !strcmp( type, "conv") )     return kConv;
+        if( !strcmp( type, "max_pooling")) return kMaxPooling;
+        if( !strcmp( type, "sum_pooling")) return kSumPooling;
+        if( !strcmp( type, "avg_pooling")) return kAvgPooling;
         if( !strcmp( type, "caffe") ) return kCaffe;
         Error("unknown layer type" );
         return 0;
@@ -711,6 +701,8 @@ namespace cxxnet{
         // TODO:
         case kDropout: return new DropoutLayer<xpu>(rnd, in, out);
         case kConv:    return new ConvolutionLayer<xpu>( rnd, in, out );
+        case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, xpu>(in, out);
+        case kSumPooling: return new PoolingLayer<mshadow::red::sum, xpu>(in, out);
 #if CXXNET_ADAPT_CAFFE
         case kCaffe: return new CaffeLayer<xpu>(rnd,in,out);
 #endif
