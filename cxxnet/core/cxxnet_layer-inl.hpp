@@ -209,7 +209,7 @@ namespace cxxnet {
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
                 for( int gid = 0; gid < param_.num_group; ++ gid ){
-                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
+                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                     temp_dst_[ gid ] = dot( wmat_[gid], tmpc );
                 }
                 out_.data[i] = reshape( temp_dst_, out_.data[i].shape );
@@ -236,13 +236,13 @@ namespace cxxnet {
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
                 for( int gid = 0; gid < param_.num_group; ++ gid ){
-                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
+                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                     gwmat_[gid] += dot( temp_dst_[gid], tmpc.T() );
                 }
-                
+
                 if( prop_grad ){
                     for( int gid = 0; gid < param_.num_group; ++ gid ){
-                        mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, (gstride+1)*gid );
+                        mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                         tmpc = dot( temp_dst_[gid].T(), wmat_[gid] );
                     }
                     if( param_.pad == 0 ){
@@ -282,7 +282,7 @@ namespace cxxnet {
         }
         virtual void InitModel(void){
             // resize to correct shape, use 2d to store the weight, since we use dot
-            wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group, 
+            wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group,
                                            in_.data.shape[2] / param_.num_group * param_.kernel_size * param_.kernel_size ) );
             gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
@@ -393,6 +393,41 @@ namespace cxxnet {
         Node<xpu> &out_;
     };
 };
+
+namespace cxxnet {
+    template<typename xpu>
+    class PaddingLayer : public ILayer {
+    public:
+        PaddingLayer(Node<xpu> &in, Node<xpu> &out)
+            : in_(in), out_(out) {
+        }
+        virtual void SetParam(const char *name, const char *val) {
+            if (!strcmp(name, "pad")) pad_ = static_cast<index_t>(atoi(val));
+        }
+        virtual void Forward(bool is_train) {
+            out_.data = padding(in_.data, pad_);
+        }
+        virtual void Backprop(bool prop_grad) {
+            if (prop_grad) {
+                in_.data = unpadding(out_.data, pad_);
+            }
+        }
+        virtual void AdjustNodeShape() {
+            mshadow::Shape<4> oshape = mshadow::Shape4(in_.data.shape[3], in_.data.shape[2],
+                                              in_.data.shape[1] + 2 * pad_,
+                                              in_.data.shape[0] + 2 * pad_);
+            out_.data.shape = oshape;
+        }
+    private:
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+        /*! \brief padding size */
+        index_t pad_;
+    }; // class padding layer
+}; // namespace cxxnet
+
 
 namespace cxxnet{
     template<typename xpu>
@@ -717,7 +752,10 @@ namespace cxxnet{
         if( !strcmp( type, "max_pooling")) return kMaxPooling;
         if( !strcmp( type, "sum_pooling")) return kSumPooling;
         if( !strcmp( type, "avg_pooling")) return kAvgPooling;
+        if( !strcmp( type, "padding")) return kPadding;
         if( !strcmp( type, "caffe") ) return kCaffe;
+        fprintf(stderr, "%s\n", type);
+        fflush(stdout);
         Error("unknown layer type" );
         return 0;
     }
@@ -741,6 +779,7 @@ namespace cxxnet{
         case kConv:    return new ConvolutionLayer<xpu>( rnd, in, out );
         case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, xpu>(in, out);
         case kSumPooling: return new PoolingLayer<mshadow::red::sum, xpu>(in, out);
+        case kPadding: return new PaddingLayer<xpu>(in, out);
 #if CXXNET_ADAPT_CAFFE
         case kCaffe: return new CaffeLayer<xpu>(rnd,in,out);
 #endif

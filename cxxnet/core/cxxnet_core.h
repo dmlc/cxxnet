@@ -290,6 +290,7 @@ namespace cxxnet {
         const int kMaxPooling = 11;
         const int kSumPooling = 12;
         const int kAvgPooling = 13;
+        const int kPadding = 14;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */
