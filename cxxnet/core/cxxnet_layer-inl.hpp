@@ -248,7 +248,8 @@ namespace cxxnet {
                     if( param_.pad == 0 ){
                         in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
                     }else{
-                        in_.data[i] = unpadding( pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride ), param_.pad );
+                        mshadow::Shape<3> pshape = in_.data[i].shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
+                        in_.data[i] = unpadding( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), param_.pad );
                     }
                 }
             }
@@ -261,6 +262,7 @@ namespace cxxnet {
             Assert( param_.num_channel > 0, "must set nchannel correctly" );
             Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
             Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
+
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], param_.num_channel,
                         (in_.data.shape[1] + 2 * param_.pad - ksize)/kstride + 1,
@@ -287,6 +289,7 @@ namespace cxxnet {
             gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
             gbias_.Resize( bias_.shape );
+
             this->InitGaussian();
 
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
