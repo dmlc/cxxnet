@@ -81,12 +81,40 @@ namespace cxxnet{
 };
 
 namespace cxxnet {
+    // initialization method for layer with weight like fullc, dropconn, conv
+    template<typename xpu>
+    class EdgeLayer : public ILayer {
+    public:
+        EdgeLayer(mshadow::Random<xpu> &rnd ) : rnd_(rnd) {}
+        /*! \brief Gaussian initialization */
+        template<int dim>
+        void inline InitGaussian(mshadow::TensorContainer<xpu, dim> &mat, real_t sigma) {
+            rnd_.SampleGaussian(mat, 0.0f, sigma);
+        }
+        /*! \brief Uniform initialization */
+        template<int dim>
+        void inline InitUniform(mshadow::TensorContainer<xpu, dim> &mat, real_t a, real_t b) {
+            rnd_.SampleUniform(mat, a, b);
+        }
+        /*! \brief Xavier initialization */
+        template<int dim>
+        void inline InitXavier(mshadow::TensorContainer<xpu,dim> &mat, index_t in_num, index_t out_num) {
+            real_t a = sqrt(3.5f / (in_num + out_num));
+            this->InitUniform(mat, -a, a);
+        }
+    protected:
+        /*! \brief random number generator */
+        mshadow::Random<xpu> &rnd_;
+    }; // class EdgeLayer
+}; // namespace cxxnet
+
+namespace cxxnet {
     // simple fully connected layer that connects two nodes
     template<typename xpu>
-    class FullConnectLayer : public ILayer{
+    class FullConnectLayer : public EdgeLayer<xpu> {
     public:
         FullConnectLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
-            :rnd_(rnd), in_(in), out_(out) {}
+            : EdgeLayer<xpu>(rnd), in_(in), out_(out) {}
         virtual ~FullConnectLayer( void ){}
         virtual void Forward(bool is_train) {
             index_t nbatch = in_.data.shape[1];
@@ -111,9 +139,9 @@ namespace cxxnet {
             out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], param_.num_hidden );
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
-            updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
+            updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, wmat_, gwmat_, "wmat" ) );
             if( param_.no_bias == 0 ){
-                updaters.push_back( CreateUpdater( updater, rnd_, bias_, gbias_, "bias" ) );
+                updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, bias_, gbias_, "bias" ) );
             }
         }
         virtual void SetParam(const char *name, const char* val){
@@ -127,19 +155,11 @@ namespace cxxnet {
             gbias_.Resize( bias_.shape );
             // random initalize
             if (param_.random_type == kGaussian) {
-                InitGaussian();
+                EdgeLayer<xpu>::template InitGaussian<2> (wmat_, param_.init_sigma);
             } else {
-                InitUniform();
+                EdgeLayer<xpu>::template InitXavier<2> (wmat_, wmat_.shape[0], wmat_.shape[1]);
             }
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
-        }
-        virtual void InitGaussian(void) {
-            rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
-        }
-        virtual void InitUniform(void) {
-            float a = -sqrt(6.0f / (wmat_.shape[0] + wmat_.shape[1]));
-            float b = sqrt(6.0f / (wmat_.shape[0] + wmat_.shape[1]));
-            rnd_.SampleUniform( wmat_, a, b);
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
             fo.Write( &param_, sizeof(LayerParam) );
@@ -154,8 +174,6 @@ namespace cxxnet {
     protected:
         /*! \brief parameters that potentially be useful */
         LayerParam param_;
-        /*! \brief random number generator */
-        mshadow::Random<xpu> &rnd_;
         /*! \brief input node */
         Node<xpu> &in_;
         /*! \brief output node */
@@ -191,10 +209,10 @@ namespace cxxnet {
     };
 
     template<typename xpu>
-    class ConvolutionLayer : public ILayer{
+    class ConvolutionLayer : public EdgeLayer<xpu> {
     public:
         ConvolutionLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
-            :rnd_(rnd), in_(in), out_(out){
+            : EdgeLayer<xpu>(rnd), in_(in), out_(out) {
         }
         virtual ~ConvolutionLayer( void ){}
         virtual void Forward(bool is_train) {
@@ -274,9 +292,9 @@ namespace cxxnet {
             temp_dst_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[1]*oshape[0] ) );
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
-            updaters.push_back( CreateUpdater( updater, rnd_, wmat_, gwmat_, "wmat" ) );
+            updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, wmat_, gwmat_, "wmat" ) );
             if( param_.no_bias == 0 ){
-                updaters.push_back( CreateUpdater( updater, rnd_, bias_, gbias_, "bias" ) );
+                updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, bias_, gbias_, "bias" ) );
             }
         }
         virtual void SetParam(const char *name, const char* val){
@@ -290,12 +308,13 @@ namespace cxxnet {
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
             gbias_.Resize( bias_.shape );
 
-            this->InitGaussian();
+            if (param_.random_type == kGaussian) {
+                EdgeLayer<xpu>::template InitGaussian<3> (wmat_, param_.init_sigma);
+            } else {
+                EdgeLayer<xpu>::template InitXavier<3> (wmat_, wmat_.shape[1], wmat_.shape[0]);
+            }
 
             bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
-        }
-        virtual void InitGaussian(void) {
-            rnd_.SampleGaussian( wmat_, 0.0f, param_.init_sigma );
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
             fo.Write( &param_, sizeof(LayerParam) );
@@ -310,8 +329,6 @@ namespace cxxnet {
     private:
         /*! \brief parameters that potentially be useful */
         LayerParam param_;
-        /*! \brief random number generator */
-        mshadow::Random<xpu> &rnd_;
         /*! \brief input node */
         Node<xpu> &in_;
         /*! \brief output node */
@@ -408,11 +425,11 @@ namespace cxxnet {
             if (!strcmp(name, "pad")) pad_ = static_cast<index_t>(atoi(val));
         }
         virtual void Forward(bool is_train) {
-            out_.data = padding(in_.data, pad_);
+            out_.data = pad(in_.data, pad_);
         }
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
-                in_.data = unpadding(out_.data, pad_);
+                in_.data = unpad(out_.data, pad_);
             }
         }
         virtual void AdjustNodeShape() {
@@ -461,49 +478,59 @@ namespace cxxnet{
 };
 
 namespace cxxnet {
-    // Problem in inherent
-    /*
+    // Problem
     template<typename xpu>
-    class DropconnLayer : public FullConnectLayer<xpu> {
+    class DropConnLayer : public FullConnectLayer<xpu> {
     public:
-        DropconnLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out) {
-                rnd_ = rnd;
-                in_ = in;
-                out_ = out;
-        }
+        DropConnLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
+            : FullConnectLayer<xpu>(rnd, in, out) {}
         virtual void SetParam(const char *name, const char* val) {
-            param_.SetParam(name, val);
+            FullConnectLayer<xpu>::param_.SetParam(name, val);
         }
         virtual void Forward(bool is_train) {
+            index_t nbatch = FullConnectLayer<xpu>::in_.data.shape[1];
             if (is_train) {
-                rnd_.SampleUniform(mask_, 0, 1);
-                mask_ = F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
-                wmat_ = wmat_ * mask_;
+                FullConnectLayer<xpu>::rnd_.SampleUniform(mask_, 0, 1);
+                mask_ = F<op::threshold>(mask_, ScalarExp(1 - FullConnectLayer<xpu>::param_.dropout_threshold));
+                FullConnectLayer<xpu>::wmat_ = FullConnectLayer<xpu>::wmat_ * this->mask_;
             }
-            out_.mat()  = dot( in_.mat(), wmat_.T() );
-            if( param_.no_bias == 0 ) {
-                out_.mat() += repmat( bias_, nbatch );
+            FullConnectLayer<xpu>::out_.mat()  = dot(FullConnectLayer<xpu>::in_.mat(), FullConnectLayer<xpu>::wmat_.T() );
+            if( FullConnectLayer<xpu>::param_.no_bias == 0 ) {
+                FullConnectLayer<xpu>::out_.mat() += repmat( FullConnectLayer<xpu>::bias_, nbatch );
             }
         }
         virtual void Backprop(bool prop_grad) {
             // TODO: Recover after fully test
             real_t scale = 1.0f;
             // real_t scale = 1.0f / nbatch;
-            gwmat_ = scale * dot( out_.mat().T(), in_.mat() );
-            gwmat_ = gwmat_ * mask_; // TODO: double check here!
-            if( param_.no_bias == 0 ) {
-                gbias_ = scale * sum_rows( out_.mat() );
+            FullConnectLayer<xpu>::gwmat_ = scale * dot( FullConnectLayer<xpu>::out_.mat().T(), FullConnectLayer<xpu>::in_.mat() );
+            FullConnectLayer<xpu>::gwmat_ = FullConnectLayer<xpu>::gwmat_ * this->mask_; // TODO: double check here!
+            if( FullConnectLayer<xpu>::param_.no_bias == 0 ) {
+                FullConnectLayer<xpu>::gbias_ = scale * sum_rows(FullConnectLayer<xpu>::out_.mat() );
             }
             // backprop
             if( prop_grad ){
-                in_.mat() = dot( out_.mat(), wmat_ );
+                FullConnectLayer<xpu>::in_.mat() = dot( FullConnectLayer<xpu>::out_.mat(), FullConnectLayer<xpu>::wmat_ );
             }
+        }
+        virtual void InitModel(void) {
+            FullConnectLayer<xpu>::wmat_.Resize( mshadow::Shape2(FullConnectLayer<xpu>::out_.data.shape[0],FullConnectLayer<xpu>:: in_.data.shape[0] ) );
+            FullConnectLayer<xpu>::gwmat_.Resize(FullConnectLayer<xpu>::wmat_.shape );
+            this->mask_.Resize(FullConnectLayer<xpu>::wmat_.shape );
+            FullConnectLayer<xpu>::bias_.Resize( mshadow::Shape1(FullConnectLayer<xpu>::out_.data.shape[0] ) );
+            FullConnectLayer<xpu>::gbias_.Resize( FullConnectLayer<xpu>::bias_.shape );
+            if (FullConnectLayer<xpu>::param_.random_type == kGaussian) {
+                FullConnectLayer<xpu>:: template EdgeLayer<xpu>::template InitGaussian<2> (FullConnectLayer<xpu>::wmat_, FullConnectLayer<xpu>::param_.init_sigma);
+            } else {
+                FullConnectLayer<xpu>:: template EdgeLayer<xpu>::template InitXavier<2> (FullConnectLayer<xpu>::wmat_, FullConnectLayer<xpu>::wmat_.shape[0], FullConnectLayer<xpu>::wmat_.shape[1]);
+            }
+            FullConnectLayer<xpu>::bias_ = 0.0f;
+            FullConnectLayer<xpu>::gwmat_ = 0.0f;
+            FullConnectLayer<xpu>::gbias_ = 0.0f;
         }
     private:
         mshadow::TensorContainer<xpu, 2> mask_;
     }; // class DropconnLayer
-
-    */
     template<typename xpu>
     class DropoutLayer : public ILayer {
     public:
@@ -777,7 +804,7 @@ namespace cxxnet{
         case kRectifiedLinear: return new ActivationLayer<xpu,op::relu,op::relu_grad>(in, out);
         case kSoftplus: return new ActivationLayer<xpu,op::softplus,op::softplus_grad>(in, out);
         case kFlatten:  return new FlattenLayer<xpu>( in, out );
-        // TODO:
+        case kDropConn: return new DropConnLayer<xpu>(rnd, in, out);
         case kDropout: return new DropoutLayer<xpu>(rnd, in, out);
         case kConv:    return new ConvolutionLayer<xpu>( rnd, in, out );
         case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, xpu>(in, out);
