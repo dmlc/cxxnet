@@ -103,7 +103,7 @@ namespace cxxnet {
         /*! \brief Xavier initialization */
         template<int dim>
         inline void InitXavier(mshadow::TensorContainer<xpu,dim> &mat, index_t in_num, index_t out_num) {
-            real_t a = sqrt(3.5f / (in_num + out_num));
+            real_t a = sqrt(3.0f / (in_num + out_num));
             this->InitUniform(mat, -a, a);
         }
         /*! \brief random number generator */
@@ -180,7 +180,7 @@ namespace cxxnet {
             if( prop_grad ){
                 in_.mat() = dot( out_.mat(), wmat );
             }
-        }        
+        }
     protected:
         /*! \brief parameters that potentially be useful */
         LayerParam param_;
@@ -488,7 +488,6 @@ namespace cxxnet{
 };
 
 namespace cxxnet {
-    // Problem
     template<typename xpu>
     class DropConnLayer : public FullConnectLayer<xpu> {
     public:
@@ -496,16 +495,17 @@ namespace cxxnet {
             : Parent(rnd, in, out) {}
         virtual void Forward(bool is_train) {
             if( is_train ){
-                mask_ = F<op::threshold>( this->rnd_.uniform(), ScalarExp(1.0f - FullConnectLayer<xpu>::param_.dropout_threshold) );                
+                this->rnd_.SampleUniform(mask_, 0, 1);
+                F<op::threshold>( mask_, ScalarExp(1.0f - Parent::param_.dropout_threshold) );
                 tmpw_ = this->wmat_ * mask_;
             }else{
                 mshadow::Copy( tmpw_, this->wmat_ );
             }
-            this->Forward( tmpw_ );
+            Parent::Forward( tmpw_ );
         }
-        virtual void Backprop(bool prop_grad) {                        
-            this->Backprop( prop_grad, tmpw_ );
-            this->gmat_ *= mask_;
+        virtual void Backprop(bool prop_grad) {
+            Parent::Backprop( prop_grad, tmpw_ );
+            Parent::gwmat_ *= mask_;
         }
         virtual void AdjustNodeShape( void ){
             this->mask_.Resize( mshadow::Shape2( this->out_.data.shape[0], this->in_.data.shape[0] ) );
