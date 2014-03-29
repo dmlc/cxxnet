@@ -204,7 +204,7 @@ namespace cxxnet {
                 if( param_.pad == 0 ){
                     temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2col( padding(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( pad(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -231,7 +231,7 @@ namespace cxxnet {
                 if( param_.pad == 0 ){
                     temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2col( padding(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( pad(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -249,7 +249,7 @@ namespace cxxnet {
                         in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
                     }else{
                         mshadow::Shape<3> pshape = in_.data[i].shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
-                        in_.data[i] = unpadding( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), param_.pad );
+                        in_.data[i] = unpad( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), param_.pad );
                     }
                 }
             }
@@ -338,12 +338,12 @@ namespace cxxnet {
         }
         virtual ~PoolingLayer() {}
         virtual void Forward(bool is_train) {
-            tmp_ = pooling<Reducer>(in_.data, param_.kernel_size, param_.stride);
+            tmp_ = pool<Reducer>(in_.data, param_.kernel_size, param_.stride);
             mshadow::Copy( out_.data, tmp_ );
         }
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
-                in_.data = unpooling<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride);
+                in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride);
             }
         }
         virtual void SetParam(const char *name, const char* val) {
