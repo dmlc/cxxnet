@@ -243,7 +243,7 @@ namespace cxxnet {
                 if( prop_grad ){
                     for( int gid = 0; gid < param_.num_group; ++ gid ){
                         mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
-                        tmpc = dot( temp_dst_[gid].T(), wmat_[gid] );
+                        tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
                     }
                     if( param_.pad == 0 ){
                         in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
