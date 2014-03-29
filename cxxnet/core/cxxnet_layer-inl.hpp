@@ -494,9 +494,6 @@ namespace cxxnet {
     public:
         DropConnLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
             : Parent(rnd, in, out) {}
-        virtual void SetParam(const char *name, const char* val) {
-            Parent::SetParam(name, val);
-        }
         virtual void Forward(bool is_train) {
             if( is_train ){
                 mask_ = F<op::threshold>( this->rnd_.uniform(), ScalarExp(1.0f - FullConnectLayer<xpu>::param_.dropout_threshold) );                
@@ -510,9 +507,8 @@ namespace cxxnet {
             this->Backprop( prop_grad, tmpw_ );
             this->gmat_ *= mask_;
         }
-        virtual void InitModel(void) {
-            Parent::InitModel();
-            this->mask_.Resize( this->wmat_.shape );
+        virtual void AdjustNodeShape( void ){
+            this->mask_.Resize( mshadow::Shape2( this->out_.data.shape[0], this->in_.data.shape[0] ) );
         }
     private:
         typedef FullConnectLayer<xpu> Parent;
