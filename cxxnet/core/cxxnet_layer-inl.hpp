@@ -461,6 +461,9 @@ namespace cxxnet {
 }; // namespace cxxnet
 
 namespace cxxnet{
+    // out[i] = in[i] * (sum_{j\in N(i)} in[j]^2 + alpha)^{-beta}
+    // gradient first part : gradout[i] * (sum_{j\in N(i)} in[j]^2 + alpha)^{-beta}
+    // gradient second part: 2 * in[i] * ( (sum_{j\in N(i)} gradout[j] / (sum_{jj\in N(j)} in[jj]^2 + alpha)^{-beta-1}) *(-beta) )
     template<typename xpu>
     class LRNLayer : public ILayer {
     public:
