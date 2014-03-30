@@ -28,7 +28,12 @@ namespace cxxnet {
             if( !strcmp( name, "shuffle") )      shuffle_ = atoi( val );
             if( !strcmp( name, "index_offset") ) inst_offset_ = atoi( val );
             if( !strcmp( name, "path") )     path_ = val;
-            if( !strcmp( name, "is_test")) is_test_ = atoi(val);
+            if( !strcmp( name, "test") && atoi(val) == 1) file_list_.push_back("test_batch.bin");
+            if( !strcmp( name, "batch1") && atoi(val) == 1) file_list_.push_back("data_batch_1.bin");
+            if( !strcmp( name, "batch2") && atoi(val) == 1) file_list_.push_back("data_batch_2.bin");
+            if( !strcmp( name, "batch3") && atoi(val) == 1) file_list_.push_back("data_batch_3.bin");
+            if( !strcmp( name, "batch4") && atoi(val) == 1) file_list_.push_back("data_batch_4.bin");
+            if( !strcmp( name, "batch5") && atoi(val) == 1) file_list_.push_back("data_batch_5.bin");
         }
         // intialize iterator loads data in
         virtual void Init( void ) {
@@ -67,27 +72,16 @@ namespace cxxnet {
         }
     private:
         inline void Load( void ) {
-            std::vector<std::string> file_list;
-            if (is_test_ == 0) {
-                file_list.push_back(path_ + "data_batch_1.bin");
-                file_list.push_back(path_ + "data_batch_2.bin");
-                file_list.push_back(path_ + "data_batch_3.bin");
-                file_list.push_back(path_ + "data_batch_4.bin");
-                file_list.push_back(path_ + "data_batch_5.bin");
-            } else {
-                file_list.push_back(path_ + "test_batch.bin");
-            }
-            utils::BinFile bfile( file_list[0].c_str(), "rb" );
-            index_t image_count = bfile.Size() / 3073;
-            index_t total_count = image_count;
-            if (is_test_ == 0) total_count *= 5;
+            index_t image_count = 10000;
+            index_t total_count = image_count * file_list_.size();
             labels_.resize(total_count);
             img_.shape = mshadow::Shape4( total_count, 3, 32, 32);
             img_.shape.stride_ = img_.shape[0];
             // allocate continuous memory
             img_.dptr = new float[ img_.shape.MSize() ];
-            for (index_t cnt = 0; cnt < file_list.size(); ++cnt) {
-                utils::BinFile file( file_list[cnt].c_str(), "rb" );
+            for (index_t cnt = 0; cnt < file_list_.size(); ++cnt) {
+                std::string f_path = path_ + file_list_[cnt];
+                utils::BinFile file( f_path.c_str(), "rb" );
                 for (index_t i = 0 ; i < image_count; ++i) {
                     labels_[i + cnt * image_count] = file.ReadByte();
                     inst_.push_back( (unsigned)(i + cnt * image_count) + inst_offset_ );
@@ -140,8 +134,8 @@ namespace cxxnet {
         unsigned inst_offset_;
         // instance index
         std::vector<unsigned> inst_;
-        // is test
-        int is_test_;
+        // file_list
+        std::vector<std::string> file_list_;
     }; //class CIFARIterator
 }; // namespace cxxnet
 #endif // CXXNET_CIFAR_ITER_INL_HPP
