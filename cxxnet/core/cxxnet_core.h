@@ -129,7 +129,7 @@ namespace cxxnet {
                 max_mem_ = std::numeric_limits<size_t>::max();
             }else{
                 // GPU, 1.6 GB bydefault
-                max_mem_ = 400L * 1000000;
+                max_mem_ = 700L * 1000000;
             }
             warning_ = 1;
             total_mem_ = 0;
@@ -291,6 +291,7 @@ namespace cxxnet {
         const int kSumPooling = 12;
         const int kAvgPooling = 13;
         const int kPadding = 14;
+        const int kLRN   = 15;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */

@@ -469,29 +469,37 @@ namespace cxxnet{
     public:
         LRNLayer(Node<xpu> &in, Node<xpu> &out)
             : in_(in), out_(out) {
+            // default values
+            this->knorm_ = 0;
+            this->nsize_ = 3;            
         }
         virtual ~LRNLayer( void ){}
         virtual void SetParam(const char *name, const char *val) {
-            if (!strcmp(name, "nsize")) nsize_ = static_cast<index_t>( atoi(val) );
-            if (!strcmp(name, "alpha")) alpha_ = static_cast<real_t>( atof(val) );
-            if (!strcmp(name, "beta"))  beta_ = static_cast<real_t>( atof(val) );
+            if (!strcmp(name, "local_size")) nsize_ = static_cast<index_t>( atoi(val) );
+            if (!strcmp(name, "alpha"))      alpha_ = static_cast<real_t>( atof(val) );
+            if (!strcmp(name, "beta"))       beta_  = static_cast<real_t>( atof(val) );
+            if (!strcmp(name, "knorm"))      knorm_ = static_cast<real_t>( atof(val) );            
         }
         virtual void Forward(bool is_train) {
+            using namespace mshadow;
+            const real_t salpha = alpha_ / nsize_;
             // stores normalizer without power
-            tmp_norm = chpool( F<op::square>(in_.data) , nsize_ ) + alpha_;
+            tmp_norm = chpool<red::sum>( F<op::square>(in_.data) , nsize_ ) * salpha + knorm_;
             out_.data = in_.data * F<op::power>( tmp_norm, -beta_ );
         }
         virtual void Backprop(bool prop_grad) {
-            if (prop_grad) {
+            using namespace mshadow;
+            const real_t salpha = alpha_ / nsize_;
+            if( prop_grad ) {
                 // backup input data
                 mshadow::Copy( tmp_in, in_.data );
                 // first gradient to a[i], will be 1 / normalizer
                 in_.data = out_.data * F<op::power>( tmp_norm, -beta_ );
                 // gradient to normalizer
-                in_.data += ( - 2.0f * beta_ ) * chpool( out_.data * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ ) * tmp_in;
+                in_.data += ( - 2.0f * beta_ * salpha ) * chpool<red::sum>( out_.data * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ ) * tmp_in;
             }
         }
-        virtual void AdjustNodeShape( void ) {
+        virtual void AdjustNodeShape( void ) {            
             out_.data.shape = in_.data.shape;
             tmp_in.Resize( in_.data.shape );
             tmp_norm.Resize( in_.data.shape );
@@ -509,6 +517,8 @@ namespace cxxnet{
         real_t alpha_;
         /*! \brief beta */
         real_t beta_;
+        /*! \brief knorm */
+        real_t knorm_;
         /*! \brief neighbor size*/
         index_t nsize_;
     }; // class lrn layer
@@ -818,10 +828,10 @@ namespace cxxnet{
         if( !strcmp( type, "max_pooling")) return kMaxPooling;
         if( !strcmp( type, "sum_pooling")) return kSumPooling;
         if( !strcmp( type, "avg_pooling")) return kAvgPooling;
-        if( !strcmp( type, "padding")) return kPadding;
-        if( !strcmp( type, "caffe") ) return kCaffe;
-        fprintf(stderr, "%s\n", type);
-        fflush(stdout);
+        if( !strcmp( type, "padding"))   return kPadding;
+        if( !strcmp( type, "lrn"))       return kLRN;
+        if( !strcmp( type, "caffe") )    return kCaffe;
+        fprintf(stderr, "unknown layer type: %s\n", type);
         Error("unknown layer type" );
         return 0;
     }
@@ -846,6 +856,7 @@ namespace cxxnet{
         case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, xpu>(in, out);
         case kSumPooling: return new PoolingLayer<mshadow::red::sum, xpu>(in, out);
         case kPadding: return new PaddingLayer<xpu>(in, out);
+        case kLRN:     return new LRNLayer<xpu>(in, out);
 #if CXXNET_ADAPT_CAFFE
         case kCaffe: return new CaffeLayer<xpu>(rnd,in,out);
 #endif
