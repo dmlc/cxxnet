@@ -408,11 +408,11 @@ namespace cxxnet {
         }
         virtual ~ActivationLayer( void ){}
         virtual void Forward( bool is_train ) {
-            in_.mat() = F<ForwardOp>( in_.mat() );
-            mshadow::Copy( out_.mat(), in_.mat() );
+            in_.data = F<ForwardOp>( in_.data );
+            mshadow::Copy( out_.data, in_.data );
         }
         virtual void Backprop( bool prop_grad ){
-            in_.mat() = F<BackOp>( in_.mat() ) * out_.mat();
+            in_.data = F<BackOp>( in_.data ) * out_.data;
         }
         virtual void AdjustNodeShape( void ) {
             out_.data.shape = in_.data.shape;
@@ -484,11 +484,11 @@ namespace cxxnet{
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
                 // backup input data
-                mshadow::Copy( tmp_in, in_.data );                
+                mshadow::Copy( tmp_in, in_.data );
                 // first gradient to a[i], will be 1 / normalizer
                 in_.data = out_.data * F<op::power>( tmp_norm, -beta_ );
                 // gradient to normalizer
-                in_.data += ( - 2.0f * beta ) * chpool( out_.data * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ ) * tmp_in;
+                in_.data += ( - 2.0f * beta_ ) * chpool( out_.data * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ ) * tmp_in;
             }
         }
         virtual void AdjustNodeShape( void ) {
@@ -496,7 +496,7 @@ namespace cxxnet{
             tmp_in.Resize( in_.data.shape );
             tmp_norm.Resize( in_.data.shape );
         }
-    private:        
+    private:
         /*! \brief input node */
         Node<xpu> &in_;
         /*! \brief output node */
@@ -551,7 +551,8 @@ namespace cxxnet {
         virtual void Forward(bool is_train) {
             if( is_train ){
                 const real_t pkeep = 1.0f - Parent::param_.dropout_threshold;
-                mask_ = F<op::threshold>( Parent::rnd_->uniform(), pkeep ) * (1.0f/pkeep);
+                Parent::rnd_.SampleUniform(mask_, 0.0f, 1.0f);
+                mask_ = F<op::threshold>(mask_, pkeep);
                 tmpw_ = this->wmat_ * mask_;
             }else{
                 mshadow::Copy( tmpw_, this->wmat_ );
@@ -576,7 +577,7 @@ namespace cxxnet {
     public:
         DropoutLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
             :rnd_(rnd), out_(out) {
-            Assert( &in == &out, "dropout layer must self loop e.g layer[1->1] = softmax" ); 
+            Assert( &in == &out, "dropout layer must self loop e.g layer[1->1] = dropout" );
         }
         virtual void SetParam(const char *name, const char* val){
             param_.SetParam( name, val );
@@ -584,24 +585,26 @@ namespace cxxnet {
         virtual void Forward( bool is_train ) {
             if (is_train) {
                 const real_t pkeep = 1.0f - param_.dropout_threshold;
-                mask_ = F<op::threshold>( Parent::rnd_->uniform(), pkeep ) * (1.0f/pkeep);
-                out_.mat() = out_.mat() * mask_;
+                // mask_ = F<op::threshold>(rnd_.uniform(), pkeep ) * (1.0f/pkeep);
+                rnd_.SampleUniform(mask_, 0.0f, 1.0f);
+                mask_ = F<op::threshold>(mask_, pkeep);
+                out_.data = out_.data * mask_;
             }
         }
         virtual void Backprop( bool prop_grad ) {
             if (prop_grad) {
-                out_.mat() *= mask_;
+                out_.data *= mask_;
             }
         }
         virtual void AdjustNodeShape( void ) {
             utils::Assert(param_.dropout_threshold >= 0.0f && param_.dropout_threshold < 1.0f, "DropoutLayer: invalid dropout threshold\n");
-            mask_.Resize( out_.mat().shape );
+            mask_.Resize( out_.data.shape );
         }
     private:
         /*! \brief output node */
         Node<xpu> &out_;
         /*! \brief dropout mask */
-        mshadow::TensorContainer<xpu, 2> mask_;
+        mshadow::TensorContainer<xpu, 4> mask_;
         /*! \brief random number generator */
         mshadow::Random<xpu> &rnd_;
         /*! \brief parameters that potentially be useful */
