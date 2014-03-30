@@ -4,7 +4,7 @@
 
 #include "mshadow/tensor_container.h"
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_io.h"
+#include "../utils/cxxnet_io_utils.h"
 #include "../utils/cxxnet_global_random.h"
 
 namespace cxxnet {
@@ -16,6 +16,7 @@ namespace cxxnet {
             inst_offset_ = 0;
             silent_ = 0;
             shuffle_ = 0;
+            loc_ = 0;
         }
         virtual ~CIFARIterator( void ){
             if( img_.dptr != NULL ) delete []img_.dptr;
@@ -23,16 +24,16 @@ namespace cxxnet {
         virtual void SetParam( const char *name, const char *val ) {
             if( !strcmp( name, "silent") )       silent_ = atoi( val );
             if( !strcmp( name, "batch_size") )   batch_size_ = (index_t)atoi( val );
-            if( !strcmp( name, "mode") )         mode_ = atoi( val );
+            if( !strcmp( name, "input_flat") )         mode_ = atoi( val );
             if( !strcmp( name, "shuffle") )      shuffle_ = atoi( val );
             if( !strcmp( name, "index_offset") ) inst_offset_ = atoi( val );
-            if( !strcmp( name, "path_img") )     path_img = val;
-            if( !strcmp( name, "path_label") )   path_label = val;
+            if( !strcmp( name, "path") )     path_ = val;
+            if( !strcmp( name, "is_test")) is_test_ = atoi(val);
         }
         // intialize iterator loads data in
         virtual void Init( void ) {
             this->Load();
-            if( mode_ == 0 ){
+            if( mode_ == 1 ){
                 out_.data.shape = mshadow::Shape4(1,1,batch_size_,img_.shape[1] * img_.shape[0] * 3 );
             }else{
                 out_.data.shape = mshadow::Shape4( batch_size_, 3, img_.shape[1], img_.shape[0] );
@@ -43,7 +44,7 @@ namespace cxxnet {
             if( silent_ == 0 ){
                 mshadow::Shape<4> s = out_.data.shape;
                 printf("CIFARIterator: load %u images, shuffle=%d, shape=%u,%u,%u,%u\n",
-                       (unsigned)img_.shape[2], shuffle_, s[3],s[2],s[1],s[0] );
+                       (unsigned)img_.shape[3], shuffle_, s[3],s[2],s[1],s[0] );
             }
         }
         virtual void BeforeFirst( void ) {
@@ -51,11 +52,11 @@ namespace cxxnet {
         }
         virtual bool Next( void ) {
             // Different Mode should use differnt boundary ?
-            if( loc_ + batch_size_ < img_.shape[2] ){
-                loc_ += batch_size_;
+            if( loc_ + batch_size_ <= img_.shape[3] ) {
                 out_.data.dptr = img_[ loc_ ].dptr;
                 out_.labels = &labels_[ loc_ ];
                 out_.inst_index = &inst_[ loc_ ];
+                loc_ += batch_size_;
                 return true;
             } else{
                 return false;
@@ -66,20 +67,35 @@ namespace cxxnet {
         }
     private:
         inline void Load( void ) {
-            utils::BinFile bfile( path_img.c_str(), "rb" );
-            int image_count = bfile.Size() / 3073;
-            label_.resize(image_count);
-            img_.shape = mshadow::Shape4( image_count, 3, 32, 32);
+            std::vector<std::string> file_list;
+            if (is_test_ == 0) {
+                file_list.push_back(path_ + "data_batch_1.bin");
+                file_list.push_back(path_ + "data_batch_2.bin");
+                file_list.push_back(path_ + "data_batch_3.bin");
+                file_list.push_back(path_ + "data_batch_4.bin");
+                file_list.push_back(path_ + "data_batch_5.bin");
+            } else {
+                file_list.push_back(path_ + "test_batch.bin");
+            }
+            utils::BinFile bfile( file_list[0].c_str(), "rb" );
+            index_t image_count = bfile.Size() / 3073;
+            index_t total_count = image_count;
+            if (is_test_ == 0) total_count *= 5;
+            labels_.resize(total_count);
+            img_.shape = mshadow::Shape4( total_count, 3, 32, 32);
             img_.shape.stride_ = img_.shape[0];
             // allocate continuous memory
             img_.dptr = new float[ img_.shape.MSize() ];
-            for (int i = 0; i < image_count; ++i) {
-                int label = (int) bfile.ReadByte();
-                label_.push_back(label);
-                for (int c = 0; c < 3; ++c) {
-                    for (int row = 0; row < 32; ++row) {
-                        for (int col = 0; col < 32; ++col) {
-                            img_[i][c][row][col] = (int)bfile.ReadByte();
+            for (index_t cnt = 0; cnt < file_list.size(); ++cnt) {
+                utils::BinFile file( file_list[cnt].c_str(), "rb" );
+                for (index_t i = 0 ; i < image_count; ++i) {
+                    labels_[i + cnt * image_count] = file.ReadByte();
+                    inst_.push_back( (unsigned)(i + cnt * image_count) + inst_offset_ );
+                    for (index_t c = 0; c < 3; ++c) {
+                        for (index_t row = 0; row < 32; ++row) {
+                            for (index_t col = 0; col < 32; ++col) {
+                                img_[i + cnt * image_count][c][row][col] = file.ReadByte();
+                            }
                         }
                     }
                 }
@@ -87,6 +103,7 @@ namespace cxxnet {
             // normalize to 0-1
             img_ *= 1.0f / 256.0f;
         }
+
         inline void Shuffle( void ){
             utils::Shuffle( inst_ );
             std::vector<float> tmplabel( labels_.size() );
@@ -104,7 +121,7 @@ namespace cxxnet {
         // silent
         int silent_;
         // path
-        std::string path_img, path_label;
+        std::string path_;
         // output
         DataBatch out_;
         // whether do shuffle
@@ -116,13 +133,15 @@ namespace cxxnet {
         // batch size
         index_t batch_size_;
         // image content
-        mshadow::Tensor<cpu,3> img_;
+        mshadow::Tensor<cpu,4> img_;
         // label content
         std::vector<float> labels_;
         // instance index offset
         unsigned inst_offset_;
         // instance index
         std::vector<unsigned> inst_;
+        // is test
+        int is_test_;
     }; //class CIFARIterator
 }; // namespace cxxnet
 #endif // CXXNET_CIFAR_ITER_INL_HPP

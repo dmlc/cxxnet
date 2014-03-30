@@ -15,6 +15,7 @@ namespace cxxnet {
 #include "cxxnet_data.h"
 #include "../utils/cxxnet_utils.h"
 #include "../utils/cxxnet_io_utils.h"
+#include "cxxnet_iter_cifar-inl.hpp"
 #include "cxxnet_iter_mnist-inl.hpp"
 #include "cxxnet_iter_spfeat-inl.hpp"
 
@@ -33,6 +34,9 @@ namespace cxxnet{
                 if( !strcmp( val, "spfeat") ){
                     utils::Assert( it == NULL );
                     it = new SpFeatIterator(); continue;
+                }
+                if( !strcmp( val, "cifar") ) {
+                    it = new CIFARIterator(); continue;
                 }
                 utils::Error("unknown iterator type" );
             }
