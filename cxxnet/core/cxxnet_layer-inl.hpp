@@ -358,7 +358,7 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu,3> temp_dst_;
     };
 
-    template<typename Reducer, typename xpu>
+    template<typename Reducer, bool scalebysize, typename xpu>
     class PoolingLayer : public ILayer {
     public:
         PoolingLayer(Node<xpu> &in, Node<xpu> &out)
@@ -366,12 +366,22 @@ namespace cxxnet {
         }
         virtual ~PoolingLayer() {}
         virtual void Forward(bool is_train) {
-            tmp_ = pool<Reducer>(in_.data, param_.kernel_size, param_.stride);
+            const int ksize = param_.kernel_size;
+            if( !scalebysize ){
+                tmp_ = pool<Reducer>(in_.data, ksize, param_.stride);
+            }else{                
+                tmp_ = pool<Reducer>(in_.data, ksize, param_.stride) * (1.0f/(ksize*ksize) );
+            }
             mshadow::Copy( out_.data, tmp_ );
         }
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
-                in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride);
+                const int ksize = param_.kernel_size;
+                if( !scalebysize ){
+                    in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride);
+                }else{
+                    in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride) * (1.0f/(ksize*ksize) );
+                }
             }
         }
         virtual void SetParam(const char *name, const char* val) {
@@ -752,7 +762,7 @@ namespace cxxnet{
             }
             // relative absolute error
             double rerr = diff / ssum;
-            if( rerr > 1e-5 ){
+            if( rerr > 1e-5 || diff != diff ){
                 fprintf( stderr, "%s%s: err=%f, maxd[%u]=%f, diff=%f, ssum=%f\n", tag, tag2, rerr, mxidx, maxdiff, diff, ssum );
             }
         }
@@ -853,8 +863,9 @@ namespace cxxnet{
         case kDropConn: return new DropConnLayer<xpu>(rnd, in, out);
         case kDropout: return new DropoutLayer<xpu>(rnd, in, out);
         case kConv:    return new ConvolutionLayer<xpu>( rnd, in, out );
-        case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, xpu>(in, out);
-        case kSumPooling: return new PoolingLayer<mshadow::red::sum, xpu>(in, out);
+        case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>(in, out);
+        case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>(in, out);
+        case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>(in, out);
         case kPadding: return new PaddingLayer<xpu>(in, out);
         case kLRN:     return new LRNLayer<xpu>(in, out);
 #if CXXNET_ADAPT_CAFFE

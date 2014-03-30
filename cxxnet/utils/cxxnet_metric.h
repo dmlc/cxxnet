@@ -3,7 +3,7 @@
 #pragma once
 /*!
  * \file cxxnet_metric.h
- * \brief evaluation metrics 
+ * \brief evaluation metrics
  * \author Tianqi Chen
  */
 #include <cmath>
@@ -20,7 +20,7 @@ namespace cxxnet{
             virtual ~IMetric( void ){}
             /*! \brief clear statistics */
             virtual void Clear( void ) = 0;
-            /*! 
+            /*!
              * \brief evaluate a specific metric, add to current statistics
              * \param preds prediction
              * \param labels label
@@ -34,7 +34,7 @@ namespace cxxnet{
         };
 
         /*! \brief RMSE */
-        struct MetricRMSE : public IMetric{      
+        struct MetricRMSE : public IMetric{
         public:
             MetricRMSE( void ){
                 this->Clear();
@@ -48,7 +48,7 @@ namespace cxxnet{
                     float diff = preds[i] - labels[i];
                     sum_err += diff * diff;
                     cnt_inst+= 1;
-                }                 
+                }
             }
             virtual double Get( void ) const{
                 return std::sqrt( sum_err / cnt_inst );
@@ -62,7 +62,7 @@ namespace cxxnet{
         };
 
         /*! \brief r^2 correlation square */
-        struct MetricCorrSqr : public IMetric{      
+        struct MetricCorrSqr : public IMetric{
         public:
             MetricCorrSqr( void ){
                 this->Clear();
@@ -70,7 +70,7 @@ namespace cxxnet{
             virtual ~MetricCorrSqr( void ){}
             virtual void Clear( void ){
                 sum_x = 0.0; sum_y = 0.0;
-                sum_xsqr  = 0.0; 
+                sum_xsqr  = 0.0;
                 sum_ysqr  = 0.0;
                 sum_xyprod = 0.0;
                 cnt_inst = 0;
@@ -84,14 +84,14 @@ namespace cxxnet{
                     sum_ysqr += y * y;
                     sum_xyprod += x * y;
                     cnt_inst += 1;
-                }                 
+                }
             }
             virtual double Get( void ) const{
                 double mean_x = sum_x / cnt_inst;
-                double mean_y = sum_y / cnt_inst;                
+                double mean_y = sum_y / cnt_inst;
                 double corr = sum_xyprod / cnt_inst - mean_x*mean_y;
                 double xvar = sum_xsqr / cnt_inst  - mean_x*mean_x;
-                double yvar = sum_ysqr / cnt_inst  - mean_y*mean_y;                
+                double yvar = sum_ysqr / cnt_inst  - mean_y*mean_y;
                 double res =  corr * corr / ( xvar * yvar );
 
                 return res;
@@ -110,7 +110,7 @@ namespace cxxnet{
         };
 
         /*! \brief Error */
-        struct MetricError : public IMetric{      
+        struct MetricError : public IMetric{
         public:
             MetricError( void ){
                 this->Clear();
@@ -123,7 +123,7 @@ namespace cxxnet{
                 for( int i = 0; i < ndata; ++ i ){
                     sum_err += (int)preds[i] != (int)labels[i];
                     cnt_inst+= 1;
-                }                 
+                }
             }
             virtual double Get( void ) const{
                 return sum_err / cnt_inst;
@@ -139,7 +139,7 @@ namespace cxxnet{
         /*! \brief a set of evaluators */
         struct MetricSet{
         public:
-            void AddMetric( const char *name ){                
+            void AddMetric( const char *name ){
                 if( !strcmp( name, "rmse") ) evals_.push_back( &rmse_ );
                 if( !strcmp( name, "error") ) evals_.push_back( &error_ );
                 if( !strcmp( name, "r2") )    evals_.push_back( &corrsqr_ );
@@ -159,14 +159,14 @@ namespace cxxnet{
             }
             inline void Print( FILE *fo, const char *evname ){
                 for( size_t i = 0; i < evals_.size(); ++ i ){
-                    fprintf( fo, "\t%s-%s:%f", evname, evals_[i]->Name(), evals_[i]->Get() ); 
-                } 
+                    fprintf( fo, "\t%s-%s:%f", evname, evals_[i]->Name(), evals_[i]->Get() );
+                }
             }
         private:
             MetricRMSE  rmse_;
             MetricError error_;
             MetricCorrSqr corrsqr_;
-            std::vector<IMetric*> evals_;  
+            std::vector<IMetric*> evals_;
         };
     };
 };
