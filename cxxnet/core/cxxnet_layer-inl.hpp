@@ -206,6 +206,7 @@ namespace cxxnet {
             :out_(out){
             Assert( &in == &out, "softmax layer must self loop e.g layer[1->1] = softmax" );
         }
+        virtual ~SoftmaxLayer( void ){}
         virtual void Forward(bool is_train){
             mshadow::Softmax( out_.mat(), out_.mat() );
         }
@@ -431,6 +432,7 @@ namespace cxxnet {
         PaddingLayer(Node<xpu> &in, Node<xpu> &out)
             : in_(in), out_(out) {
         }
+        virtual ~PaddingLayer(){}
         virtual void SetParam(const char *name, const char *val) {
             if (!strcmp(name, "pad")) pad_ = static_cast<index_t>(atoi(val));
         }
@@ -458,6 +460,56 @@ namespace cxxnet {
     }; // class padding layer
 }; // namespace cxxnet
 
+namespace cxxnet{
+    template<typename xpu>
+    class LRNLayer : public ILayer {
+    public:
+        LRNLayer(Node<xpu> &in, Node<xpu> &out)
+            : in_(in), out_(out) {
+        }
+        virtual ~LRNLayer( void ){}
+        virtual void SetParam(const char *name, const char *val) {
+            if (!strcmp(name, "nsize")) nsize_ = static_cast<index_t>( atoi(val) );
+            if (!strcmp(name, "alpha")) alpha_ = static_cast<real_t>( atof(val) );
+            if (!strcmp(name, "beta"))  beta_ = static_cast<real_t>( atof(val) );
+        }
+        virtual void Forward(bool is_train) {
+            // stores normalizer without power
+            tmp_norm = chpool( F<op::square>(in_.data) , nsize_ ) + alpha_;
+            out_.data = in_.data * F<op::power>( tmp_norm, -beta_ );
+        }
+        virtual void Backprop(bool prop_grad) {
+            if (prop_grad) {
+                // backup input data
+                mshadow::Copy( tmp_in, in_.data );                
+                // first gradient to a[i], will be 1 / normalizer
+                in_.data = out_.data * F<op::power>( tmp_norm, -beta_ );
+                // gradient to normalizer
+                in_.data += ( - 2.0f * beta ) * chpool( out_.data * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ ) * tmp_in;
+            }
+        }
+        virtual void AdjustNodeShape( void ) {
+            out_.data.shape = in_.data.shape;
+            tmp_in.Resize( in_.data.shape );
+            tmp_norm.Resize( in_.data.shape );
+        }
+    private:        
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+        /*! \brief input temp data */
+        mshadow::TensorContainer<xpu,4> tmp_in;
+        /*! \brief temp normalizer */
+        mshadow::TensorContainer<xpu,4> tmp_norm;
+        /*! \brief alpha */
+        real_t alpha_;
+        /*! \brief beta */
+        real_t beta_;
+        /*! \brief neighbor size*/
+        index_t nsize_;
+    }; // class lrn layer
+}; // namespace cxxnet
 
 namespace cxxnet{
     template<typename xpu>

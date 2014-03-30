@@ -68,6 +68,12 @@ namespace cxxnet {
                 return 1.0f / (1.0f + expval);
             }
         };
+
+        struct square {
+            MSHADOW_XINLINE static real_t Map(real_t a) {
+                return a * a;
+            }
+        };
     }; //namespace op
 
 }; //namespace cxxnet
@@ -78,6 +84,13 @@ namespace cxxnet {
         struct threshold {
             MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
                 return a < b ? 1.0f : 0.0f;
+            }
+        };
+
+        /*! \brief used for generate Bernoulli mask */
+        struct power {
+            MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
+                return powf( a, b );
             }
         };
     }; // namespace op
