@@ -495,8 +495,8 @@ namespace cxxnet {
             : Parent(rnd, in, out) {}
         virtual void Forward(bool is_train) {
             if( is_train ){
-                this->rnd_.SampleUniform(mask_, 0, 1);
-                F<op::threshold>( mask_, ScalarExp(1.0f - Parent::param_.dropout_threshold) );
+                const real_t pkeep = 1.0f - Parent::param_.dropout_threshold;
+                mask_ = F<op::threshold>( Parent::rnd_->uniform(), pkeep ) * (1.0f/pkeep);
                 tmpw_ = this->wmat_ * mask_;
             }else{
                 mshadow::Copy( tmpw_, this->wmat_ );
@@ -520,34 +520,29 @@ namespace cxxnet {
     class DropoutLayer : public ILayer {
     public:
         DropoutLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
-            :rnd_(rnd), in_(in), out_(out) {
+            :rnd_(rnd), out_(out) {
+            Assert( &in == &out, "dropout layer must self loop e.g layer[1->1] = softmax" ); 
         }
         virtual void SetParam(const char *name, const char* val){
             param_.SetParam( name, val );
         }
         virtual void Forward( bool is_train ) {
             if (is_train) {
-                rnd_.SampleUniform(mask_, 0, 1);
-                mask_ = F<op::threshold>(mask_, ScalarExp(1 - param_.dropout_threshold));
-                in_.mat() = in_.mat() * mask_;
-            } else {
-                in_.mat() = in_.mat();
+                const real_t pkeep = 1.0f - param_.dropout_threshold;
+                mask_ = F<op::threshold>( Parent::rnd_->uniform(), pkeep ) * (1.0f/pkeep);
+                out_.mat() = out_.mat() * mask_;
             }
-            mshadow::Copy( out_.mat(), in_.mat() );
         }
         virtual void Backprop( bool prop_grad ) {
             if (prop_grad) {
-                in_.mat() = out_.mat() * mask_;
+                out_.mat() *= mask_;
             }
         }
         virtual void AdjustNodeShape( void ) {
-            utils::Assert(param_.dropout_threshold >= 0 && param_.dropout_threshold < 1, "Invalid dropout threshold\n");
-            out_.data.shape = in_.data.shape;
-            mask_.Resize(in_.mat().shape);
+            utils::Assert(param_.dropout_threshold >= 0.0f && param_.dropout_threshold < 1.0f, "DropoutLayer: invalid dropout threshold\n");
+            mask_.Resize( out_.mat().shape );
         }
     private:
-        /*! \brief input node */
-        Node<xpu> &in_;
         /*! \brief output node */
         Node<xpu> &out_;
         /*! \brief dropout mask */
@@ -556,8 +551,6 @@ namespace cxxnet {
         mshadow::Random<xpu> &rnd_;
         /*! \brief parameters that potentially be useful */
         LayerParam param_;
-        /*! \brief scale from caffe, TODO: check other dropout */
-        real_t scale_;
     }; // class DropoutLayer
 }; // namespace cxxnet
 
