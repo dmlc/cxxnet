@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include "mshadow/tensor.h"
+#include "../utils/cxxnet_utils.h"
 
 namespace cxxnet {
     /*! 
@@ -47,23 +48,27 @@ namespace cxxnet {
         /*! \brief content of data */
         mshadow::Tensor<mshadow::cpu,3> data;
     };
+
     /*! \brief a standard batch of data commonly used by iterator */
     struct DataBatch{
         /*! \brief label information */
         float*  labels;
         /*! \brief unique id for instance, can be NULL, sometimes is useful */
         unsigned* inst_index;
+        /*! \brief number of instance */
+        mshadow::index_t batch_size;
         /*! \brief content of data */
         mshadow::Tensor<mshadow::cpu,4> data;
         /*! \brief constructor */
         DataBatch( void ){
-            labels = NULL; inst_index = NULL;
+            labels = NULL; inst_index = NULL; batch_size = 0;
         }
         /*! \brief auxiliary to allocate space, if needed */
         inline void AllocSpace( mshadow::Shape<4> shape, mshadow::index_t batch_size, bool pad = false ){
             data = mshadow::NewTensor<mshadow::cpu>( shape, 0.0f, pad );
             labels = new float[ batch_size ];
             inst_index = new unsigned[ batch_size ];
+            this->batch_size = batch_size;
         }
         /*! \brief auxiliary function to free space, if needed*/
         inline void FreeSpace( void ){
@@ -73,6 +78,13 @@ namespace cxxnet {
                 mshadow::FreeSpace( data );
                 labels = NULL;
             }
+        }
+        /*! \brief copy content from existing data */
+        inline void CopyFrom( const DataBatch &src ){
+            utils::Assert( batch_size == src.batch_size );
+            memcpy( labels, src.labels, batch_size * sizeof( float ) );
+            memcpy( inst_index, src.inst_index, batch_size * sizeof( unsigned ) );
+            mshadow::Copy( data, src.data );
         }
     };
 };

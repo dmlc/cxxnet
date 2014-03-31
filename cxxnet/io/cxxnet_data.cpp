@@ -19,7 +19,7 @@ namespace cxxnet {
 #include "cxxnet_iter_mnist-inl.hpp"
 #include "cxxnet_iter_spfeat-inl.hpp"
 #include "cxxnet_iter_img-inl.hpp"
-#include "cxxnet_iter_batch-inl.hpp"
+#include "cxxnet_iter_proc-inl.hpp"
 
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
@@ -38,13 +38,21 @@ namespace cxxnet{
                     it = new SpFeatIterator(); continue;
                 }
                 if( !strcmp( val, "cifar") ) {
+                    utils::Assert( it == NULL );
                     it = new CIFARIterator(); continue;
                 }
                 if( !strcmp( val, "image") ) {
+                    utils::Assert( it == NULL );
                     it = new BatchAdaptIterator( new ImageIterator() ); continue;
                 }
+
+                if( !strcmp( val, "threadbuffer") ){
+                    utils::Assert( it != NULL, "must specify input of threadbuffer" );
+                    it = new ThreadBufferIterator( it );  
+                    continue;
+                }                
                 utils::Error("unknown iterator type" );
-            }
+            }            
             if( it != NULL ){
                 it->SetParam( name, val );
             }

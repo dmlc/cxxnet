@@ -45,6 +45,7 @@ namespace cxxnet {
             }
             out_.inst_index = NULL;
             out_.data.shape.stride_ = out_.data.shape[0];
+            out_.batch_size = batch_size_;
             if( shuffle_ ) this->Shuffle();
             if( silent_ == 0 ){
                 mshadow::Shape<4> s = out_.data.shape;
