@@ -109,7 +109,9 @@ namespace cxxnet{
             Factory( void ){ 
                 base_ = NULL; 
             }
-            inline void SetParam( const char *name, const char *val ){}       
+            inline void SetParam( const char *name, const char *val ){
+                base_->SetParam( name, val );
+            }       
             inline bool Init(){ 
                 base_->Init();
                 utils::Assert( base_->Next(), "ThreadBufferIterator: input can not be empty" );
