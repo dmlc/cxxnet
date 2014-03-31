@@ -52,7 +52,8 @@ namespace cxxnet{
                     continue;
                 }                
                 utils::Error("unknown iterator type" );
-            }            
+            }
+            
             if( it != NULL ){
                 it->SetParam( name, val );
             }
