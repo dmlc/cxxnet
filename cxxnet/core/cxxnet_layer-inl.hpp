@@ -571,8 +571,7 @@ namespace cxxnet {
         virtual void Forward(bool is_train) {
             if( is_train ){
                 const real_t pkeep = 1.0f - Parent::param_.dropout_threshold;
-                Parent::rnd_.SampleUniform(mask_, 0.0f, 1.0f);
-                mask_ = F<op::threshold>(mask_, pkeep);
+                mask_ = F<op::threshold>( Parent::rnd_.uniform( mask_.shape ), pkeep ) * (1.0f/pkeep);
                 tmpw_ = this->wmat_ * mask_;
             }else{
                 mshadow::Copy( tmpw_, this->wmat_ );
@@ -605,9 +604,7 @@ namespace cxxnet {
         virtual void Forward( bool is_train ) {
             if (is_train) {
                 const real_t pkeep = 1.0f - param_.dropout_threshold;
-                // mask_ = F<op::threshold>(rnd_.uniform(), pkeep ) * (1.0f/pkeep);
-                rnd_.SampleUniform(mask_, 0.0f, 1.0f);
-                mask_ = F<op::threshold>(mask_, pkeep);
+                mask_ = F<op::threshold>( rnd_.uniform( mask_.shape ), pkeep ) * (1.0f/pkeep);
                 out_.data = out_.data * mask_;
             }
         }
