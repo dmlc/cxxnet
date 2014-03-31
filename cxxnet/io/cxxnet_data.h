@@ -2,7 +2,7 @@
 #define CXXNET_DATA_H
 #pragma once
 /*!
- * \file cxxnet.h
+ * \file cxxnet_data.h
  * \brief data type and iterator abstraction
  * \author Bing Xu, Tianqi Chen
  */
@@ -38,6 +38,15 @@ namespace cxxnet {
         virtual ~IIterator( void ){}
     };
     
+    /*! \brief a single data instance */
+    struct DataInst{
+        /*! \brief label information */
+        float  label;
+        /*! \brief unique id for instance */
+        unsigned index;
+        /*! \brief content of data */
+        mshadow::Tensor<mshadow::cpu,3> data;
+    };
     /*! \brief a standard batch of data commonly used by iterator */
     struct DataBatch{
         /*! \brief label information */
@@ -46,6 +55,25 @@ namespace cxxnet {
         unsigned* inst_index;
         /*! \brief content of data */
         mshadow::Tensor<mshadow::cpu,4> data;
+        /*! \brief constructor */
+        DataBatch( void ){
+            labels = NULL; inst_index = NULL;
+        }
+        /*! \brief auxiliary to allocate space, if needed */
+        inline void AllocSpace( mshadow::Shape<4> shape, mshadow::index_t batch_size, bool pad = false ){
+            data = mshadow::NewTensor<mshadow::cpu>( shape, 0.0f, pad );
+            labels = new float[ batch_size ];
+            inst_index = new unsigned[ batch_size ];
+        }
+        /*! \brief auxiliary function to free space, if needed*/
+        inline void FreeSpace( void ){
+            if( labels != NULL ){
+                delete [] labels;
+                delete [] inst_index;
+                mshadow::FreeSpace( data );
+                labels = NULL;
+            }
+        }
     };
 };
 

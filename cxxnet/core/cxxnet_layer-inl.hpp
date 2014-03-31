@@ -12,7 +12,7 @@
 #include "mshadow/tensor_container.h"
 
 #if CXXNET_ADAPT_CAFFE
-#include "cxxnet_caffe_adapter-inl.hpp"
+#include "../plugin/cxxnet_caffe_adapter-inl.hpp"
 #endif
 #include "cxxnet_pairtest-inl.hpp"
 
@@ -279,7 +279,7 @@ namespace cxxnet {
                         in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
                     }else{
                         mshadow::Shape<3> pshape = in_.data[i].shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
-                        in_.data[i] = unpad( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), param_.pad );
+                        in_.data[i] = crop( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
                     }
                 }
             }
@@ -452,7 +452,7 @@ namespace cxxnet {
         }
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
-                in_.data = unpad(out_.data, pad_);
+                in_.data = crop(out_.data, in_.data[0][0].shape);
             }
         }
         virtual void AdjustNodeShape() {
