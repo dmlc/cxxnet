@@ -480,7 +480,7 @@ namespace cxxnet{
         LRNLayer(Node<xpu> &in, Node<xpu> &out)
             : in_(in), out_(out) {
             // default values
-            this->knorm_ = 0;
+            this->knorm_ = 1.0f;
             this->nsize_ = 3;            
         }
         virtual ~LRNLayer( void ){}
@@ -494,7 +494,7 @@ namespace cxxnet{
             using namespace mshadow;
             const real_t salpha = alpha_ / nsize_;
             // stores normalizer without power
-            tmp_norm = chpool<red::sum>( F<op::square>(in_.data) , nsize_ ) * salpha + knorm_;
+            tmp_norm = chpool<red::sum>( F<op::square>( in_.data ) , nsize_ ) * salpha + knorm_;
             out_.data = in_.data * F<op::power>( tmp_norm, -beta_ );
         }
         virtual void Backprop(bool prop_grad) {
@@ -506,7 +506,7 @@ namespace cxxnet{
                 // first gradient to a[i], will be 1 / normalizer
                 in_.data = out_.data * F<op::power>( tmp_norm, -beta_ );
                 // gradient to normalizer
-                in_.data += ( - 2.0f * beta_ * salpha ) * chpool<red::sum>( out_.data * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ ) * tmp_in;
+                in_.data += ( - 2.0f * beta_ * salpha ) * chpool<red::sum>( out_.data * tmp_in * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ )  * tmp_in;
             }
         }
         virtual void AdjustNodeShape( void ) {            
