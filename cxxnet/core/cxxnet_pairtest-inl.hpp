@@ -6,6 +6,7 @@
  * \brief module to do pairtest, used to compare layer implementations
  * \author Tianqi Chen, Bing Xu
  */
+#include "cxxnet_core.h"
 
 namespace cxxnet{
     template<typename xpu>
