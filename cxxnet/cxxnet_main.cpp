@@ -20,11 +20,11 @@ namespace cxxnet{
             this->itr_train = NULL;
             name_model_dir = "models";
             device = "gpu";
-            num_round = 10; 
-            silent = start_counter = 0; 
+            num_round = 10;
+            silent = start_counter = 0;
             max_round = INT_MAX;
-            continue_training = 0;            
-            save_period = 1;            
+            continue_training = 0;
+            save_period = 1;
             name_model_in = "NULL";
             name_pred     = "pred.txt";
             print_step    = 100;
@@ -41,11 +41,11 @@ namespace cxxnet{
     public:
         inline int Run( int argc, char *argv[] ){
             if( argc < 2 ){
-                printf("Usage: <config>\n"); 
+                printf("Usage: <config>\n");
                 return 0;
             }
             utils::ConfigIterator itr( argv[1] );
-            while( itr.Next() ){
+            while( itr.Next() ) {
                 this->SetParam( itr.name(), itr.val() );
             }
             for( int i = 2; i < argc; i ++ ){
@@ -53,28 +53,28 @@ namespace cxxnet{
                 if( sscanf( argv[i], "%[^=]=%s", name, val ) == 2 ){
                     this->SetParam( name, val );
                 }
-            }            
+            }
             this->Init();
             if( !silent ){
                 printf("initializing end, start working\n");
-            }                
+            }
             if( task == "train" ) this->TaskTrain();
             return 0;
         }
-        
+
         inline void SetParam( const char *name , const char *val ){
             if( !strcmp( val, "default") ) return;
             if( !strcmp( name,"net_type"))            net_type = atoi( val );
-            if( !strcmp( name,"eval_train"))          eval_train = atoi( val );  
-            if( !strcmp( name,"print_step"))          print_step = atoi( val ); 
-            if( !strcmp( name,"continue"))            continue_training = atoi( val ); 
+            if( !strcmp( name,"eval_train"))          eval_train = atoi( val );
+            if( !strcmp( name,"print_step"))          print_step = atoi( val );
+            if( !strcmp( name,"continue"))            continue_training = atoi( val );
             if( !strcmp( name,"save_model" ) )        save_period = atoi( val );
             if( !strcmp( name,"start_counter" ))      start_counter = atoi( val );
             if( !strcmp( name,"model_in" ))           name_model_in = val;
-            if( !strcmp( name,"model_dir" ))          name_model_dir= val; 
-            if( !strcmp( name,"num_round"  ))         num_round     = atoi( val ); 
-            if( !strcmp( name,"max_round"))           max_round = atoi( val ); 
-            if( !strcmp( name, "silent") )            silent        = atoi( val );            
+            if( !strcmp( name,"model_dir" ))          name_model_dir= val;
+            if( !strcmp( name,"num_round"  ))         num_round     = atoi( val );
+            if( !strcmp( name,"max_round"))           max_round = atoi( val );
+            if( !strcmp( name, "silent") )            silent        = atoi( val );
             if( !strcmp( name, "pred" ))              name_pred   = val;
             if( !strcmp( name, "task") )              task = val;
             if( !strcmp( name, "dev") )               device = val;
@@ -84,28 +84,28 @@ namespace cxxnet{
         // configure trainer
         inline void Init( void ){
             if( continue_training == 0 || SyncLastestModel() == 0 ){
-                continue_training = 0; 
-                net_trainer = this->CreateNet();                
+                continue_training = 0;
+                net_trainer = this->CreateNet();
                 if( name_model_in == "NULL" ){
                     net_trainer->InitModel();
                 }else{
-                    this->LoadModel(); 
+                    this->LoadModel();
                 }
             }
             this->CreateIterators();
         }
         // load in latest model from model_folder
         inline int SyncLastestModel( void ){
-            FILE *fi = NULL, *last = NULL;         
+            FILE *fi = NULL, *last = NULL;
             char name[ 256 ];
             int s_counter = start_counter;
             do{
                 if( last != NULL ) fclose( last );
                 last = fi;
                 sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++ );
-                fi = fopen64( name, "rb");                
-            }while( fi != NULL ); 
-            
+                fi = fopen64( name, "rb");
+            }while( fi != NULL );
+
             if( last != NULL ){
                 utils::Assert( fread( &net_type, sizeof(int), 1, last ) > 0, "loading model" );
                 net_trainer = this->CreateNet();
@@ -118,7 +118,7 @@ namespace cxxnet{
                 return 0;
             }
         }
-        // load model from file 
+        // load model from file
         inline void LoadModel( void ){
             FILE *fi = utils::FopenCheck( name_model_in.c_str(), "rb" );
             utils::Assert( fread( &net_type, sizeof(int), 1, fi ) > 0, "loading model" );
@@ -127,7 +127,7 @@ namespace cxxnet{
             net_trainer->LoadModel( fs );
             fclose( fi );
         }
-        // save model into file 
+        // save model into file
         inline void SaveModel( void ){
             char name[256];
             sprintf(name,"%s/%04d.model" , name_model_dir.c_str(), start_counter ++ );
@@ -146,12 +146,13 @@ namespace cxxnet{
             }
             return net;
         }
-        inline void InitIter( IIterator<DataBatch>* itr, 
+        inline void InitIter( IIterator<DataBatch>* itr,
                               const std::vector< std::pair< std::string, std::string> > &defcfg ){
             for( size_t i = 0; i < defcfg.size(); ++ i ){
                 itr->SetParam( defcfg[i].first.c_str(), defcfg[i].second.c_str() );
             }
             itr->Init();
+
         }
         // iterators
         inline void CreateIterators( void ){
@@ -180,7 +181,7 @@ namespace cxxnet{
                         eval_names.push_back( evname );
                     }
                     flag = 0; itcfg.clear();
-                }               
+                }
                 if( flag == 0 ) {
                     defcfg.push_back( cfg[i] );
                 }else{
@@ -195,14 +196,14 @@ namespace cxxnet{
             }
         }
     private:
-        inline void TaskTrain( void ){            
+        inline void TaskTrain( void ){
             time_t start    = time( NULL );
-            unsigned long elapsed = 0;            
+            unsigned long elapsed = 0;
             if( continue_training == 0 ){
                 this->SaveModel();
             }
-            
-            int cc = max_round; 
+
+            int cc = max_round;
             while( start_counter <= num_round && cc -- ) {
                 if( !silent ){
                     printf("update round %d", start_counter -1 ); fflush( stdout );
@@ -210,11 +211,10 @@ namespace cxxnet{
                 int sample_counter = 0;
                 net_trainer->StartRound( start_counter );
                 itr_train->BeforeFirst();
-
                 while( itr_train->Next() ){
                     net_trainer->Update( itr_train->Value() );
                     if( ++ sample_counter  % print_step == 0 ){
-                        elapsed = (long)(time(NULL) - start); 
+                        elapsed = (long)(time(NULL) - start);
                         if( !silent ){
                             printf("\r                                                               \r");
                             printf("round %8d:[%8d] %ld sec elapsed", start_counter-1,
@@ -227,16 +227,16 @@ namespace cxxnet{
                     fprintf(stderr, "[%d]", start_counter );
                     if( eval_train ){
                         net_trainer->Evaluate( stderr, itr_train, "train" );
-                    } 
+                    }
                     for( size_t i = 0; i < itr_evals.size(); ++i ){
                         net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
                     }
                     fprintf(stderr, "\n" );
                 }
-                elapsed = (unsigned long)(time(NULL) - start); 
+                elapsed = (unsigned long)(time(NULL) - start);
                 this->SaveModel();
             }
-            
+
             if( !silent ){
                 printf("\nupdating end, %lu sec in all\n", elapsed );
             }
@@ -244,13 +244,13 @@ namespace cxxnet{
     private:
         // type of net implementation
         int net_type;
-        // trainer 
+        // trainer
         INetTrainer *net_trainer;
-        // training iterator 
+        // training iterator
         IIterator<DataBatch>* itr_train;
         // validation iterators
         std::vector< IIterator<DataBatch>* > itr_evals;
-        // evaluation names 
+        // evaluation names
         std::vector<std::string> eval_names;
     private:
         // all the configurations
@@ -265,29 +265,29 @@ namespace cxxnet{
         // maximum number of round to train
         int max_round;
         // continue from model folder
-        int continue_training;        
-        // whether to save model after each round        
+        int continue_training;
+        // whether to save model after each round
         int save_period;
         // start counter of model
-        int start_counter; 
+        int start_counter;
         // whether to be silent
         int silent;
         // device of the trainer
         std::string device;
         // task of the job
         std::string task;
-        // input model name 
+        // input model name
         std::string name_model_in;
-        // training data 
+        // training data
         std::string name_data;
-        // folder name of output  
+        // folder name of output
         std::string name_model_dir;
         // file name to write prediction
         std::string name_pred;
     };
 };
 
-int main( int argc, char *argv[] ){    
+int main( int argc, char *argv[] ){
     cxxnet::CXXNetLearnTask tsk;
     return tsk.Run( argc, argv );
 }

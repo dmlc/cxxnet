@@ -11,7 +11,7 @@
 #define fopen64 fopen
 #else
 
-// use 64 bit offset, either to include this header in the beginning, or 
+// use 64 bit offset, either to include this header in the beginning, or
 #ifdef _FILE_OFFSET_BITS
 #if _FILE_OFFSET_BITS == 32
 #warning "FILE OFFSET BITS defined to be 32 bit"
@@ -24,7 +24,7 @@
 #endif
 
 #define _FILE_OFFSET_BITS 64
-extern "C"{    
+extern "C"{
 #include <sys/types.h>
 };
 #include <cstdio>
@@ -48,11 +48,11 @@ namespace cxxnet{
             fprintf( stderr, "Error:%s\n",msg );
             exit( -1 );
         }
-        
+
         inline void Assert( bool exp ){
             if( !exp ) Error( "AssertError" );
         }
-        
+
         inline void Assert( bool exp, const char *msg ){
             if( !exp ) Error( msg );
         }
@@ -69,7 +69,7 @@ namespace cxxnet{
                 exit( -1 );
             }
             return fp;
-        }       
+        }
     };
 };
 #endif

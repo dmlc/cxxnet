@@ -4,8 +4,8 @@ export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
 export CAFFE=/home/source/caffe
-export CFLAGS = -Wall -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ 
-export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand  -lX11
+export CFLAGS = -Wall -O3 -msse4 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ -I/usr/local/cuda-5.5/include/ -DMSHADOW_USE_SSE=1 -I$(CAFFE)/include -DCXXNET_ADAPT_CAFFE=1 -DBOOST_NOINLINE='__attribute__ ((noinline))'
+export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -L/usr/local/cuda-5.5/lib64/ -lcaffe -lX11
 export NVCCFLAGS = -O3 -ccbin $(CXX)
 
 # specify tensor path

@@ -17,14 +17,14 @@ namespace cxxnet{
     public:
         ImageIterator( void ){
             img_.set_pad( false );
-            fplst_ = NULL; 
-            silent_ = 0; 
+            fplst_ = NULL;
+            silent_ = 0;
             grey_scale_ = 0;
             path_imgdir_ = "";
             path_imglst_ = "img.lst";
         }
         virtual ~ImageIterator( void ){
-            if( fplst_ != NULL ) fclose( fplst_ ); 
+            if( fplst_ != NULL ) fclose( fplst_ );
         }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "image_list" ) )    path_imglst_ = val;
@@ -38,13 +38,14 @@ namespace cxxnet{
                 printf("ImageIterator:image_list=%s, grey=%d\n", path_imglst_.c_str(), grey_scale_ );
             }
             this->BeforeFirst();
+
         }
         virtual void BeforeFirst( void ){
             fseek( fplst_ , 0, SEEK_SET );
         }
         virtual bool Next( void ){
             char fname[ 256 ], sname[256];
-            while( fscanf( fplst_,"%u%f%[^\n]\n", &out_.index, &out_.label, fname ) == 1 ){
+            while( fscanf( fplst_,"%u%f %[^\n]\n", &out_.index, &out_.label, fname ) == 3 ){
                 if( fname[0] == '\0' ) continue;
                 if( path_imgdir_.length() == 0 ){
                     this->LoadImage( fname );
@@ -72,8 +73,8 @@ namespace cxxnet{
             }else{
                 res = img * (1.0f/256.0f);
             }
-            
-            img_.Resize( mshadow::Shape3( res.spectrum(), res.height(), res.width() ) );           
+
+            img_.Resize( mshadow::Shape3( res.spectrum(), res.height(), res.width() ) );
             for( index_t z = 0; z < img_.shape[2]; ++z ){
                 for( index_t y = 0; y < img_.shape[1]; ++y ){
                     for( index_t x = 0; x < img_.shape[0]; ++x ){
@@ -90,7 +91,7 @@ namespace cxxnet{
         int grey_scale_;
         // output data
         DataInst out_;
-        // file pointer to list file, information file 
+        // file pointer to list file, information file
         FILE *fplst_;
         // prefix path of image folder, path to input lst, format: imageid label path
         std::string path_imgdir_, path_imglst_;
