@@ -616,12 +616,12 @@ namespace cxxnet {
             mask_.Resize( out_.data.shape );
         }
     private:
+        /*! \brief random number generator */
+        mshadow::Random<xpu> &rnd_;
         /*! \brief output node */
         Node<xpu> &out_;
         /*! \brief dropout mask */
         mshadow::TensorContainer<xpu, 4> mask_;
-        /*! \brief random number generator */
-        mshadow::Random<xpu> &rnd_;
         /*! \brief parameters that potentially be useful */
         LayerParam param_;
     }; // class DropoutLayer

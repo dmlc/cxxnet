@@ -37,10 +37,25 @@ namespace cxxnet {
 
 namespace cxxnet {
     /*! 
+     * \brief create a CPU net implementation 
+     * \param net_type network type, used to select trainer variants
+     */
+    INetTrainer* CreateNetCPU( int net_type );
+    /*! 
+     * \brief create a GPU net implementation 
+     * \param net_type network type, used to select trainer variants
+     */
+    INetTrainer* CreateNetGPU( int net_type );
+    /*! 
      * \brief create a net implementation 
      * \param net_type network type, used to select trainer variants
      * \param device device type
      */
-    INetTrainer* CreateNet( int net_type, const char *device );
+    inline INetTrainer* CreateNet( int net_type, const char *device ){
+        if( !strcmp( device, "cpu") ) return CreateNetCPU( net_type );
+        if( !strcmp( device, "gpu") ) return CreateNetGPU( net_type );
+        utils::Error("unknown device type" );
+        return NULL;
+    }
 };
 #endif // CXXNET_H
