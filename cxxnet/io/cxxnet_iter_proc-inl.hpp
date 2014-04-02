@@ -3,7 +3,7 @@
 #pragma once
 /*!
  * \file cxxnet_iter_proc-inl.hpp
- * \brief definition of preprocessing iterators that takes an iterator and do some preprocessing 
+ * \brief definition of preprocessing iterators that takes an iterator and do some preprocessing
  * \author Tianqi Chen
  */
 #include "mshadow/tensor.h"
@@ -82,7 +82,7 @@ namespace cxxnet {
             using namespace mshadow::expr;
             out_.labels[top] = d.label;
             out_.inst_index[top] = d.index;
-            
+
             utils::Assert( d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1] );
             if( shape_[1] == 1 ){
                 out_.data[top] = d.data * scale_;
@@ -101,7 +101,7 @@ namespace cxxnet {
                     out_.data[top] = crop( d.data, out_.data[0][0].shape, yy, xx ) * scale_ ;
                 }
             }
-        }         
+        }
     private:
         // base iterator
         IIterator<DataInst> *base_;
@@ -110,9 +110,9 @@ namespace cxxnet {
         // input shape
         mshadow::Shape<4> shape_;
         // output data
-        DataBatch out_;        
+        DataBatch out_;
         // scale of data
-        mshadow::real_t scale_;        
+        mshadow::real_t scale_;
         // whether we do random cropping
         int rand_crop_;
         // whether we do random mirroring
@@ -120,7 +120,7 @@ namespace cxxnet {
         // use round roubin to handle overflow batch
         int round_batch_;
         // number of overflow instances that readed in round_batch mode
-        int num_oveflow_;        
+        int num_oveflow_;
     };
 };
 
@@ -139,12 +139,12 @@ namespace cxxnet{
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "silent") ) silent_ = atoi( val );
             itr.SetParam( name, val );
-        }        
+        }
         virtual void Init( void ){
             utils::Assert( itr.Init() ) ;
             if( silent_ == 0 ){
                 printf( "ThreadBufferIterator: buffer_size=%d\n", itr.buf_size );
-            }            
+            }
         }
         virtual void BeforeFirst(){
             itr.BeforeFirst();
@@ -155,7 +155,7 @@ namespace cxxnet{
             }else{
                 return false;
             }
-        }       
+        }
         virtual const DataBatch &Value() const{
             return out_;
         }
@@ -164,21 +164,21 @@ namespace cxxnet{
         public:
             IIterator< DataBatch > *base_;
         public:
-            Factory( void ){ 
-                base_ = NULL; 
+            Factory( void ){
+                base_ = NULL;
             }
             inline void SetParam( const char *name, const char *val ){
                 base_->SetParam( name, val );
-            }       
-            inline bool Init(){ 
+            }
+            inline bool Init(){
                 base_->Init();
                 utils::Assert( base_->Next(), "ThreadBufferIterator: input can not be empty" );
                 oshape_ = base_->Value().data.shape;
                 batch_size_ = base_->Value().batch_size;
                 base_->BeforeFirst();
                 return true;
-            }            
-            inline bool LoadNext( DataBatch &val ){        
+            }
+            inline bool LoadNext( DataBatch &val ){
                 if( base_->Next() ){
                     val.CopyFrom( base_->Value() );
                     return true;
@@ -189,20 +189,20 @@ namespace cxxnet{
             inline DataBatch Create( void ){
                 DataBatch a; a.AllocSpace( oshape_, batch_size_ );
                 return a;
-            }            
-            inline void FreeSpace( DataBatch &a ){        
+            }
+            inline void FreeSpace( DataBatch &a ){
                 a.FreeSpace();
-            }                
+            }
             inline void Destroy(){
                 if( base_ != NULL ) delete base_;
-            }            
+            }
             inline void BeforeFirst(){
                 base_->BeforeFirst();
             }
         private:
             mshadow::index_t batch_size_;
             mshadow::Shape<4> oshape_;
-        };        
+        };
     private:
         int silent_;
         DataBatch out_;
