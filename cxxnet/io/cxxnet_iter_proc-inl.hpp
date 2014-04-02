@@ -19,6 +19,8 @@ namespace cxxnet {
         BatchAdaptIterator( IIterator<DataInst> *base ):base_(base){
             rand_crop_ = 0;
             rand_mirror_ = 0;
+            // scale data
+            scale_ = 1.0f;
             // use round roubin to handle overflow batch
             round_batch_ = 0;
             // number of overflow instances that readed in round_batch mode
@@ -38,6 +40,8 @@ namespace cxxnet {
             if( !strcmp( name, "round_batch") ) round_batch_ = atoi(val);
             if( !strcmp( name, "rand_crop") )   rand_crop_ = atoi(val);
             if( !strcmp( name, "rand_mirror") ) rand_mirror_ = atoi( val );
+            if( !strcmp( name, "divideby") )    scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
+            if( !strcmp( name, "scale") )       scale_ = static_cast<mshadow::real_t>( atof(val) );
         }
         virtual void Init( void ){
             base_->Init();
@@ -81,7 +85,7 @@ namespace cxxnet {
             
             utils::Assert( d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1] );
             if( shape_[1] == 1 ){
-                mshadow::Copy( out_.data[top], d.data );
+                out_.data[top] = d.data * scale_;
             }else{
                 mshadow::index_t yy = d.data.shape[1] - shape_[1];
                 mshadow::index_t xx = d.data.shape[0] - shape_[0];
@@ -92,12 +96,12 @@ namespace cxxnet {
                     yy /= 2; xx/=2;
                 }
                 if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
-                    out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) );
+                    out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) ) * scale_;
                 }else{
-                    out_.data[top] = crop( d.data, out_.data[0][0].shape, yy, xx );                        
+                    out_.data[top] = crop( d.data, out_.data[0][0].shape, yy, xx ) * scale_ ;
                 }
-            }   
-        }             
+            }
+        }         
     private:
         // base iterator
         IIterator<DataInst> *base_;
@@ -106,7 +110,9 @@ namespace cxxnet {
         // input shape
         mshadow::Shape<4> shape_;
         // output data
-        DataBatch out_;
+        DataBatch out_;        
+        // scale of data
+        mshadow::real_t scale_;        
         // whether we do random cropping
         int rand_crop_;
         // whether we do random mirroring
@@ -125,7 +131,7 @@ namespace cxxnet{
         ThreadBufferIterator( IIterator<DataBatch> *base ){
             silent_ = 0;
             itr.get_factory().base_ = base;
-            itr.SetParam( "buffer_size", "4" );
+            itr.SetParam( "buffer_size", "2" );
         }
         virtual ~ThreadBufferIterator(){
             itr.Destroy();

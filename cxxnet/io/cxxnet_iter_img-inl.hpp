@@ -21,7 +21,6 @@ namespace cxxnet{
             silent_ = 0;
             path_imgdir_ = "";
             path_imglst_ = "img.lst";
-            scale_ = 1.0f;
         }
         virtual ~ImageIterator( void ){
             if( fplst_ != NULL ) fclose( fplst_ );
@@ -30,7 +29,6 @@ namespace cxxnet{
             if( !strcmp( name, "image_list" ) )    path_imglst_ = val;
             if( !strcmp( name, "image_root") )     path_imgdir_ = val;
             if( !strcmp( name, "silent"   ) )      silent_ = atoi( val );
-            if( !strcmp( name, "divideby") )       scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
         }
         virtual void Init( void ){
             fplst_  = utils::FopenCheck( path_imglst_.c_str(), "r" );
@@ -71,7 +69,7 @@ namespace cxxnet{
             for( index_t z = 0; z < img_.shape[2]; ++z ){
                 for( index_t y = 0; y < img_.shape[1]; ++y ){
                     for( index_t x = 0; x < img_.shape[0]; ++x ){
-                        img_[z][y][x] = res( x, y, z ) * scale_;
+                        img_[z][y][x] = res( x, y, z );
                     }
                 }
             }
@@ -80,8 +78,6 @@ namespace cxxnet{
     private:
         // silent
         int silent_;
-        // scale
-        mshadow::real_t scale_;
         // output data
         DataInst out_;
         // file pointer to list file, information file

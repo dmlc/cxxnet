@@ -21,7 +21,6 @@ namespace cxxnet{
             buffer_size_ = 128;
             path_imglst_ = "img.lst";
             path_imgbin_ = "img.bin";
-            scale_ = 1.0f;
             skip_read_ = 0;
         }
         virtual ~BinaryIterator( void ){
@@ -33,7 +32,6 @@ namespace cxxnet{
             if( !strcmp( name, "image_list" ) )    path_imglst_ = val;
             if( !strcmp( name, "image_bin") )      path_imgbin_ = val;
             if( !strcmp( name, "image_bin_buffer") ) buffer_size_ = (size_t)atoi(val);
-            if( !strcmp( name, "divideby") )         scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
             if( !strcmp( name, "silent"   ) )        silent_ = atoi( val );
             if( !strcmp( name, "skip_read"   ) )     skip_read_ = atoi( val );
         }
@@ -86,7 +84,7 @@ namespace cxxnet{
             }
             mshadow::index_t n = img_.shape.Size();
             for( mshadow::index_t i = 0; i < n; ++ i ){
-                img_.dptr[i] = static_cast<mshadow::real_t>( buf_[ buf_top_*n + i ] ) * scale_;
+                img_.dptr[i] = static_cast<mshadow::real_t>( buf_[ buf_top_*n + i ] );
             }
             out_.data = img_; buf_top_ += 1;
         }
@@ -115,8 +113,6 @@ namespace cxxnet{
         utils::ISeekStream *fpbin_;
         // prefix path of image binary file, path to input lst, format: imageid label path
         std::string path_imgbin_, path_imglst_;
-        // scale output
-        mshadow::real_t scale_;
         // temp storage for image
         mshadow::TensorContainer<cpu,3> img_;
     };
