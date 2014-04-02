@@ -1,10 +1,10 @@
 # set LD_LIBRARY_PATH
-
 export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
-export CFLAGS = -Wall -O3 -msse4 -Wno-unknown-pragmas -funroll-loops -fopenmp -I../mshadow/ -DMSHADOW_USE_SSE=1 
-export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lcaffe -lX11
+
+export CFLAGS = -Wall -O3 -msse4 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ -DMSHADOW_USE_SSE=1
+export LDFLAGS= `pkg-config --libs opencv` -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lX11
 export NVCCFLAGS = -O3 -ccbin $(CXX)
 
 # specify tensor path
