@@ -21,6 +21,7 @@ namespace cxxnet{
             name_model_dir = "models";
             device = "gpu";
             num_round = 10;
+            io_test = 0;
             silent = start_counter = 0;
             max_round = INT_MAX;
             continue_training = 0;
@@ -78,6 +79,7 @@ namespace cxxnet{
             if( !strcmp( name, "pred" ))              name_pred   = val;
             if( !strcmp( name, "task") )              task = val;
             if( !strcmp( name, "dev") )               device = val;
+            if( !strcmp( name, "io_test") )           io_test = atoi(val);
             cfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
         }
     private:
@@ -202,7 +204,9 @@ namespace cxxnet{
             if( continue_training == 0 ){
                 this->SaveModel();
             }
-
+            if( io_test != 0 ){ 
+                printf("start I/O test\n");
+            }
             int cc = max_round;
             while( start_counter <= num_round && cc -- ) {
                 if( !silent ){
@@ -212,7 +216,9 @@ namespace cxxnet{
                 net_trainer->StartRound( start_counter );
                 itr_train->BeforeFirst();
                 while( itr_train->Next() ){
-                    net_trainer->Update( itr_train->Value() );
+                    if( io_test == 0 ){
+                        net_trainer->Update( itr_train->Value() );
+                    }
                     if( ++ sample_counter  % print_step == 0 ){
                         elapsed = (long)(time(NULL) - start);
                         if( !silent ){
@@ -224,11 +230,13 @@ namespace cxxnet{
                     }
                 }
                 
-                {// code handling evaluation
+                if( io_test == 0 ){
+                    // code handling evaluation
                     fprintf( stderr, "[%d]", start_counter );
                     if( eval_train ){
                         net_trainer->Evaluate( stderr, itr_train, "train" );
                     }
+
                     for( size_t i = 0; i < itr_evals.size(); ++i ){
                         net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
                     }
@@ -258,6 +266,8 @@ namespace cxxnet{
         // all the configurations
         std::vector< std::pair< std::string, std::string> > cfg;
     private:
+        // whether test io only
+        int io_test;
         // whether evaluate training loss
         int eval_train;
         // how may samples before print information

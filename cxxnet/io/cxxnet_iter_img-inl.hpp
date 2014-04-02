@@ -19,9 +19,9 @@ namespace cxxnet{
             img_.set_pad( false );
             fplst_ = NULL;
             silent_ = 0;
-            grey_scale_ = 0;
             path_imgdir_ = "";
             path_imglst_ = "img.lst";
+            scale_ = 1.0f;
         }
         virtual ~ImageIterator( void ){
             if( fplst_ != NULL ) fclose( fplst_ );
@@ -29,13 +29,13 @@ namespace cxxnet{
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "image_list" ) )    path_imglst_ = val;
             if( !strcmp( name, "image_root") )     path_imgdir_ = val;
-            if( !strcmp( name, "grey_scale" ) )    grey_scale_ = atoi( val );
             if( !strcmp( name, "silent"   ) )      silent_ = atoi( val );
+            if( !strcmp( name, "divideby") )       scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
         }
         virtual void Init( void ){
             fplst_  = utils::FopenCheck( path_imglst_.c_str(), "r" );
             if( silent_ == 0 ){
-                printf("ImageIterator:image_list=%s, grey=%d\n", path_imglst_.c_str(), grey_scale_ );
+                printf("ImageIterator:image_list=%s\n", path_imglst_.c_str() );
             }
             this->BeforeFirst();
 
@@ -63,22 +63,15 @@ namespace cxxnet{
     private:
         inline void LoadImage( const char *fname ){
             using namespace cimg_library;
-            CImg<real_t> img( fname ), res;
+            CImg<real_t> res( fname );
             // todo add depth to channel
-            utils::Assert( img.depth() == 1, "can not handle 3D image so far" );
-
-            if( grey_scale_ ){
-                res = img.norm( 2 );
-                res.normalize( 0, 1 );
-            }else{
-                res = img * (1.0f/256.0f);
-            }
+            utils::Assert( res.depth() == 1, "can not handle 3D image so far" );
 
             img_.Resize( mshadow::Shape3( res.spectrum(), res.height(), res.width() ) );
             for( index_t z = 0; z < img_.shape[2]; ++z ){
                 for( index_t y = 0; y < img_.shape[1]; ++y ){
                     for( index_t x = 0; x < img_.shape[0]; ++x ){
-                        img_[z][y][x] = res( x, y, z );
+                        img_[z][y][x] = res( x, y, z ) * scale_;
                     }
                 }
             }
@@ -87,8 +80,8 @@ namespace cxxnet{
     private:
         // silent
         int silent_;
-        // whether enforce grey scale
-        int grey_scale_;
+        // scale
+        mshadow::real_t scale_;
         // output data
         DataInst out_;
         // file pointer to list file, information file

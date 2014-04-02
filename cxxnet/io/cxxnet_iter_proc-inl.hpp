@@ -81,7 +81,7 @@ namespace cxxnet {
             
             utils::Assert( d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1] );
             if( shape_[1] == 1 ){
-                    mshadow::Copy( out_.data[top], d.data );
+                mshadow::Copy( out_.data[top], d.data );
             }else{
                 mshadow::index_t yy = d.data.shape[1] - shape_[1];
                 mshadow::index_t xx = d.data.shape[0] - shape_[0];
@@ -125,7 +125,7 @@ namespace cxxnet{
         ThreadBufferIterator( IIterator<DataBatch> *base ){
             silent_ = 0;
             itr.get_factory().base_ = base;
-            itr.SetParam( "buffer_size", "32" );
+            itr.SetParam( "buffer_size", "4" );
         }
         virtual ~ThreadBufferIterator(){
             itr.Destroy();

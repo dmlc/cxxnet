@@ -127,7 +127,7 @@ namespace cxxnet{
         virtual ~SGDUpdater( void ){}
         virtual void Init( void ){
             if( param.silent == 0 ){
-                printf("SGDUpdater: eta=%f, mom=%f\n", param.learning_rate, param.momentum );
+                printf("SGDUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum );
             }
         }
         virtual void Update( long epoch ){
@@ -184,7 +184,7 @@ namespace cxxnet{
         }
         virtual void Init( void ){
             if( param.silent == 0 ){
-                printf("SGDHMCUpdater: eta=%f, mom=%f\n", param.learning_rate, param.momentum );
+                printf("SGDHMCUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum );
             }
         }
         // update model parameters
