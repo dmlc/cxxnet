@@ -38,13 +38,16 @@ namespace cxxnet {
         virtual ~IUpdater( void ){}
         /*! \brief intialize, print information about updater if not silent */
         virtual void Init( void ) = 0;
-        /*! \brief update parameter */
-        virtual void Update( void ) = 0;
         /*!
          * \brief inform the updater that starting round iteration over data
          * \param round round counter
          */
         virtual void StartRound( int round ) = 0;
+        /*! 
+         * \brief update parameter 
+         * \param epoch what current epoch is. epoch is number of mini-batches passed, while round is one pass over training data
+         */
+        virtual void Update( long epoch ) = 0;
         /*!\ brief set parameters that could be spefic to this updater */
         virtual void SetParam( const char *name, const char *val ) = 0;
     public:

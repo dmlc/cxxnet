@@ -20,13 +20,19 @@ namespace cxxnet {
         virtual void SetParam( const char *name, const char *val ) = 0;
         // random initalize model
         virtual void InitModel( void ) = 0;
-        // tell trainer which round it is
-        virtual void StartRound( int epoch ) = 0;
         // save model to stream
         virtual void SaveModel( mshadow::utils::IStream &fo ) const = 0;
         // load model from stream
         virtual void LoadModel( mshadow::utils::IStream &fi ) = 0;
-        // update model parameter
+        /*!
+         * \brief inform the updater that a new round has been started
+         * \param round round counter
+         */
+        virtual void StartRound( int round ) = 0;
+        /*! 
+         * \brief update model parameter 
+         * \param training data batch 
+         */
         virtual void Update( const DataBatch& data ) = 0;
         // evaluate a test statistics, output results into fo
         virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ) = 0;

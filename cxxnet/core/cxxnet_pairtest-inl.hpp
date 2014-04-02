@@ -27,8 +27,8 @@ namespace cxxnet{
             virtual void Init( void ){
                 umaster_->Init(); uslave_->Init();
             }
-            virtual void Update( void ){
-                umaster_->Update();  uslave_->Update();
+            virtual void Update( long epoch ){
+                umaster_->Update( epoch );  uslave_->Update( epoch );
                 umaster_->GetData( w_mst_, g_mst_ );
                 uslave_->GetData( w_slv_, g_slv_ );
                 CmpResult( w_mst_, w_slv_, "update:weight", tag_ );

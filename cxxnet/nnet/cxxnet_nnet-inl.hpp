@@ -27,11 +27,14 @@ namespace cxxnet {
             mshadow::Shape<3> shape_in;
             /*! \brief whether the network is initialized */
             int init_end;
+            /*! \brief number of epoches pass so far */
+            int64_t num_epoch_passed;
             /*! \brief reserved flag, used to extend data structure */
             int reserved_flag;
             /*! \brief constructor, reserved flag */
             Param( void ){
                 init_end = 0;
+                num_epoch_passed = 0;
                 reserved_flag = 0;
             }
             /*! \brief get input shape, given number of batches */
@@ -63,6 +66,7 @@ namespace cxxnet {
     public:
         /*! \brief set model parameters */
         inline void SetParam( const char *name, const char *val ){
+            if( !strcmp( name, "reset_epoch") ) param.num_epoch_passed = (int64_t)atol( val );
             if( param.init_end != 0 ) return;
             if( !strcmp( name, "input_shape") ){
                 unsigned x, y, z;
@@ -305,10 +309,12 @@ namespace cxxnet {
             }
         }
         /*! \brief update model parameters  */
-        inline void Update( void ){
+        inline void Update( void ){            
             for( size_t i = 0; i < updaters.size(); ++ i ){
-                updaters[i]->Update();
+                updaters[i]->Update( meta.param.num_epoch_passed );
             }
+            // update epoch
+            meta.param.num_epoch_passed += 1;
         }
         /*!
          * \brief notify round start

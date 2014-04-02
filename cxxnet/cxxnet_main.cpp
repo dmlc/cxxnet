@@ -102,7 +102,7 @@ namespace cxxnet{
             do{
                 if( last != NULL ) fclose( last );
                 last = fi;
-                sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++ );
+                sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++ );                
                 fi = fopen64( name, "rb");
             }while( fi != NULL );
 
@@ -223,15 +223,17 @@ namespace cxxnet{
                         }
                     }
                 }
+                
                 {// code handling evaluation
-                    fprintf(stderr, "[%d]", start_counter );
+                    fprintf( stderr, "[%d]", start_counter );
                     if( eval_train ){
                         net_trainer->Evaluate( stderr, itr_train, "train" );
                     }
                     for( size_t i = 0; i < itr_evals.size(); ++i ){
                         net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
                     }
-                    fprintf(stderr, "\n" );
+                    fprintf( stderr, "\n" ); 
+                    fflush( stderr );
                 }
                 elapsed = (unsigned long)(time(NULL) - start);
                 this->SaveModel();

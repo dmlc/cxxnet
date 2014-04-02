@@ -31,12 +31,36 @@ namespace cxxnet{
         float wd;
         /*! \brief momentum  */
         float momentum;
+        // scheduling parameters
+        /*! \brief type of learning rate schedule */
+        int lr_schedule;
+        /*! \brief base learning rate */
+        float base_lr_;
+        /*! \brief period of lr decay */
+        long lr_step;
+        /*! \brief decay parameter gamma */
+        float lr_gamma;
+        /*! \brief decay parameter gamma */
+        float lr_alpha;
         /*! \brief constructor that sets default parameters */
         UpdaterParam( void ){
-            learning_rate = 0.01f;
+            base_lr_ = 0.01f;
+            lr_schedule = 0;
+            lr_step = 1;
+            lr_alpha = 0.5f;
+            lr_gamma = 0.5f;
             wd = 0.0f;
             momentum = 0.9f;
             silent = 0;
+        }
+        /*! \brief do learning rate or other parameter schedule at round epoch */
+        inline void ScheduleEpoch( long epoch ){
+            switch( lr_schedule ){
+            case 0: learning_rate = base_lr_; break;
+            case 1: learning_rate = base_lr_ * powf( lr_gamma, epoch / lr_step ); break;
+            case 2: learning_rate = base_lr_ * powf( 1.0f + (epoch/lr_step) * lr_gamma, -lr_alpha ); break;
+            default: utils::Error("unknown schedule type");
+            }
         }
         /*!
          * \brief Set param for the layer from string
@@ -49,11 +73,25 @@ namespace cxxnet{
             if( !strncmp( name, tag.c_str(), tag.length() ) ){
                 if( name[tag.length()] == ':' ) name += tag.length() + 1;
             }
-            if( !strcmp( name, "lr") )  learning_rate = (float)atof(val);
-            if( !strcmp( name, "eta") ) learning_rate = (float)atof(val);
+            if( !strcmp( name, "lr") )            base_lr_ = (float)atof(val);
+            if( !strcmp( name, "eta") )           base_lr_ = (float)atof(val);
             if( !strcmp( name, "wd") )            wd = (float)atof(val);
             if( !strcmp( name, "momentum") )      momentum = (float)atof(val);
             if( !strcmp( name, "silent") )        silent = atoi(val);
+
+            if( !strncmp( name, "lr:", 3 ) || !strncmp( name, "eta:",4 ) ) {
+                if( !strncmp( name, "lr:", 3 ) ) name += 3;
+                else name += 4;
+                if( !strcmp( name, "schedule") ){
+                    if( !strcmp( val, "constant") )  lr_schedule = 0;
+                    if( !strcmp( val, "expdecay") )  lr_schedule = 1;
+                    if( !strcmp( val, "polydecay") ) lr_schedule = 2;
+                    utils::Error("unknown lr schedule type");
+                }
+                if( !strcmp( name, "gamma") ) lr_gamma = (float)atof( val );
+                if( !strcmp( name, "alpha") ) lr_alpha = (float)atof( val );
+                if( !strcmp( name, "step") )  lr_step = atol( val );
+            }
         }
     };
 }; // namespace cxxnet
@@ -73,7 +111,8 @@ namespace cxxnet{
                 printf("SGDUpdater: eta=%f, mom=%f\n", param.learning_rate, param.momentum );
             }
         }
-        virtual void Update( void ){
+        virtual void Update( long epoch ){
+            param.ScheduleEpoch( epoch );
             m_w *= param.momentum;
             m_w += (-param.learning_rate) * ( dw + param.wd * w );
             w += m_w;
@@ -130,7 +169,8 @@ namespace cxxnet{
             }
         }
         // update model parameters
-        virtual void Update( void ){
+        virtual void Update( long epoch ){
+            param.ScheduleEpoch( epoch );
             if( param.need_hypersample() && param.hyper_sampled  == 0 ) {
                 this->UpdateHyper(); param.hyper_sampled = 1;
             }

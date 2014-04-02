@@ -45,7 +45,7 @@ namespace cxxnet{
             virtual void Init( void ){
                 base_->Init();
             }
-            virtual void Update( void ) {
+            virtual void Update( long epoch ) {
                 if( xpu::kDevCPU ){
                     utils::Assert( blb_->mutable_cpu_data() == weight_.dptr, "CaffeUpdater" );
                     utils::Assert( blb_->mutable_cpu_diff() == grad_.dptr, "CaffeUpdater" );
@@ -53,7 +53,7 @@ namespace cxxnet{
                     utils::Assert( blb_->mutable_gpu_data() == weight_.dptr, "CaffeUpdater" );
                     utils::Assert( blb_->mutable_gpu_diff() == grad_.dptr, "CaffeUpdater" );
                 }
-                base_->Update();
+                base_->Update( epoch );
             }
             virtual void StartRound( int round ) {
                 base_->StartRound( round );
