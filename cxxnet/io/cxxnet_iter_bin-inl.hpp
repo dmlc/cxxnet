@@ -37,7 +37,11 @@ namespace cxxnet{
             fplst_  = utils::FopenCheck( path_imglst_.c_str(), "r" );
             fpbin_  = utils::FopenCheck( path_imgbin_.c_str(), "rb" );
 
-            utils::Assert( fread( &dshape_, sizeof(dshape_), 1, fpbin_ ), "BinaryIterator: load header");
+            utils::Assert( fread( &dshape_[3], sizeof(mshadow::index_t), 1, fpbin_ ), "BinaryIterator: load header");
+            utils::Assert( fread( &dshape_[2], sizeof(mshadow::index_t), 1, fpbin_ ), "BinaryIterator: load header");
+            utils::Assert( fread( &dshape_[1], sizeof(mshadow::index_t), 1, fpbin_ ), "BinaryIterator: load header");
+            utils::Assert( fread( &dshape_[0], sizeof(mshadow::index_t), 1, fpbin_ ), "BinaryIterator: load header");
+
             img_.set_pad( false ); img_.Resize( dshape_.SubShape() );
             utils::Assert( img_.shape.Size() == img_.shape.MSize(), "BUG" );
 
