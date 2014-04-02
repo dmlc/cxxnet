@@ -9,13 +9,21 @@
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_container.h"
 #include "cxxnet_data.h"
+#include "../utils/cxxnet_global_random.h"
 #include "../utils/cxxnet_thread_buffer.h"
 
 namespace cxxnet {
     /*! \brief create a batch iterator from single instance iterator */
     class BatchAdaptIterator: public IIterator<DataBatch>{
     public:
-        BatchAdaptIterator( IIterator<DataInst> *base ):base_(base){}
+        BatchAdaptIterator( IIterator<DataInst> *base ):base_(base){
+            rand_crop_ = 0;
+            rand_mirror_ = 0;
+            // use round roubin to handle overflow batch
+            round_batch_ = 0;
+            // number of overflow instances that readed in round_batch mode
+            num_oveflow_ = 0;
+        }
         virtual ~BatchAdaptIterator( void ){
             delete base_;
             out_.FreeSpace();
@@ -27,6 +35,9 @@ namespace cxxnet {
                 utils::Assert( sscanf( val, "%u,%u,%u", &shape_[2],&shape_[1],&shape_[0] ) ==3,
                                "input_shape must be three consecutive integers without space example: 1,1,200 " );
             }
+            if( !strcmp( name, "round_batch") ) round_batch_ = atoi(val);
+            if( !strcmp( name, "rand_crop") )   rand_crop_ = atoi(val);
+            if( !strcmp( name, "rand_mirror") ) rand_mirror_ = atoi( val );
         }
         virtual void Init( void ){
             base_->Init();
@@ -37,23 +48,56 @@ namespace cxxnet {
             out_.AllocSpace( shape_, batch_size, false );
         }
         virtual void BeforeFirst( void ){
-            base_->BeforeFirst();
+            if( round_batch_ == 0 || num_oveflow_ == 0 ){
+                // otherise, we already called before first
+                base_->BeforeFirst();
+            }
         }
         virtual bool Next( void ){
-            using namespace mshadow::expr;
             index_t top = 0;
             while( base_->Next() ){
-                const DataInst &d = base_->Value();
-                out_.labels[top] = d.label;
-                out_.inst_index[top] = d.index;
-                out_.data[top] = crop( d.data, out_.data[0][0].shape );
+                this->SetData( top, base_->Value() );
                 if( ++ top >= shape_[3] ) return true;
+            }
+            if( top != 0 && round_batch_ != 0 ){
+                num_oveflow_ = 0;
+                base_->BeforeFirst();
+                for( ;top < shape_[3]; ++top, ++num_oveflow_ ){
+                    utils::Assert( base_->Next(), "number of input must be bigger than batch size" );
+                    this->SetData( top, base_->Value() );
+                }
+                return true;
             }
             return false;
         }
         virtual const DataBatch &Value( void ) const{
             return out_;
         }
+    private:
+        inline void SetData( int top, const DataInst & d ){
+            using namespace mshadow::expr;
+            out_.labels[top] = d.label;
+            out_.inst_index[top] = d.index;
+            
+            utils::Assert( d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1] );
+            if( shape_[1] == 1 ){
+                    mshadow::Copy( out_.data[top], d.data );
+            }else{
+                mshadow::index_t yy = d.data.shape[1] - shape_[1];
+                mshadow::index_t xx = d.data.shape[0] - shape_[0];
+                if( rand_crop_ != 0 ){
+                    yy = utils::NextUInt32( yy + 1 );
+                    xx = utils::NextUInt32( xx + 1 );
+                }else{
+                    yy /= 2; xx/=2;
+                }
+                if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
+                    out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) );
+                }else{
+                    out_.data[top] = crop( d.data, out_.data[0][0].shape, yy, xx );                        
+                }
+            }   
+        }             
     private:
         // base iterator
         IIterator<DataInst> *base_;
@@ -62,7 +106,15 @@ namespace cxxnet {
         // input shape
         mshadow::Shape<4> shape_;
         // output data
-        DataBatch out_;        
+        DataBatch out_;
+        // whether we do random cropping
+        int rand_crop_;
+        // whether we do random mirroring
+        int rand_mirror_;
+        // use round roubin to handle overflow batch
+        int round_batch_;
+        // number of overflow instances that readed in round_batch mode
+        int num_oveflow_;        
     };
 };
 
@@ -104,7 +156,7 @@ namespace cxxnet{
     private:
         struct Factory{
         public:
-            IIterator< DataBatch> *base_;
+            IIterator< DataBatch > *base_;
         public:
             Factory( void ){ 
                 base_ = NULL; 
