@@ -82,9 +82,11 @@ namespace cxxnet {
     public:
         // interface code that not needed to be implemented by all nodes
         /*!
-         * \brief adjust output node shape, according to current layers' configuration
+         * \brief intialize the temp parameters, 
+         *  adjust output node shape, according to current layers' configuration
+         *  this function will be called everytime before using a layer
          */
-        virtual void AdjustNodeShape( void ){}
+        virtual void InitLayer( void ){}
         /*!
          * \brief Get updaters for the layer
          * \param specified updater type
@@ -98,7 +100,7 @@ namespace cxxnet {
          */
         virtual void SetParam(const char *name, const char* val) {}
         /*!
-         * \brief intialized model parameters
+         * \brief intialized model parameters, only called when model parameters are not initlzied
          */
         virtual void InitModel(void) {}
         /*!

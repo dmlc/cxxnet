@@ -82,11 +82,11 @@ namespace cxxnet{
             }
         }
     public:
-        virtual void AdjustNodeShape( void ){
+        virtual void InitLayer( void ){
             slv_in_.data.shape = in_.data.shape;
-            master_->AdjustNodeShape();
-            slave_->AdjustNodeShape();
-            utils::Assert( slv_out_.data.shape == out_.data.shape, "PairTestLayer:AdjustNodeShape mismatch" );
+            master_->InitLayer();
+            slave_->InitLayer();
+            utils::Assert( slv_out_.data.shape == out_.data.shape, "PairTestLayer:InitLayer mismatch" );
             AllocSpace( slv_in_.data );
             AllocSpace( slv_out_.data );
         }

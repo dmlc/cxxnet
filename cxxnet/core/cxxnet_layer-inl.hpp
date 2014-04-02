@@ -126,7 +126,7 @@ namespace cxxnet {
         virtual void Backprop(bool prop_grad){
             this->Backprop( prop_grad, wmat_ );
         }
-        virtual void AdjustNodeShape( void ) {
+        virtual void InitLayer( void ) {
             Assert( in_.is_mat(), "input need to be a matrix" );
             Assert( param_.num_hidden > 0, "must set nhidden correctly" );
             out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], param_.num_hidden );
@@ -143,16 +143,18 @@ namespace cxxnet {
         virtual void InitModel(void){
             // resize to correct shape
             wmat_.Resize( mshadow::Shape2( out_.data.shape[0], in_.data.shape[0] ) );
-            gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
-            gbias_.Resize( bias_.shape );
             // random initalize
             if (param_.random_type == kGaussian) {
                 EdgeLayer<xpu>::template InitGaussian<2> (wmat_, param_.init_sigma);
             } else {
                 EdgeLayer<xpu>::template InitXavier<2> (wmat_, wmat_.shape[0], wmat_.shape[1]);
             }
-            bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
+            bias_ = 0.0f; 
+            // setup gradient weight
+            gwmat_.Resize( wmat_.shape );
+            gbias_.Resize( bias_.shape );
+            gwmat_ = 0.0f; gbias_ = 0.0f;
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
             fo.Write( &param_, sizeof(LayerParam) );
@@ -163,6 +165,10 @@ namespace cxxnet {
             Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
             wmat_.LoadBinary( fi );
             bias_.LoadBinary( fi );
+            // setup gradient weight
+            gwmat_.Resize( wmat_.shape );
+            gbias_.Resize( bias_.shape );
+            gwmat_ = 0.0f; gbias_ = 0.0f;
         }
     protected:
         inline void Forward(mshadow::Tensor<xpu,2> wmat) {
@@ -284,7 +290,7 @@ namespace cxxnet {
                 }
             }
         }
-        virtual void AdjustNodeShape( void ) {
+        virtual void InitLayer( void ) {
             const index_t ksize   = static_cast<index_t>( param_.kernel_size );
             const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( in_.data.shape[2] % param_.num_group == 0,  "input channels must divide group size" );
@@ -316,17 +322,18 @@ namespace cxxnet {
             // resize to correct shape, use 2d to store the weight, since we use dot
             wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group,
                                            in_.data.shape[2] / param_.num_group * param_.kernel_size * param_.kernel_size ) );
-            gwmat_.Resize( wmat_.shape );
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
-            gbias_.Resize( bias_.shape );
 
             if (param_.random_type == kGaussian) {
-                EdgeLayer<xpu>::template InitGaussian<3> (wmat_, param_.init_sigma);
+                EdgeLayer<xpu>::InitGaussian(wmat_, param_.init_sigma);
             } else {
-                EdgeLayer<xpu>::template InitXavier<3> (wmat_, wmat_.shape[1], wmat_.shape[0]);
+                EdgeLayer<xpu>::InitXavier(wmat_, wmat_.shape[1], wmat_.shape[0]);
             }
-
-            bias_ = 0.0f; gwmat_ = 0.0f; gbias_ = 0.0f;
+            bias_ = 0.0f;
+            // setup gradient 
+            gwmat_.Resize( wmat_.shape );
+            gbias_.Resize( bias_.shape );
+            gwmat_ = 0.0f; gbias_ = 0.0f;
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const{
             fo.Write( &param_, sizeof(LayerParam) );
@@ -337,6 +344,10 @@ namespace cxxnet {
             Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
             wmat_.LoadBinary( fi );
             bias_.LoadBinary( fi );
+            // setup gradient 
+            gwmat_.Resize( wmat_.shape );
+            gbias_.Resize( bias_.shape );
+            gwmat_ = 0.0f; gbias_ = 0.0f;
         }
     private:
         /*! \brief parameters that potentially be useful */
@@ -388,7 +399,7 @@ namespace cxxnet {
         virtual void SetParam(const char *name, const char* val) {
             param_.SetParam( name, val );
         }
-        virtual void AdjustNodeShape() {
+        virtual void InitLayer() {
             const index_t ksize   = static_cast<index_t>( param_.kernel_size );
             const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
@@ -425,7 +436,7 @@ namespace cxxnet {
         virtual void Backprop( bool prop_grad ){
             in_.data = F<BackOp>( in_.data ) * out_.data;
         }
-        virtual void AdjustNodeShape( void ) {
+        virtual void InitLayer( void ) {
             out_.data.shape = in_.data.shape;
         }
     private:
@@ -455,7 +466,7 @@ namespace cxxnet {
                 in_.data = crop(out_.data, in_.data[0][0].shape);
             }
         }
-        virtual void AdjustNodeShape() {
+        virtual void InitLayer() {
             mshadow::Shape<4> oshape = mshadow::Shape4(in_.data.shape[3], in_.data.shape[2],
                                               in_.data.shape[1] + 2 * pad_,
                                               in_.data.shape[0] + 2 * pad_);
@@ -507,7 +518,7 @@ namespace cxxnet{
                 in_.data += ( - 2.0f * beta_ * salpha ) * chpool<red::sum>( out_.data * tmp_in * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ )  * tmp_in;
             }
         }
-        virtual void AdjustNodeShape( void ) {            
+        virtual void InitLayer( void ) {            
             out_.data.shape = in_.data.shape;
             tmp_in.Resize( in_.data.shape );
             tmp_norm.Resize( in_.data.shape );
@@ -548,7 +559,7 @@ namespace cxxnet{
                 in_.data = reshape( out_.data, in_.data.shape );
             }
         }
-        virtual void AdjustNodeShape( void ) {
+        virtual void InitLayer( void ) {
             mshadow::Shape<4> ishape = in_.data.shape;
             out_.data.shape = mshadow::Shape4( 1, 1, ishape[3], ishape[2]*ishape[1]*ishape[0] );
         }
@@ -580,7 +591,7 @@ namespace cxxnet {
             Parent::Backprop( prop_grad, tmpw_ );
             Parent::gwmat_ *= mask_;
         }
-        virtual void AdjustNodeShape( void ){
+        virtual void InitLayer( void ){
             this->mask_.Resize( mshadow::Shape2( this->out_.data.shape[0], this->in_.data.shape[0] ) );
         }
     private:
@@ -611,7 +622,7 @@ namespace cxxnet {
                 out_.data *= mask_;
             }
         }
-        virtual void AdjustNodeShape( void ) {
+        virtual void InitLayer( void ) {
             utils::Assert(param_.dropout_threshold >= 0.0f && param_.dropout_threshold < 1.0f, "DropoutLayer: invalid dropout threshold\n");
             mask_.Resize( out_.data.shape );
         }
@@ -646,8 +657,8 @@ namespace cxxnet{
             in_.Unpin(); out_.Unpin();
         }
     public:
-        virtual void AdjustNodeShape( void ){
-            base_->AdjustNodeShape();
+        virtual void InitLayer( void ){
+            base_->InitLayer();
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
             base_->GetUpdaters( updater, updaters );

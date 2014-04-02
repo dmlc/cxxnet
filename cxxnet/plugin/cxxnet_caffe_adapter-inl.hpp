@@ -130,7 +130,7 @@ namespace cxxnet{
                 }
             }
         }
-        virtual void AdjustNodeShape( void ){
+        virtual void InitLayer( void ){
             utils::Assert( mode_ != -1, "CaffeLayer: must specify mode: 0:flatten, 1:conv-channels" );
             mshadow::Shape<4> ishape = in_.data.shape;
             if( mode_ == 0 ){
@@ -182,7 +182,8 @@ namespace cxxnet{
         }
         virtual void SaveModel(mshadow::utils::IStream &fo) const {
             std::vector<char> buf;
-            const caffe::LayerParameter& lparam = base_->layer_param();
+            caffe::LayerParameter lparam = base_->layer_param();
+            base_->ToProto( &lparam );            
             int msize = lparam.ByteSize();
             buf.resize( msize );
             fo.Write( &msize, sizeof(int) );

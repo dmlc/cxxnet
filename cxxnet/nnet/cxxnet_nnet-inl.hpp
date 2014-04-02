@@ -150,7 +150,7 @@ namespace cxxnet {
             // adjust node Shape
             nodes[0].data.shape = meta.param.GetShapeIn( batch_size );
             for( size_t i = 0; i < layers.size(); ++i ){
-                layers[i]->AdjustNodeShape();
+                layers[i]->InitLayer();
                 if( init_model ) layers[i]->InitModel();
             }
             // configure updaters
@@ -268,7 +268,7 @@ namespace cxxnet {
         }
         /*! \brief save model to file */
         inline void SaveModel( mshadow::utils::IStream &fo ) const {
-            meta.SaveModel( fo );
+            meta.SaveModel( fo );            
             for( int i = 0; i < meta.param.num_layers; ++ i ){
                 layers[i]->SaveModel( fo );
             }
