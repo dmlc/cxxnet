@@ -81,8 +81,8 @@ namespace cxxnet {
             // allocate continuous memory
             img_.dptr = new float[ img_.shape.MSize() ];
             for (index_t cnt = 0; cnt < file_list_.size(); ++cnt) {
-                std::string f_path = path_ + file_list_[cnt];
-                utils::BinFile file( f_path.c_str(), "rb" );
+                std::string f_path = path_ + file_list_[cnt];                
+                utils::StdFile file( f_path.c_str(), "rb" );
                 for (index_t i = 0 ; i < image_count; ++i) {
                     labels_[i + cnt * image_count] = file.ReadByte();
                     inst_.push_back( (unsigned)(i + cnt * image_count) + inst_offset_ );

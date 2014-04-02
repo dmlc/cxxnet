@@ -13,7 +13,34 @@ namespace cxxnet{
     namespace utils{
         typedef mshadow::utils::IStream IStream;
 
-        struct GzFile : public IStream{
+        /*! 
+         * \brief interface of stream that containes seek option, 
+         *   mshadow does not rely on this interface
+         *   this is not always supported(e.g. in socket)
+         */
+        class ISeekStream : public IStream{
+        public:
+            /*! 
+             * \brief seek to a position, warning: 
+             * \param pos relative position to start of stream
+             */
+            virtual void Seek( size_t pos ){
+                utils::Error("Seek is not implemented");
+            }
+        public:
+            inline int ReadInt( void ) {
+                unsigned char buf[4];
+                utils::Assert( Read( buf, sizeof(buf) ) == sizeof(buf), "Failed to read an int\n");
+                return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
+            }
+            inline unsigned char ReadByte( void ) {
+                unsigned char i;
+                utils::Assert( Read( &i, sizeof(i) ) == sizeof(i), "Failed to read an byte");
+                return i;
+            }
+        };
+
+        struct GzFile : public ISeekStream{
         public:
             GzFile( const char *path, const char *mode ) {
                 fp_ = gzopen( path, mode );
@@ -36,67 +63,41 @@ namespace cxxnet{
             virtual void Write( const void *ptr, size_t size ) {
                 gzwrite( fp_, ptr, size );
             }
-            inline int ReadInt( void ) {
-                unsigned char buf[4];
-                utils::Assert( Read( buf, sizeof(buf) ) == sizeof(buf), "Failed to read an int\n");
-                return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
-            }
-            inline unsigned char ReadByte( void ) {
-                unsigned char i;
-                utils::Assert( Read( &i, sizeof(i) ) == sizeof(i), "Failed to read an byte");
-                return i;
+            virtual void Seek( size_t pos ){
+                gzseek( fp_, pos, SEEK_SET );
             }
         private:
             gzFile fp_;
         };
-    }
-};
 
-namespace cxxnet {
-    namespace utils {
-        struct BinFile : public IStream {
+        /*! \brief implementation of file i/o stream */
+        class StdFile: public ISeekStream{
         public:
-            BinFile( const char *path, const char *mode ) {
-                fp_ = fopen(path, mode);
-                if( fp_ == NULL ) {
-                    fprintf( stderr, "cannot open %s", path );
-                }
-                Assert( fp_ != NULL, "Failed to open file\n" );
+            /*! \brief constructor */
+            StdFile( const char *fname, const char *mode ){
+                fp_ = utils::FopenCheck( fname, mode );
             }
-            virtual ~BinFile() {
+            virtual ~StdFile( void ){
                 this->Close();
             }
-            virtual void Close() { if (fp_) fclose(fp_); }
-            virtual size_t Read( void *dptr, size_t size ) {
-                // TODO
-                return 0;
+            virtual size_t Read( void *ptr, size_t size ){
+                return fread( ptr, size, 1, fp_ );
             }
-            virtual void Write( const void *dptr, size_t size ) {
-                // TODO
+            virtual void Write( const void *ptr, size_t size ){
+                fwrite( ptr, size, 1, fp_ );
             }
-            virtual size_t Size() {
-                size_t sz = 0;
-                if (fp_) {
-                    fseek (fp_ , 0 , SEEK_END);
-                    sz = ftell(fp_);
-                    rewind(fp_);
-                }
-                return sz;
+            virtual void Seek( size_t pos ){
+                fseek( fp_, pos, SEEK_SET );
+            }            
+            inline void Close( void ){
+                if ( fp_ != NULL ){
+                    fclose( fp_ ); fp_ = NULL;
+                }                
             }
-            inline int ReadInt( void ) {
-                unsigned char buf[4];
-                utils::Assert( Read( buf, sizeof(buf) ) == sizeof(buf), "Failed to read an int\n");
-                return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
-            }
-            inline unsigned char ReadByte( void ) {
-                return fgetc(fp_);
-            }
-
         private:
             FILE *fp_;
-        }; // struct BinFile
-
-    }; // namespace utils
-}; // namespace cxxnet
+        };
+    };
+};
 #endif
 

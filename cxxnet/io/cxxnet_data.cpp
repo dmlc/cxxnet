@@ -53,12 +53,12 @@ namespace cxxnet{
 
                 if( !strcmp( val, "threadbuffer") ){
                     utils::Assert( it != NULL, "must specify input of threadbuffer" );
-                    it = new ThreadBufferIterator( it );  
+                    it = new ThreadBufferIterator( it );
                     continue;
-                }                
+                }
                 utils::Error("unknown iterator type" );
             }
-            
+
             if( it != NULL ){
                 it->SetParam( name, val );
             }
