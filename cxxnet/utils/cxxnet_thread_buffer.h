@@ -121,11 +121,12 @@ namespace cxxnet{
             inline ElemFactory &get_factory(){
                 return factory;
             }
+        public:
+            // size of buffer
+            int  buf_size;
         private:
             // factory object used to load configures
             ElemFactory factory;
-            // size of buffer
-            int  buf_size;
             // index in current buffer
             int buf_index;
         private: 

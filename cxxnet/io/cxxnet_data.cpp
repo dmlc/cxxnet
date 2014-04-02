@@ -46,6 +46,10 @@ namespace cxxnet{
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator( new ImageIterator() ); continue;
                 }
+                if( !strcmp( val, "imageomp") ) {
+                    utils::Assert( it == NULL );
+                    it = new BatchAdaptIterator( new OMPImageIterator() ); continue;
+                }
                 if( !strcmp( val, "imagebin") ) {
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator( new BinaryIterator() ); continue;

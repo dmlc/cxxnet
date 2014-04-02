@@ -143,7 +143,7 @@ namespace cxxnet{
         virtual void Init( void ){
             utils::Assert( itr.Init() ) ;
             if( silent_ == 0 ){
-                printf( "ThreadBufferIterator\n" );
+                printf( "ThreadBufferIterator: buffer_size=%d\n", itr.buf_size );
             }            
         }
         virtual void BeforeFirst(){
