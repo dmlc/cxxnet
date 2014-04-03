@@ -47,6 +47,7 @@ namespace cxxnet {
             if( !strcmp( name, "silent") )      silent_ = atoi( val );
             if( !strcmp( name, "divideby") )    scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
             if( !strcmp( name, "scale") )       scale_ = static_cast<mshadow::real_t>( atof(val) );
+            if( !strcmp( name, "mean_img"))     name_meanimg_ = val;
         }
         virtual void Init( void ){
             base_->Init();
@@ -113,7 +114,7 @@ namespace cxxnet {
                     xx = utils::NextUInt32( xx + 1 );
                 }else{
                     yy /= 2; xx/=2;
-                }                
+                }
                 if( name_meanimg_.length() == 0 ){
                     if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
                         out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) ) * scale_;
@@ -138,7 +139,8 @@ namespace cxxnet {
             unsigned long elapsed = 0;
             size_t imcnt = 1;
             
-            meanimg_.Resize( base_->Value().data.shape ); 
+            utils::Assert( base_->Next(), "input empty" );
+            meanimg_.Resize( base_->Value().data.shape );
             mshadow::Copy( meanimg_, base_->Value().data );
             while( base_->Next() ){
                 meanimg_ += base_->Value().data; imcnt += 1;
@@ -155,6 +157,7 @@ namespace cxxnet {
             if( silent_ == 0 ){
                 printf( "save mean image to %s..\n", name_meanimg_.c_str() );
             }
+            base_->BeforeFirst();
         }
     private:
         // base iterator
