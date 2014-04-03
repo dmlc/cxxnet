@@ -33,7 +33,12 @@ namespace cxxnet{
             this->SetParam("dev", "gpu");
         }
         ~CXXNetLearnTask( void ){
-            if( net_trainer != NULL ) delete net_trainer;
+            if( net_trainer != NULL ){
+                delete net_trainer;
+                // shut down tensor engine if it is GPU based
+                if( device == "gpu" ) mshadow::ShutdownTensorEngine();
+            }
+
             if( itr_train != NULL )   delete itr_train;
             for( size_t i = 0; i < itr_evals.size(); ++ i ){
                 delete itr_evals[i];
@@ -142,7 +147,20 @@ namespace cxxnet{
         }
         // create a neural net
         inline INetTrainer* CreateNet( void ) const{
-            INetTrainer* net = cxxnet::CreateNet( net_type, device.c_str() );
+            INetTrainer* net;
+            if( !strncmp( device.c_str(), "gpu", 3 ) ){
+                int devid;
+                if( sscanf( device.c_str(), "gpu:%d", &devid ) ) {
+                    mshadow::InitTensorEngine( devid );
+                    this->device = "gpu";
+                }else{
+                    mshadow::InitTensorEngine( -1 );
+                }
+                nnet = CreateNetGPU( net_type, device.c_str() );
+            }else{
+                nnet = cxxnet::CreateNet( net_type, device.c_str() );
+            }
+            
             for( size_t i = 0; i < cfg.size(); ++ i ){
                 net->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );
             }
