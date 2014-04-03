@@ -358,14 +358,8 @@ namespace cxxnet {
         CXXNetTrainer( void ){
             loss_type = 0; round = 0;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
-            if(! xpu::kDevCPU ){
-                mshadow::InitTensorEngine( devid );
-            }
         }
         virtual ~CXXNetTrainer( void ){
-            if(! xpu::kDevCPU ){
-                mshadow::ShutdownTensorEngine();
-            }
         }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
@@ -429,7 +423,7 @@ namespace cxxnet {
             this->PreparePredTemp( batch );
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 this->TransformPred( temp[i] );
-                for (int j = 0; i < top_n_; ++j) {
+                for ( int j = 0; j < top_n_; ++j) {
                     preds.push_back(tmp_index_[j]);
                 }
             }

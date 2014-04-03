@@ -146,8 +146,7 @@ namespace cxxnet{
             fclose( fo );
         }
         // create a neural net
-        inline INetTrainer* CreateNet( void ) const{
-            INetTrainer* net;
+        inline INetTrainer* CreateNet( void ){
             if( !strncmp( device.c_str(), "gpu", 3 ) ){
                 int devid;
                 if( sscanf( device.c_str(), "gpu:%d", &devid ) ) {
@@ -156,10 +155,9 @@ namespace cxxnet{
                 }else{
                     mshadow::InitTensorEngine( -1 );
                 }
-                nnet = CreateNetGPU( net_type, device.c_str() );
-            }else{
-                nnet = cxxnet::CreateNet( net_type, device.c_str() );
             }
+
+            INetTrainer *net = cxxnet::CreateNet( net_type, device.c_str() );
             
             for( size_t i = 0; i < cfg.size(); ++ i ){
                 net->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );
