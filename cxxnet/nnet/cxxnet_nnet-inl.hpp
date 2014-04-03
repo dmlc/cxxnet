@@ -355,11 +355,11 @@ namespace cxxnet {
     template<typename xpu>
     class CXXNetTrainer : public INetTrainer{
     public:
-        CXXNetTrainer( void ){
+        CXXNetTrainer( int devid ){
             loss_type = 0; round = 0;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
             if(! xpu::kDevCPU ){
-                mshadow::InitTensorEngine();
+                mshadow::InitTensorEngine( devid );
             }
         }
         virtual ~CXXNetTrainer( void ){
@@ -496,7 +496,7 @@ namespace cxxnet {
     template<typename xpu>
     class CXXAvgNetTrainer: public CXXNetTrainer<xpu>{
     public:
-        CXXAvgNetTrainer( void ){
+        CXXAvgNetTrainer( int devid ) : CXXNetTrainer<xpu>(devid){
             num_burn = INT_MAX;
             num_avg_record = 0;
         }
@@ -556,10 +556,10 @@ namespace cxxnet {
 
 namespace cxxnet{
     template<typename xpu>
-    INetTrainer* CreateNet_( int net_type ){
+    INetTrainer* CreateNet_( int net_type, int devid = -1 ){
         switch( net_type ){
-        case 0: return new CXXNetTrainer<xpu>();
-        case 1: return new CXXAvgNetTrainer<xpu>();
+        case 0: return new CXXNetTrainer<xpu>( devid );
+        case 1: return new CXXAvgNetTrainer<xpu>( devid );
         default: Error("unknown net type");
         }
         return NULL;

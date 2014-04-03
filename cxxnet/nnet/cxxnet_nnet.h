@@ -50,8 +50,9 @@ namespace cxxnet {
     /*! 
      * \brief create a GPU net implementation 
      * \param net_type network type, used to select trainer variants
+     * \param devid device id
      */
-    INetTrainer* CreateNetGPU( int net_type );
+    INetTrainer* CreateNetGPU( int net_type, int devid = -1 );
     /*! 
      * \brief create a net implementation 
      * \param net_type network type, used to select trainer variants
@@ -60,6 +61,10 @@ namespace cxxnet {
     inline INetTrainer* CreateNet( int net_type, const char *device ){
         if( !strcmp( device, "cpu") ) return CreateNetCPU( net_type );
         if( !strcmp( device, "gpu") ) return CreateNetGPU( net_type );
+        if( !strncmp( device, "gpu:",4) ){
+            int devid;
+            if( sscanf( device, "gpu:%d", &devid ) ) return CreateNetGPU( net_type, devid );
+        }
         utils::Error("unknown device type" );
         return NULL;
     }

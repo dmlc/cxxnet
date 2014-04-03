@@ -4,7 +4,7 @@
 #include "cxxnet_nnet-inl.hpp"
 
 namespace cxxnet {
-    INetTrainer* CreateNetGPU( int net_type ){
-        return CreateNet_<gpu>( net_type );
+    INetTrainer* CreateNetGPU( int net_type, int devid ){
+        return CreateNet_<gpu>( net_type, devid );
     }
 };

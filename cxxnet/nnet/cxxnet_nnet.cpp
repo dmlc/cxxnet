@@ -9,7 +9,7 @@ namespace cxxnet {
         return CreateNet_<cpu>( net_type );
     }
     #if MSHADOW_USE_CUDA == 0
-    INetTrainer* CreateNetGPU( int net_type ){
+    INetTrainer* CreateNetGPU( int net_type, int devid=-1 ){
         utils::Error("CUDA is not supported");
         return NULL;
     }    
