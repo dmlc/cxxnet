@@ -22,11 +22,11 @@ namespace cxxnet{
             virtual void Clear( void ) = 0;
             /*!
              * \brief evaluate a specific metric, add to current statistics
-             * \param preds prediction
+             * \param preds prediction score array
              * \param labels label
              * \param n number of instances
              */
-            virtual void AddEval( const float* preds, const float* labels, int n ) = 0;
+            virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) = 0;
             /*! \brief get current result */
             virtual double Get( void ) const = 0;
             /*! \return name of metric */
@@ -43,9 +43,10 @@ namespace cxxnet{
             virtual void Clear( void ){
                 sum_err = 0.0; cnt_inst = 0;
             }
-            virtual void AddEval( const float* preds, const float* labels, int ndata ){
-                for( int i = 0; i < ndata; ++ i ){
-                    float diff = preds[i] - labels[i];
+            virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
+                utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
+                for( index_t i = 0; i < predscore.shape[1]; ++ i ){
+                    float diff = predscore[i][0] - labels[i];
                     sum_err += diff * diff;
                     cnt_inst+= 1;
                 }
@@ -75,9 +76,10 @@ namespace cxxnet{
                 sum_xyprod = 0.0;
                 cnt_inst = 0;
             }
-            virtual void AddEval( const float* preds, const float* labels, int ndata ){
-                for( int i = 0; i < ndata; ++ i ){
-                    const float x = preds[i] - 0.5f;
+            virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
+                utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
+                for( index_t i = 0; i < predscore.shape[1]; ++ i ){                    
+                    const float x = predscore[i] - 0.5f;
                     const float y = labels[i] - 0.5f;
                     sum_x += x; sum_y += y;
                     sum_xsqr += x * x;
@@ -119,32 +121,27 @@ namespace cxxnet{
             virtual void Clear( void ){
                 sum_err = 0.0; cnt_inst = 0;
             }
-            virtual void AddEval( const float* preds, const float* labels, int ndata ){
-                for( int i = 0; i < ndata; ++ i ){
-                    sum_err += (int)preds[i] != (int)labels[i];
+            virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
+                utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
+                for( index_t i = 0; i < predscore.shape[1]; ++ i ){                    
+                    sum_err += GetMaxIndex( predscore[i] != (int)labels[i];
                     cnt_inst+= 1;
                 }
             }
-
-            virtual void AddEval(const float* preds, const float* labels, int ndata, int top_n) {
-                bool hit = false;
-                for( int i = 0; i < ndata; i += top_n ){
-                    hit = false;
-                    for (int j = 0; j < top_n; ++j) {
-                        if ((int)preds[i + j] == (int)labels[i / top_n]) hit = true;
-                    }
-                    sum_err += (int) (!hit);
-                    cnt_inst += 1;
-                }
-            }
-
-
 
             virtual double Get( void ) const{
                 return sum_err / cnt_inst;
             }
             virtual const char *Name( void ) const{
                 return "error";
+            }
+        private:
+            inline static int GetMaxIndex( mshadow::Tensor<cpu,1> pred ){
+                index_t maxidx = 0;
+                for( index_t i = 1; i < pred.shape[0]; ++ i ){
+                    if( pred[i] > pred[maxidx] ) maxidx = i;
+                }
+                return maxidx;
             }
         private:
             double sum_err;
@@ -154,13 +151,18 @@ namespace cxxnet{
         /*! \brief a set of evaluators */
         struct MetricSet{
         public:
+            ~MetricSet( void ){
+                for( size_t i = 0; i < evals_.size(); ++ i ){
+                    delete evals_[i];
+                }
+            }
             void AddMetric( const char *name ){
-                if( !strcmp( name, "rmse") ) evals_.push_back( &rmse_ );
-                if( !strcmp( name, "error") ) evals_.push_back( &error_ );
-                if( !strcmp( name, "r2") )    evals_.push_back( &corrsqr_ );
+                if( !strcmp( name, "rmse") )  evals_.push_back( new MetricRMSE() );
+                if( !strcmp( name, "error") ) evals_.push_back( new MetricError() );
+                if( !strcmp( name, "r2") )    evals_.push_back( new MetricCorrSqr() );
                 // simple way to enforce uniqueness, not a good way, not ok here
-                std::sort( evals_.begin(), evals_.end() );
-                evals_.resize( std::unique( evals_.begin(), evals_.end() ) - evals_.begin() );
+                std::sort( evals_.begin(), evals_.end(), CmpName );
+                evals_.resize( std::unique( evals_.begin(), evals_.end(), EqualName ) - evals_.begin() );
             }
             inline void Clear( void ){
                 for( size_t i = 0; i < evals_.size(); ++ i ){
@@ -178,9 +180,13 @@ namespace cxxnet{
                 }
             }
         private:
-            MetricRMSE  rmse_;
-            MetricError error_;
-            MetricCorrSqr corrsqr_;
+            inline static bool CmpName( const IMetric *a, const IMetric *b ){
+                return strcmp( a->Name(), b->Name() ) < 0;
+            }
+            inline static bool EqualName( const IMetric *a, const IMetric *b ){
+                return strcmp( a->Name(), b->Name() ) == 0;
+            }
+        private:
             std::vector<IMetric*> evals_;
         };
     };

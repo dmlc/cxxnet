@@ -363,7 +363,6 @@ namespace cxxnet {
         }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
-            if( !strcmp( name, "top_n") ) top_n_ = atoi(val);
             if( !strcmp( name, "metric") ) metric.AddMetric( val );
             net.SetParam( name, val );
         }
@@ -401,15 +400,9 @@ namespace cxxnet {
             metric.Clear();
             iter_eval->BeforeFirst();
             while( iter_eval->Next() ){
-                const DataBatch& batch = iter_eval->Value();
-                std::vector<float> preds;
-                if (loss_type == 3 && top_n_ > 0) {
-                    this->Predict(preds, batch, true);
-                    // metric.AddEval( &preds[0], batch.labels, preds.size(), top_n_);
-                } else {
-                    this->Predict( preds, batch );
-                    metric.AddEval( &preds[0], batch.labels, preds.size() );
-                }
+                const DataBatch& batch = iter_eval->Value();               
+                this->PreparePredTemp( batch );
+                metric.AddEval( temp, batch.labels );
             }
             metric.Print( fo, evname );
         }
@@ -451,18 +444,12 @@ namespace cxxnet {
             case 0: return GetMaxIndex( pred );
             case 1: return pred[0];
             case 2: return 1.0f/(1.0f+std::exp(-pred[0]));
-            case 3: return MakeRankPred(pred);
             default: Error("unknown loss type"); return 0.0f;
             }
         }
         inline void SetLoss( mshadow::Tensor<cpu,1> pred, float label ){
             switch( loss_type ){
             case 0:
-            case 3:{
-                index_t k = static_cast<index_t>(label);
-                utils::Assert( k < pred.shape[0], "label exceed output bound" );
-                pred[ k ] -= 1.0f; break;
-            }
             case 1: pred[ 0 ] -=  label; break;
             case 2: pred[ 0 ] = 1.0f/(1.0f+std::exp(-pred[0])) - label; break;
             default: Error("unknown loss type");
@@ -486,25 +473,7 @@ namespace cxxnet {
             }
             return maxidx;
         }
-        inline float MakeRankPred(mshadow::Tensor<cpu, 1> pred) {
-            std::priority_queue<std::pair<float, int>, \
-                std::vector<std::pair<float, int> >, \
-                utils::PairCompare<float, int> > pq;
-            tmp_index_.clear();
-            tmp_index_.resize(top_n_);
-            for (index_t i = 0; i < pred.shape[0]; ++i) {
-                pq.push(std::make_pair(pred[i], i));
-            }
-            // utils::Assert(pq.size() > top_n);
-            for (int i = 0; i < top_n_; ++i) {
-                tmp_index_[i] = pq.top().second;
-                pq.pop();
-            }
-            return 0.0f;
-        }
     protected:
-        // get top n predict
-        int top_n_;
         // current round
         int round;
         // loss function
