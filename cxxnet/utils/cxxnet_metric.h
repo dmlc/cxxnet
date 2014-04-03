@@ -125,6 +125,21 @@ namespace cxxnet{
                     cnt_inst+= 1;
                 }
             }
+
+            virtual void AddEval(const float* preds, const float* labels, int ndata, int top_n) {
+                bool hit = false;
+                for( int i = 0; i < ndata; i += top_n ){
+                    hit = false;
+                    for (int j = 0; j < top_n; ++j) {
+                        if ((int)pred[i + j] == (int)labels[i / top_n]) hit = true;
+                    }
+                    sum_srr += (int) (!hit);
+                    cnt_inst += 1;
+                }
+            }
+
+
+
             virtual double Get( void ) const{
                 return sum_err / cnt_inst;
             }

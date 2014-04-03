@@ -132,7 +132,7 @@ namespace cxxnet {
                                   std::vector<ILayer*>& layers,
                                   std::vector<IUpdater*>& updaters, bool init_model ){
             // default configuration
-            int layer_index = -1;           
+            int layer_index = -1;
             for( size_t i = 0; i < netcfg.size(); ++i ){
                 const char* name = netcfg[i].first.c_str();
                 const char* val  = netcfg[i].second.c_str();
@@ -272,7 +272,7 @@ namespace cxxnet {
         }
         /*! \brief save model to file */
         inline void SaveModel( mshadow::utils::IStream &fo ) const {
-            meta.SaveModel( fo );            
+            meta.SaveModel( fo );
             for( int i = 0; i < meta.param.num_layers; ++ i ){
                 layers[i]->SaveModel( fo );
             }
@@ -309,7 +309,7 @@ namespace cxxnet {
             }
         }
         /*! \brief update model parameters  */
-        inline void Update( void ){            
+        inline void Update( void ){
             for( size_t i = 0; i < updaters.size(); ++ i ){
                 updaters[i]->Update( meta.param.num_epoch_passed );
             }
@@ -364,11 +364,12 @@ namespace cxxnet {
         }
         virtual ~CXXNetTrainer( void ){
             if(! xpu::kDevCPU ){
-                mshadow::ShutdownTensorEngine();        
+                mshadow::ShutdownTensorEngine();
             }
         }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
+            if( !strcmp( name, "top_n") ) top_n_ = atoi(val);
             if( !strcmp( name, "metric") ) metric.AddMetric( val );
             net.SetParam( name, val );
         }
@@ -388,16 +389,16 @@ namespace cxxnet {
         }
         virtual void Update ( const DataBatch& batch ) {
             net.in().Pin();
-            mshadow::Copy( net.in().data, batch.data );            
+            mshadow::Copy( net.in().data, batch.data );
             net.in().Unpin();
- 
+
             net.Forward( true );
             this->SyncOuput();
-            
+
             net.out().Pin();
             mshadow::Copy( net.out().data[0][0], temp );
             net.out().Unpin();
-            
+
             this->SetLoss( batch.labels );
             net.Backprop();
             net.Update();
@@ -408,8 +409,13 @@ namespace cxxnet {
             while( iter_eval->Next() ){
                 const DataBatch& batch = iter_eval->Value();
                 std::vector<float> preds;
-                this->Predict( preds, batch );
-                metric.AddEval( &preds[0], batch.labels, preds.size() );
+                if (loss_type == 3 && top_n_ > 0) {
+                    this->Predict(preds, batch, true)
+                    metric.AddEval( &preds[0], batch.labels, preds.size(), top_n_);
+                } else {
+                    this->Predict( preds, batch );
+                    metric.AddEval( &preds[0], batch.labels, preds.size() );
+                }
             }
             metric.Print( fo, evname );
         }
@@ -417,6 +423,15 @@ namespace cxxnet {
             this->PreparePredTemp( batch );
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 preds.push_back( this->TransformPred( temp[i] ) );
+            }
+        }
+        virtual void Predict(std::vector<float> &preds, const DataBatch& batch, bool is_rank) {
+            this->PreparePredTemp( batch );
+            for( index_t i = 0; i <temp.shape[1]; ++i ){
+                this->TransformPred( temp[i] );
+                for (int j = 0; i < top_k; ++j) {
+                    preds.push_back(tmp_index_[j]);
+                }
             }
         }
     protected:
@@ -442,13 +457,15 @@ namespace cxxnet {
             case 0: return GetMaxIndex( pred );
             case 1: return pred[0];
             case 2: return 1.0f/(1.0f+std::exp(-pred[0]));
+            case 3: return MakeRankPred(pred);
             default: Error("unknown loss type"); return 0.0f;
             }
         }
         inline void SetLoss( mshadow::Tensor<cpu,1> pred, float label ){
             switch( loss_type ){
-            case 0: {
-                index_t k = static_cast<index_t>(label); 
+            case 0:
+            case 3:{
+                index_t k = static_cast<index_t>(label);
                 utils::Assert( k < pred.shape[0], "label exceed output bound" );
                 pred[ k ] -= 1.0f; break;
             }
@@ -475,7 +492,25 @@ namespace cxxnet {
             }
             return maxidx;
         }
+        inline static float MakeRankPred(mshadow::Tensor<cpu, 1> pred) {
+            std::priority_queue<std::pair<float, int>, \
+                std::vector<std::pair<float, int> >, \
+                utils::PairCompare<float, int> > pq;
+            tmp_index_.clear();
+            tmp_index_.resize(top_n_);
+            for (index_t i = 0; i < pred.shape[0]; ++i) {
+                pq.push(std::make_pair(pred[i], i));
+            }
+            // utils::Assert(pq.size() > top_n);
+            for (int i = 0; i < top_n_; ++i) {
+                tmp_index_[i] = pq.top().second;
+                pq.pop();
+            }
+            return 0.0f;
+        }
     protected:
+        // get top n predict
+        int top_n_;
         // current round
         int round;
         // loss function
@@ -486,6 +521,8 @@ namespace cxxnet {
         mshadow::TensorContainer<cpu,2> temp;
         // true net
         NeuralNet<xpu> net;
+        // tmp stoage of top index
+        vector<index_t> tmp_index_;
     }; // class NeuralNet
 
 

@@ -16,6 +16,7 @@
 #include <vector>
 #include <limits>
 #include <queue>
+#include <utility>
 #include <string>
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_io.h"
@@ -43,8 +44,8 @@ namespace cxxnet {
          * \param round round counter
          */
         virtual void StartRound( int round ) = 0;
-        /*! 
-         * \brief update parameter 
+        /*!
+         * \brief update parameter
          * \param epoch what current epoch is. epoch is number of mini-batches passed, while round is one pass over training data
          */
         virtual void Update( long epoch ) = 0;
@@ -85,7 +86,7 @@ namespace cxxnet {
     public:
         // interface code that not needed to be implemented by all nodes
         /*!
-         * \brief intialize the temp parameters, 
+         * \brief intialize the temp parameters,
          *  adjust output node shape, according to current layers' configuration
          *  this function will be called everytime before using a layer
          */
