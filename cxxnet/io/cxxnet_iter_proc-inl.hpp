@@ -25,6 +25,10 @@ namespace cxxnet {
             round_batch_ = 0;
             // number of overflow instances that readed in round_batch mode
             num_oveflow_ = 0;
+            // silent
+            silent_ = 0;
+            // by default, not mean image file
+            name_meanimg_ = "";
         }
         virtual ~BatchAdaptIterator( void ){
             delete base_;
@@ -40,6 +44,7 @@ namespace cxxnet {
             if( !strcmp( name, "round_batch") ) round_batch_ = atoi(val);
             if( !strcmp( name, "rand_crop") )   rand_crop_ = atoi(val);
             if( !strcmp( name, "rand_mirror") ) rand_mirror_ = atoi( val );
+            if( !strcmp( name, "silent") )      silent_ = atoi( val );
             if( !strcmp( name, "divideby") )    scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
             if( !strcmp( name, "scale") )       scale_ = static_cast<mshadow::real_t>( atof(val) );
         }
@@ -50,6 +55,20 @@ namespace cxxnet {
                 shape_[1] = shape_[3]; shape_[3] = 1;
             }
             out_.AllocSpace( shape_, batch_size, false );
+
+            if( name_meanimg_.length() != 0 ){
+                FILE *fi = fopen64( name_meanimg_.c_str(), "rb" );
+                if( fi == NULL ){
+                    this->CreateMeanImg();
+                }else{
+                    if( silent_ == 0 ){
+                        printf("loading mean image from %s\n", name_meanimg_.c_str() );
+                    }
+                    mshadow::utils::FileStream fs( fi ) ;
+                    meanimg_.LoadBinary( fs );
+                    fclose( fi );
+                }
+            }
         }
         virtual void BeforeFirst( void ){
             if( round_batch_ == 0 || num_oveflow_ == 0 ){
@@ -94,12 +113,47 @@ namespace cxxnet {
                     xx = utils::NextUInt32( xx + 1 );
                 }else{
                     yy /= 2; xx/=2;
-                }
-                if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
-                    out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) ) * scale_;
+                }                
+                if( name_meanimg_.length() == 0 ){
+                    if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
+                        out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) ) * scale_;
+                    }else{
+                        out_.data[top] = crop( d.data, out_.data[0][0].shape, yy, xx ) * scale_ ;
+                    }
                 }else{
-                    out_.data[top] = crop( d.data, out_.data[0][0].shape, yy, xx ) * scale_ ;
+                    // substract mean image
+                    if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
+                        out_.data[top] = mirror( crop( d.data - meanimg_, out_.data[0][0].shape, yy, xx ) ) * scale_;
+                    }else{
+                        out_.data[top] = crop( d.data - meanimg_, out_.data[0][0].shape, yy, xx ) * scale_ ;
+                    }
                 }
+            }
+        }
+        inline void CreateMeanImg( void ){
+            if( silent_ == 0 ){
+                printf( "cannot find %s: create mean image, this will take some time...\n", name_meanimg_.c_str() );
+            }
+            time_t start = time( NULL );
+            unsigned long elapsed = 0;
+            size_t imcnt = 1;
+            
+            meanimg_.Resize( base_->Value().data.shape ); 
+            mshadow::Copy( meanimg_, base_->Value().data );
+            while( base_->Next() ){
+                meanimg_ += base_->Value().data; imcnt += 1;
+                elapsed = (long)(time(NULL) - start);
+                if( imcnt % 1000 == 0 && silent_ == 0 ){
+                    printf("\r                                                               \r");
+                    printf("[%8lu] images processed, %ld sec elapsed", imcnt, elapsed );
+                    fflush( stdout );
+                }
+            }
+            meanimg_ *= (1.0f/imcnt);
+            utils::StdFile fo( name_meanimg_.c_str(), "wb" );
+            meanimg_.SaveBinary( fo );
+            if( silent_ == 0 ){
+                printf( "save mean image to %s..\n", name_meanimg_.c_str() );
             }
         }
     private:
@@ -111,6 +165,8 @@ namespace cxxnet {
         mshadow::Shape<4> shape_;
         // output data
         DataBatch out_;
+        // silent
+        int silent_;
         // scale of data
         mshadow::real_t scale_;
         // whether we do random cropping
@@ -121,6 +177,10 @@ namespace cxxnet {
         int round_batch_;
         // number of overflow instances that readed in round_batch mode
         int num_oveflow_;
+        // mean image, if needed
+        mshadow::TensorContainer<cpu,3> meanimg_;
+        // mean image file, if specified, will generate mean image file, and substract by mean
+        std::string name_meanimg_;
     };
 };
 
