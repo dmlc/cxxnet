@@ -47,7 +47,7 @@ namespace cxxnet {
             if( !strcmp( name, "silent") )      silent_ = atoi( val );
             if( !strcmp( name, "divideby") )    scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
             if( !strcmp( name, "scale") )       scale_ = static_cast<mshadow::real_t>( atof(val) );
-            if( !strcmp( name, "mean_img"))     name_meanimg_ = val;
+            if( !strcmp( name, "image_mean"))   name_meanimg_ = val;
         }
         virtual void Init( void ){
             base_->Init();
