@@ -79,7 +79,7 @@ namespace cxxnet{
             virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
                 utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
                 for( index_t i = 0; i < predscore.shape[1]; ++ i ){                    
-                    const float x = predscore[i] - 0.5f;
+                    const float x = predscore[i][0] - 0.5f;
                     const float y = labels[i] - 0.5f;
                     sum_x += x; sum_y += y;
                     sum_xsqr += x * x;
@@ -124,7 +124,7 @@ namespace cxxnet{
             virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
                 utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
                 for( index_t i = 0; i < predscore.shape[1]; ++ i ){                    
-                    sum_err += GetMaxIndex( predscore[i] != (int)labels[i];
+                    sum_err += GetMaxIndex( predscore[i] ) != (int)labels[i];
                     cnt_inst+= 1;
                 }
             }
@@ -169,9 +169,9 @@ namespace cxxnet{
                     evals_[i]->Clear();
                 }
             }
-            inline void AddEval( const float* preds, const float* labels, int ndata ){
+            inline void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
                 for( size_t i = 0; i < evals_.size(); ++ i ){
-                    evals_[i]->AddEval( preds, labels, ndata );
+                    evals_[i]->AddEval( predscore, labels );
                 }
             }
             inline void Print( FILE *fo, const char *evname ){

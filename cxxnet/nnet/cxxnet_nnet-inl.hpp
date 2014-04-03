@@ -412,15 +412,6 @@ namespace cxxnet {
                 preds.push_back( this->TransformPred( temp[i] ) );
             }
         }
-        virtual void Predict(std::vector<float> &preds, const DataBatch& batch, bool is_rank) {
-            this->PreparePredTemp( batch );
-            for( index_t i = 0; i <temp.shape[1]; ++i ){
-                this->TransformPred( temp[i] );
-                for ( int j = 0; j < top_n_; ++j) {
-                    preds.push_back(tmp_index_[j]);
-                }
-            }
-        }
     protected:
         // put prediction into temp
         virtual void PreparePredTemp( const DataBatch& batch ){
