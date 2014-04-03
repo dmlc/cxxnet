@@ -19,6 +19,8 @@ namespace cxxnet {
         BatchAdaptIterator( IIterator<DataInst> *base ):base_(base){
             rand_crop_ = 0;
             rand_mirror_ = 0;
+            // skip read, used for debug
+            test_skipread_ = 0;
             // scale data
             scale_ = 1.0f;
             // use round roubin to handle overflow batch
@@ -48,6 +50,7 @@ namespace cxxnet {
             if( !strcmp( name, "divideby") )    scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
             if( !strcmp( name, "scale") )       scale_ = static_cast<mshadow::real_t>( atof(val) );
             if( !strcmp( name, "image_mean"))   name_meanimg_ = val;
+            if( !strcmp( name, "test_skipread"))    test_skipread_ = atoi(val);
         }
         virtual void Init( void ){
             base_->Init();
@@ -75,9 +78,18 @@ namespace cxxnet {
             if( round_batch_ == 0 || num_oveflow_ == 0 ){
                 // otherise, we already called before first
                 base_->BeforeFirst();
+            }else{
+                num_oveflow_ = 0;
             }
+            head_ = 1;
         }
         virtual bool Next( void ){
+            // skip read if in head version
+            if( test_skipread_ != 0 && head_ == 0 ) return true;
+            else this->head_ = 0;
+            
+            // if overflow from previous round, directly return false, until before first is called
+            if( num_oveflow_ != 0 ) return false;
             index_t top = 0;
             while( base_->Next() ){
                 this->SetData( top, base_->Value() );
@@ -95,6 +107,7 @@ namespace cxxnet {
             return false;
         }
         virtual const DataBatch &Value( void ) const{
+            utils::Assert( head_ == 0, "must call Next to get value" );
             return out_;
         }
     private:
@@ -168,6 +181,10 @@ namespace cxxnet {
         mshadow::Shape<4> shape_;
         // output data
         DataBatch out_;
+        // on first
+        int head_;
+        // skip read 
+        int test_skipread_;
         // silent
         int silent_;
         // scale of data

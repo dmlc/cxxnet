@@ -21,7 +21,6 @@ namespace cxxnet{
             buffer_size_ = 128;
             path_imglst_ = "img.lst";
             path_imgbin_ = "img.bin";
-            skip_read_ = 0;
         }
         virtual ~BinaryIterator( void ){
             if( fplst_ != NULL ){
@@ -33,7 +32,6 @@ namespace cxxnet{
             if( !strcmp( name, "image_bin") )      path_imgbin_ = val;
             if( !strcmp( name, "image_bin_buffer") ) buffer_size_ = (size_t)atoi(val);
             if( !strcmp( name, "silent"   ) )        silent_ = atoi( val );
-            if( !strcmp( name, "skip_read"   ) )     skip_read_ = atoi( val );
         }
         virtual void Init( void ){
             fplst_  = utils::FopenCheck( path_imglst_.c_str(), "r" );
@@ -51,8 +49,8 @@ namespace cxxnet{
             img_.set_pad( false ); img_.Resize( dshape_.SubShape() );
             utils::Assert( img_.shape.Size() == img_.shape.MSize(), "BUG" );
             if( silent_ == 0 ){
-                printf("BinaryIterator:image_list=%s, image_bin=%s, shape=%u,%u,%u,%u%s\n", 
-                       path_imglst_.c_str(), path_imgbin_.c_str(), dshape_[3], dshape_[2], dshape_[1], dshape_[0], (skip_read_?",skip_read":"") );
+                printf("BinaryIterator:image_list=%s, image_bin=%s, shape=%u,%u,%u,%u\n", 
+                       path_imglst_.c_str(), path_imgbin_.c_str(), dshape_[3], dshape_[2], dshape_[1], dshape_[0] );
             }
             buf_.resize( buffer_size_ * img_.shape.Size() );
             this->BeforeFirst();
@@ -75,7 +73,7 @@ namespace cxxnet{
     private:
         inline void LoadImage( void ){
             if( buf_top_ >= num_inbuffer_ ){
-                if( num_inbuffer_ == 0 || skip_read_ == 0 ){
+                if( num_inbuffer_ == 0 ){
                     num_inbuffer_ = std::min( dshape_[3] - num_readed_, buffer_size_ );
                     utils::Assert( num_inbuffer_ > 0 && num_readed_ <= dshape_[3], "list longer than binary file");
                     utils::Assert( fpbin_->Read( &buf_[0], sizeof(unsigned char) * num_inbuffer_ * img_.shape.Size()), "read buffer" );
@@ -91,8 +89,6 @@ namespace cxxnet{
     private:
         // silent
         int silent_;
-        // skip read
-        int skip_read_;
         // output data
         DataInst out_;        
         // number of instances readed in buffer
