@@ -358,8 +358,15 @@ namespace cxxnet {
         CXXNetTrainer( void ){
             loss_type = 0; round = 0;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
+            if(! xpu::kDevCPU ){
+                mshadow::InitTensorEngine();
+            }
         }
-        virtual ~CXXNetTrainer( void ){}
+        virtual ~CXXNetTrainer( void ){
+            if(! xpu::kDevCPU ){
+                mshadow::ShutdownTensorEngine();        
+            }
+        }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
             if( !strcmp( name, "metric") ) metric.AddMetric( val );
@@ -440,7 +447,11 @@ namespace cxxnet {
         }
         inline void SetLoss( mshadow::Tensor<cpu,1> pred, float label ){
             switch( loss_type ){
-            case 0: pred[ static_cast<int>(label) ] -= 1.0f; break;
+            case 0: {
+                index_t k = static_cast<index_t>(label); 
+                utils::Assert( k < pred.shape[0], "label exceed output bound" );
+                pred[ k ] -= 1.0f; break;
+            }
             case 1: pred[ 0 ] -=  label; break;
             case 2: pred[ 0 ] = 1.0f/(1.0f+std::exp(-pred[0])) - label; break;
             default: Error("unknown loss type");

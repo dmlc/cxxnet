@@ -8,11 +8,10 @@
  */
 // use opencv for image loading
 
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
+
 #include "mshadow/tensor_container.h"
 #include "cxxnet_data.h"
-
+#include <opencv2/opencv.hpp>
 
 namespace cxxnet{
     /*! \brief simple image iterator that only loads data instance */

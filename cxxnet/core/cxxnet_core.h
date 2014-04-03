@@ -147,10 +147,7 @@ namespace cxxnet {
         inline void SetMemLimit( const char *size ){
             if( !xpu::kDevCPU ){
                 float n;
-                if( sscanf( size, "%fMB", &n ) == 1 ){
-                    this->max_mem_ = static_cast<size_t>( n * (1L<<20) / 4 ); return;
-                }
-                if( sscanf( size, "%fGB", &n ) == 1 ){
+                if( sscanf( size, "%f", &n ) == 1 ){
                     this->max_mem_ = static_cast<size_t>( n * (1L<<30) / 4 ); return;
                 }
                 warning_ = 1;
