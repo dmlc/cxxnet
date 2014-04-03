@@ -131,9 +131,9 @@ namespace cxxnet{
                 for( int i = 0; i < ndata; i += top_n ){
                     hit = false;
                     for (int j = 0; j < top_n; ++j) {
-                        if ((int)pred[i + j] == (int)labels[i / top_n]) hit = true;
+                        if ((int)preds[i + j] == (int)labels[i / top_n]) hit = true;
                     }
-                    sum_srr += (int) (!hit);
+                    sum_err += (int) (!hit);
                     cnt_inst += 1;
                 }
             }

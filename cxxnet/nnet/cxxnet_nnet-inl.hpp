@@ -410,8 +410,8 @@ namespace cxxnet {
                 const DataBatch& batch = iter_eval->Value();
                 std::vector<float> preds;
                 if (loss_type == 3 && top_n_ > 0) {
-                    this->Predict(preds, batch, true)
-                    metric.AddEval( &preds[0], batch.labels, preds.size(), top_n_);
+                    this->Predict(preds, batch, true);
+                    // metric.AddEval( &preds[0], batch.labels, preds.size(), top_n_);
                 } else {
                     this->Predict( preds, batch );
                     metric.AddEval( &preds[0], batch.labels, preds.size() );
@@ -429,7 +429,7 @@ namespace cxxnet {
             this->PreparePredTemp( batch );
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 this->TransformPred( temp[i] );
-                for (int j = 0; i < top_k; ++j) {
+                for (int j = 0; i < top_n_; ++j) {
                     preds.push_back(tmp_index_[j]);
                 }
             }
@@ -492,7 +492,7 @@ namespace cxxnet {
             }
             return maxidx;
         }
-        inline static float MakeRankPred(mshadow::Tensor<cpu, 1> pred) {
+        inline float MakeRankPred(mshadow::Tensor<cpu, 1> pred) {
             std::priority_queue<std::pair<float, int>, \
                 std::vector<std::pair<float, int> >, \
                 utils::PairCompare<float, int> > pq;
@@ -522,7 +522,7 @@ namespace cxxnet {
         // true net
         NeuralNet<xpu> net;
         // tmp stoage of top index
-        vector<index_t> tmp_index_;
+        std::vector<index_t> tmp_index_;
     }; // class NeuralNet
 
 
