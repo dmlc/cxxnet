@@ -440,7 +440,11 @@ namespace cxxnet {
         }
         inline void SetLoss( mshadow::Tensor<cpu,1> pred, float label ){
             switch( loss_type ){
-            case 0:
+            case 0:{
+                index_t k = static_cast<index_t>(label);
+                utils::Assert( k < pred.shape[0], "label exceed output bound" );
+                pred[ k ] -= 1.0f; break;                
+            }
             case 1: pred[ 0 ] -=  label; break;
             case 2: pred[ 0 ] = 1.0f/(1.0f+std::exp(-pred[0])) - label; break;
             default: Error("unknown loss type");

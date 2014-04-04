@@ -3,9 +3,9 @@ export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
 
-export CFLAGS = -Wall -O3 -msse4 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ 
-export LDFLAGS= `pkg-config --libs opencv` -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lX11
-export NVCCFLAGS = -O3 -ccbin $(CXX)
+export CFLAGS = -Wall -g -O3 -msse4 -Wno-unknown-pragmas -funroll-loops -I../mshadow/
+export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lX11 -lopencv_core  -lopencv_highgui
+export NVCCFLAGS = -g -O3 -ccbin $(CXX)
 
 # specify tensor path
 BIN = cxxnet_learner

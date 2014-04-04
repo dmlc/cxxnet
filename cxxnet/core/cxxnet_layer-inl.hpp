@@ -71,7 +71,7 @@ namespace cxxnet{
             if( !strcmp( name, "nhidden") )     num_hidden = atoi(val);
             if( !strcmp( name, "random_type"))  random_type = atoi(val);
             if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
-            if( !strcmp( name, "num_group") )   num_group = atoi(val);
+            if( !strcmp( name, "ngroup") )      num_group = atoi(val);
             if( !strcmp( name, "kernel_size") ) kernel_size = atoi(val);
             if( !strcmp( name, "stride") )      stride      = atoi(val);
             if( !strcmp( name, "pad") )         pad      = atoi(val);

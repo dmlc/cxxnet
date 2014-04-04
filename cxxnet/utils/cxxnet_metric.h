@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include "cxxnet_global_random.h"
 
 namespace cxxnet{
     namespace utils{
@@ -33,33 +34,49 @@ namespace cxxnet{
             virtual const char *Name( void ) const= 0;
         };
 
-        /*! \brief RMSE */
-        struct MetricRMSE : public IMetric{
+        /*! \brief simple metric Base */
+        struct MetricBase : public IMetric{
         public:
-            MetricRMSE( void ){
-                this->Clear();
-            }
-            virtual ~MetricRMSE( void ){}
+            virtual ~MetricBase( void ){}
             virtual void Clear( void ){
-                sum_err = 0.0; cnt_inst = 0;
+                sum_metric = 0.0; cnt_inst = 0;
             }
             virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
-                utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
-                for( index_t i = 0; i < predscore.shape[1]; ++ i ){
-                    float diff = predscore[i][0] - labels[i];
-                    sum_err += diff * diff;
+                for( index_t i = 0; i < predscore.shape[1]; ++ i ){                    
+                    sum_metric += CalcMetric( predscore[i], labels[i] );
                     cnt_inst+= 1;
                 }
             }
             virtual double Get( void ) const{
-                return std::sqrt( sum_err / cnt_inst );
+                return sum_metric / cnt_inst;
             }
             virtual const char *Name( void ) const{
-                return "rmse";
+                return name.c_str();
             }
+        protected:
+            MetricBase( const char *name ){
+                this->name = name;
+                this->Clear();
+            }
+            virtual float CalcMetric( const mshadow::Tensor<cpu,1> &predscore, float label ) = 0;
         private:
-            double sum_err;
+            double sum_metric;
             long   cnt_inst;
+            std::string name;
+        };
+
+        /*! \brief RMSE */
+        struct MetricRMSE : public MetricBase{
+        public:
+            MetricRMSE( void ):MetricBase( "rmse" ){
+            }
+            virtual ~MetricRMSE( void ){}
+        protected:
+            virtual float CalcMetric( const mshadow::Tensor<cpu,1> &predscore, float label ) {
+                utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
+                float diff = predscore[0] - label;
+                return diff*diff;
+            }
         };
 
         /*! \brief r^2 correlation square */
@@ -112,40 +129,53 @@ namespace cxxnet{
         };
 
         /*! \brief Error */
-        struct MetricError : public IMetric{
+        struct MetricError : public MetricBase{
         public:
-            MetricError( void ){
-                this->Clear();
+            MetricError( void ):MetricBase("error"){
             }
             virtual ~MetricError( void ){}
-            virtual void Clear( void ){
-                sum_err = 0.0; cnt_inst = 0;
-            }
-            virtual void AddEval( const mshadow::Tensor<cpu,2> &predscore, const float* labels ) {
-                utils::Assert( predscore.shape[0] == 1,"RMSE can only accept shape[0]=1" );
-                for( index_t i = 0; i < predscore.shape[1]; ++ i ){                    
-                    sum_err += GetMaxIndex( predscore[i] ) != (int)labels[i];
-                    cnt_inst+= 1;
-                }
-            }
-
-            virtual double Get( void ) const{
-                return sum_err / cnt_inst;
-            }
-            virtual const char *Name( void ) const{
-                return "error";
-            }
-        private:
-            inline static int GetMaxIndex( mshadow::Tensor<cpu,1> pred ){
+        protected:
+            virtual float CalcMetric( const mshadow::Tensor<cpu,1> &pred, float label ) {
                 index_t maxidx = 0;
                 for( index_t i = 1; i < pred.shape[0]; ++ i ){
                     if( pred[i] > pred[maxidx] ) maxidx = i;
                 }
-                return maxidx;
+                return maxidx !=(index_t)label;
+            }
+        };
+
+
+        /*! \brief Recall@n */
+        struct MetricRecall : public MetricBase{
+        public:
+            MetricRecall( const char *name ): MetricBase(name){
+                utils::Assert( sscanf( name, "rec@%d", &topn) == 1, "must specify n for rec@n" );
+            }
+            virtual ~MetricRecall( void ){}
+        protected:
+            virtual float CalcMetric( const mshadow::Tensor<cpu,1> &pred, float label ) {
+                if( pred.shape[0] < (index_t)topn ){
+                    fprintf( stderr, "evaluating rec@%d, list=%u", topn, pred.shape[0] );
+                    utils::Error("it is meaningless to take rec@n for list shorter than n" );                    
+                }
+                index_t klabel = (index_t)label;
+                vec.resize( pred.shape[0] );
+                for( index_t i = 0; i < pred.shape[0]; ++ i ){
+                    vec[i] = std::make_pair( pred[i], i );
+                }
+                Shuffle( vec );
+                std::sort( vec.begin(), vec.end(), CmpScore );
+                for( int i = 0; i < topn; ++ i ) {
+                    if( vec[i].second == klabel ) return 1.0f;
+                }
+                return 0.0f;
             }
         private:
-            double sum_err;
-            long   cnt_inst;
+            inline static bool CmpScore( const std::pair<float,index_t> &a, const std::pair<float,index_t> &b ){
+                return a.first > b.first;
+            }
+            std::vector< std::pair<float,index_t> > vec;
+            int topn;
         };
 
         /*! \brief a set of evaluators */
@@ -160,6 +190,7 @@ namespace cxxnet{
                 if( !strcmp( name, "rmse") )  evals_.push_back( new MetricRMSE() );
                 if( !strcmp( name, "error") ) evals_.push_back( new MetricError() );
                 if( !strcmp( name, "r2") )    evals_.push_back( new MetricCorrSqr() );
+                if( !strncmp( name, "rec@",4) )  evals_.push_back( new MetricRecall( name ) );
                 // simple way to enforce uniqueness, not a good way, not ok here
                 std::sort( evals_.begin(), evals_.end(), CmpName );
                 evals_.resize( std::unique( evals_.begin(), evals_.end(), EqualName ) - evals_.begin() );
