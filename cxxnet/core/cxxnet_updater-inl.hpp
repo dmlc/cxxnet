@@ -101,8 +101,7 @@ namespace cxxnet{
                     if( !strcmp( val, "constant") )  lr_schedule = 0;
                     if( !strcmp( val, "expdecay") )  lr_schedule = 1;
                     if( !strcmp( val, "polydecay") ) lr_schedule = 2;
-                    if( !strcmp( val, "factor")) lr_schedule = 3;
-                    utils::Error("unknown lr schedule type");
+                    if( !strcmp( val, "factor"))     lr_schedule = 3;
                 }
                 if( !strcmp( name, "gamma") ) lr_gamma = (float)atof( val );
                 if( !strcmp( name, "alpha") ) lr_alpha = (float)atof( val );
