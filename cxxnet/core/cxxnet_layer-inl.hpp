@@ -33,6 +33,8 @@ namespace cxxnet{
         int num_hidden;
         /*! \brief initialization sd for weight */
         float init_sigma;
+        /*! \brief intialization value for bias */
+        float init_bias;
         /*! \brief initialization random type */
         int random_type;
         /*! \brief number of output channel */
@@ -51,6 +53,7 @@ namespace cxxnet{
         float dropout_threshold;
         LayerParam( void ){
             init_sigma = 0.01f;
+            init_bias  = 0.0f;
             num_hidden = 0;
             random_type = 0;
             num_channel = 0;
@@ -68,6 +71,7 @@ namespace cxxnet{
          */
         inline void SetParam(const char *name, const char* val) {
             if( !strcmp( name, "init_sigma") )  init_sigma = (float)atof(val);
+            if( !strcmp( name, "init_bias") )   init_bias  = (float)atof(val);
             if( !strcmp( name, "nhidden") )     num_hidden = atoi(val);
             if( !strcmp( name, "random_type"))  random_type = atoi(val);
             if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
@@ -150,7 +154,7 @@ namespace cxxnet {
             } else {
                 EdgeLayer<xpu>::template InitXavier<2> (wmat_, wmat_.shape[0], wmat_.shape[1]);
             }
-            bias_ = 0.0f; 
+            bias_ = param_.init_bias; 
             // setup gradient weight
             gwmat_.Resize( wmat_.shape );
             gbias_.Resize( bias_.shape );
@@ -329,7 +333,7 @@ namespace cxxnet {
             } else {
                 EdgeLayer<xpu>::InitXavier(wmat_, wmat_.shape[1], wmat_.shape[0]);
             }
-            bias_ = 0.0f;
+            bias_ = param_.init_bias;
             // setup gradient 
             gwmat_.Resize( wmat_.shape );
             gbias_.Resize( bias_.shape );
