@@ -7,7 +7,7 @@
  */
 #include <zlib.h>
 #include "cxxnet_utils.h"
-#include "mshadow/tensor_io.h"
+#include "mshadow/tensor.h"
 
 namespace cxxnet{
     namespace utils{
@@ -108,79 +108,81 @@ namespace cxxnet{
 };
 
 namespace cxxnet {
-    /*! \brief Basic page class */
-    class BinaryPage {
-    public:
-        /*! \brief page size */
-        static const size_t kPageSize = 1 << 22;
-    public:
-        /*! \brief memory data object */
-        struct Obj{
-            /*! \brief pointer to the data*/
-            void  *dptr;
-            /*! \brief size */
-            size_t sz;
-            Obj( void * dptr, size_t sz ):dptr(dptr),sz(sz){}
-        };
-    public:
-        /*! \brief constructor of page */
-        BinaryPage( void )  {
-            data_ = new int[kPageSize];
-            utils::Assert(data_ != NULL);
-            this->Clear();
-        };
-        ~BinaryPage() {
-            if (data_) delete [] data_;
-        }
-        /*!
-         * \brief load one page form instream
-         * \return true if loading is successful
-         */
-        inline bool Load( utils::IStream &fi) {
-            return fi.Read(&data_[0], sizeof(int)*kPageSize ) !=0;
-        }
-        /*! \brief save one page into outstream */
-        inline void Save( utils::IStream &fo ) {
-            fo.Write( &data_[0], sizeof(int)*kPageSize );
-        }
-        /*! \return number of elements */
-        inline int Size( void ){
-            return data_[0];
-        }
-        /*! \brief Push one binary object into page
-         *  \param fname file name of obj need to be pushed into
-         *  \return false or true to push into
-         */
-        inline bool Push( const Obj &dat ) {
-            if( this->FreeBytes() < dat.sz + sizeof(int) ) return false;
-            data_[ Size() + 2 ] = data_[ Size() + 1 ] + dat.sz;
-            memcpy( this->offset( data_[ Size() + 2 ]), dat.dptr, dat.sz );
-            ++ data_[0];
-            return true;
-        }
-        /*! \brief Clear the page */
-        inline void Clear( void ) {
-            memset( &data_[0], 0, sizeof(int) * kPageSize );
-        }
-        /*!
-         * \brief Get one binary object from page
-         *  \param r r th obj in the page
-         */
-        inline Obj operator[]( int r ){
-            utils::Assert( r < Size(), "index excceed bound" );
-            return Obj( this->offset( data_[ r + 2 ] ),  data_[ r + 2 ] - data_[ r + 1 ] );
-        }
-    private:
-        /*! \return number of elements */
-        inline size_t FreeBytes( void ){
-            return ( kPageSize - (Size() + 2) ) * sizeof(int) - data_[ Size() + 1 ];
-        }
-        inline void* offset( int pos ){
-            return (char*)(&data_[0]) + (kPageSize*sizeof(int) - pos);
-        }
-    private:
-        //int data_[ kPageSize ];
-        int *data_;
-    }; // class BinaryPage
+    namespace utils{
+        /*! \brief Basic page class */
+        class BinaryPage {
+        public:
+            /*! \brief page size */
+            static const size_t kPageSize = 1 << 22;
+        public:
+            /*! \brief memory data object */
+            struct Obj{
+                /*! \brief pointer to the data*/
+                void  *dptr;
+                /*! \brief size */
+                size_t sz;
+                Obj( void * dptr, size_t sz ):dptr(dptr),sz(sz){}
+            };
+        public:
+            /*! \brief constructor of page */
+            BinaryPage( void )  {
+                data_ = new int[kPageSize];
+                utils::Assert(data_ != NULL);
+                this->Clear();
+            };
+            ~BinaryPage() {
+                if (data_) delete [] data_;
+            }
+            /*!
+             * \brief load one page form instream
+             * \return true if loading is successful
+             */
+            inline bool Load( utils::IStream &fi) {
+                return fi.Read(&data_[0], sizeof(int)*kPageSize ) !=0;
+            }
+            /*! \brief save one page into outstream */
+            inline void Save( utils::IStream &fo ) {
+                fo.Write( &data_[0], sizeof(int)*kPageSize );
+            }
+            /*! \return number of elements */
+            inline int Size( void ){
+                return data_[0];
+            }
+            /*! \brief Push one binary object into page
+             *  \param fname file name of obj need to be pushed into
+             *  \return false or true to push into
+             */
+            inline bool Push( const Obj &dat ) {
+                if( this->FreeBytes() < dat.sz + sizeof(int) ) return false;
+                data_[ Size() + 2 ] = data_[ Size() + 1 ] + dat.sz;
+                memcpy( this->offset( data_[ Size() + 2 ]), dat.dptr, dat.sz );
+                ++ data_[0];
+                return true;
+            }
+            /*! \brief Clear the page */
+            inline void Clear( void ) {
+                memset( &data_[0], 0, sizeof(int) * kPageSize );
+            }
+            /*!
+             * \brief Get one binary object from page
+             *  \param r r th obj in the page
+             */
+            inline Obj operator[]( int r ){
+                utils::Assert( r < Size(), "index excceed bound" );
+                return Obj( this->offset( data_[ r + 2 ] ),  data_[ r + 2 ] - data_[ r + 1 ] );
+            }
+        private:
+            /*! \return number of elements */
+            inline size_t FreeBytes( void ){
+                return ( kPageSize - (Size() + 2) ) * sizeof(int) - data_[ Size() + 1 ];
+            }
+            inline void* offset( int pos ){
+                return (char*)(&data_[0]) + (kPageSize*sizeof(int) - pos);
+            }
+        private:
+            //int data_[ kPageSize ];
+            int *data_;
+        }; // class BinaryPage
+    };
 }; // namespace cxxnet
 #endif
