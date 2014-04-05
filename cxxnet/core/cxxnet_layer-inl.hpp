@@ -256,9 +256,9 @@ namespace cxxnet {
                 temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
                 
                 if( param_.pad == 0 ){
-                    temp_col_ = unpack_patch2colX( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2colX( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -289,9 +289,9 @@ namespace cxxnet {
                 temp_dst_ = reshape( swapaxis<2,3>( out_.data.Slice(i,i+step) ), temp_dst_.shape );
 
                 if( param_.pad == 0 ){
-                    temp_col_ = unpack_patch2colX( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2colX( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -306,10 +306,10 @@ namespace cxxnet {
                         tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
                     }
                     if( param_.pad == 0 ){                        
-                        in_.data.Slice(i,i+step) = pack_col2patchX( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
+                        in_.data.Slice(i,i+step) = pack_col2patch( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
                     }else{
                         mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
-                        in_.data.Slice(i,i+step) = crop( pack_col2patchX( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
+                        in_.data.Slice(i,i+step) = crop( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
                     }
                 }
             }

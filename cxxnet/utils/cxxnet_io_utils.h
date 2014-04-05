@@ -100,172 +100,76 @@ namespace cxxnet{
     };
 };
 
-
 namespace cxxnet {
-    /*! \brief struct to save binary object in page */
-    struct BinaryObj {
-        char *ptr_;
-        size_t sz_;
-    }; // struct BinaryObj
-
-    /*! \brief Basic page class
-     *  \tparam basic element size: int or size_t
-     */
-    template<typename T>
+    /*! \brief Basic page class */
     class BinaryPage {
     public:
-        // page size
-        static const size_t psize = 1 << 24;
-    private:
-        T *dptr_;
-        T *head_;
-        T *tail_;
-        T now_;
+        /*! \brief page size */
+        static const size_t kPageSize = 1 << 24;
+    public:
+        /*! \brief memory data object */
+        struct Obj{
+            /*! \brief pointer to the data*/
+            void  *dptr;
+            /*! \brief size */
+            size_t sz;
+            Obj( void * dptr, size_t sz ):dptr(dptr),sz(sz){}
+        };
     public:
         /*! \brief constructor of page */
-        BinaryPage() {
-            dptr_ = NULL;
-            dptr_ = new T[psize];
-            utils::Assert(dptr_ != NULL);
-            dptr_[0] = 0;
-            now_ = 0;
-            head_ = dptr_ + 1;
-            tail_ = dptr_ + psize;
+        BinaryPage( void ):nelem_(data_[0]){
+            this->Clear();
         };
-
-        /*! deconstructor of page */
-        ~BinaryPage() { if (dptr_) delete [] dptr_; }
-        /*! \brief load one page form instream */
-        inline void Load(FILE *fi) {
-            utils::Assert(fread(dptr_, sizeof(T), psize, fi) > 0);
+        /*! 
+         * \brief load one page form instream
+         * \return true if loading is successful
+         */
+        inline bool Load( utils::IStream &fi) {
+            return fi.Read(&data_[0], sizeof(int)*kPageSize ) !=0;
         }
         /*! \brief save one page into outstream */
-        inline void Save(FILE *fo) {
-            fwrite(dptr_, sizeof(T), psize, fo);
+        inline void Save( utils::IStream &fo ) {
+            fo.Write( &data_[0], sizeof(int)*kPageSize );
+        }
+        /*! \return number of elements */
+        inline int nelem( void ){
+            return nelem_;
         }
         /*! \brief Push one binary object into page
          *  \param fname file name of obj need to be pushed into
          *  \return false or true to push into
          */
-        inline bool Push(const char * fname) {
-            // get file length
-            FILE* fp = fopen(fname, "rb");
-            utils::Assert(fp != NULL);
-            fseek(fp, 0L, SEEK_END);
-            size_t sz = ftell(fp);
-            fseek(fp, 0L, SEEK_SET);
-            bool success = false;
-
-            // judge whether can set in
-            if ((char*)(head_ + 2) < ((char *)tail_ - sz)) {
-                dptr_[0] ++;
-                head_[now_++] = sz;
-                char *pstart = (char *)tail_ - sz;
-                tail_ = (T*) (pstart - 1);
-                fread(pstart, sizeof(char), sz, fp);
-                success = true;
-            }
-            fclose(fp);
-            return success;
+        inline bool Push( const Obj &dat ) {
+            if( this->FreeBytes() < dat.sz + sizeof(int) ) return false;
+            data_[ nelem_ + 2 ] = data_[ nelem_ + 1 ] + dat.sz;
+            memcpy( this->offset( data_[ nelem_ + 2 ]), dat.dptr, dat.sz );
+            ++ nelem_;
+            return true;
         }
-        /*! \brief Get total object in the page */
-        inline T Size() { return dptr_[0]; }
-
         /*! \brief Clear the page */
-        inline void Clear() {
-            dptr_[0] = 0;
-            head_ = dptr_ + 1;
-            tail_ = dptr_ + psize;
-            now_ = 0;
+        inline void Clear( void ) {
+            memset( &data_[0], 0, sizeof(int) * kPageSize );            
         }
-
-        /*! \brief Get one binary object from page
+        /*! 
+         * \brief Get one binary object from page
          *  \param r r th obj in the page
          *  \param obj BinaryObj struct to save the obj info
          */
-        inline bool Get(int r, BinaryObj &obj) {
-            if (r > dptr_[0]) return false;
-            obj.sz_ = dptr_[r];
-            obj.ptr_ = (char*)(dptr_ + psize);
-            for (int i = 0; i <= r; ++i) {
-                obj.ptr_ -= dptr_[1 + i];
-                if (i != r) obj.ptr_ -= 1;
-            }
-            return true;
+        inline Obj operator[]( int r ){
+            utils::Assert( r < nelem(), "index excceed bound" );
+            return Obj( this->offset( data_[ r + 2 ] ),  data_[ r + 2 ] - data_[ r + 1 ] );
         }
+    private:
+        /*! \return number of elements */
+        inline size_t FreeBytes( void ){
+            return ( kPageSize - (nelem_ + 2) ) * sizeof(int) - data_[ nelem_ + 1 ];
+        }
+        inline void* offset( int pos ){
+            return (char*)(&data_[0]) + (kPageSize*sizeof(int) - pos);
+        }
+    private:
+        int data_[ kPageSize ];
+        int &nelem_;
     }; // class BinaryPage
-
-    template<typename T>
-    class BinaryPageWriter {
-    private:
-        BinaryPage<T> pg_;
-        FILE *fp_;
-    public:
-        BinaryPageWriter(const char *name) {
-            fp_ = fopen(name, "wb");
-            utils::Assert(fp_ != NULL);
-        }
-        void Push(const char *name) {
-            if (!pg_.Push(name)) {
-                pg_.Save(fp_);
-                pg_.Clear();
-            }
-            if (!pg_.Push(name)) {
-                utils::Error("Single Page too small");
-            }
-        }
-        ~BinaryPageWriter() {
-            if (fp_) fclose(fp_);
-        }
-    }; // class BinaryPageWriter
-
-
-    template<typename T>
-    class BinaryPageReader {
-    private:
-        BinaryPage<T> pg_;
-        FILE *fp_;
-    public:
-        int now_elem_;
-        int now_page_;
-        size_t total_page_;
-        size_t max_obj_;
-    public:
-        BinaryPageReader(const char *name) {
-            fp_ = fopen(name, "rb");
-            utils::Assert(fp_ != NULL, "Can not open the page file!");
-            total_page_ = ftell(fp_) / pg_.psize / sizeof(T);
-            this->Reset();
-            max_obj_ = total_page_ * pg_.Size();
-        }
-        inline void Reset() {
-            now_elem_ = 0;
-            now_page_ = 0;
-            fseek(fp_, 0L, SEEK_SET);
-            pg_.Load(fp_);
-        }
-        inline bool Next(BinaryObj &obj) {
-            if (now_page_ < total_page_) {
-                if (!pg_.Get(now_elem_++, obj)) {
-                    if (now_page_ + 1 < total_page_) {
-                        pg_.Load(fp_);
-                        now_page_++;
-                        now_elem_ = 0;
-                        return pg_.Get(now_elem_++, obj);
-                    } else {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            return false;
-        }
-        inline bool Get(size_t r, BinaryObj &obj) {
-            utils::Error("Not implemented");
-            return false;
-        }
-    }; //class BinaryPageWriter
-
 }; // namespace cxxnet
 #endif
-
