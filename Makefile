@@ -4,7 +4,7 @@ export CXX = g++
 export NVCC =nvcc
 
 export CFLAGS = -Wall -g -O3 -msse4 -Wno-unknown-pragmas -funroll-loops -I../mshadow/
-export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lX11 -lopencv_core  -lopencv_highgui
+export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lX11 `pkg-config --libs opencv`
 export NVCCFLAGS = -g -O3 -ccbin $(CXX)
 
 # specify tensor path

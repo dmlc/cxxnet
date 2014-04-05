@@ -51,6 +51,11 @@ namespace cxxnet{
         int no_bias;
         /*! \brief dropout threshold  */
         float dropout_threshold;
+        /*! \brief maximum temp_col_size allowed in each layer, we need at least one temp col */
+        int temp_col_max;
+        /*! \brief shut up */
+        int silent;
+        /*! \brief construtor */
         LayerParam( void ){
             init_sigma = 0.01f;
             init_bias  = 0.0f;
@@ -63,6 +68,9 @@ namespace cxxnet{
             pad = 0;
             dropout_threshold = 0.0f;
             no_bias = 0;
+            silent = 0;
+            // 64 MB
+            temp_col_max = 64<<18;
         }
         /*!
          * \brief Set param for the layer from string
@@ -81,6 +89,8 @@ namespace cxxnet{
             if( !strcmp( name, "pad") )         pad      = atoi(val);
             if( !strcmp( name, "no_bias") )     no_bias = atoi(val);
             if( !strcmp( name, "threshold"))    dropout_threshold = (float)atof(val);
+            if( !strcmp( name, "silent") )      silent   = atoi(val);
+            if( !strcmp( name, "temp_col_max") ) temp_col_max = atoi(val) << 18;
         }
     };
 };
@@ -239,12 +249,16 @@ namespace cxxnet {
         virtual ~ConvolutionLayer( void ){}
         virtual void Forward(bool is_train) {
             const index_t nbatch = in_.data.shape[3];
-
-            for( index_t i = 0; i < nbatch; ++ i ){
+            for( index_t i = 0; i < nbatch; i += nstep_ ){
+                // resize, incase last batch is smaller
+                const index_t step = std::min(nstep_, nbatch-i);
+                temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
+                temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
+                
                 if( param_.pad == 0 ){
-                    temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2colX( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2col( pad(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2colX( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -252,7 +266,7 @@ namespace cxxnet {
                     mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                     temp_dst_[ gid ] = dot( wmat_[gid], tmpc );
                 }
-                out_.data[i] = reshape( temp_dst_, out_.data[i].shape );
+                out_.data.Slice(i,i+step)  = swapaxis<2,3>( reshape( temp_dst_, mshadow::Shape4( param_.num_channel, step, out_.data.shape[1], out_.data.shape[0] ) ) );
             }
             if( param_.no_bias == 0 ){
                 // add bias, broadcast bias to dim 2: channel
@@ -266,12 +280,18 @@ namespace cxxnet {
                 gbias_ = sumall_except_dim<2>( out_.data );
             }
             gwmat_ = 0.0f;
-            for( index_t i = 0; i < nbatch; ++ i ){
-                temp_dst_ = reshape( out_.data[i], temp_dst_.shape );
+
+            for( index_t i = 0; i < nbatch; i += nstep_ ){
+                const index_t step = std::min(nstep_, nbatch-i);
+                temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
+                temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
+
+                temp_dst_ = reshape( swapaxis<2,3>( out_.data.Slice(i,i+step) ), temp_dst_.shape );
+
                 if( param_.pad == 0 ){
-                    temp_col_ = unpack_patch2col( in_.data[i], param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2colX( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2col( pad(in_.data[i],param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2colX( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -285,11 +305,11 @@ namespace cxxnet {
                         mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                         tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
                     }
-                    if( param_.pad == 0 ){
-                        in_.data[i] = pack_col2patch( temp_col_, in_.data[i].shape, param_.kernel_size, param_.stride );
+                    if( param_.pad == 0 ){                        
+                        in_.data.Slice(i,i+step) = pack_col2patchX( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
                     }else{
-                        mshadow::Shape<3> pshape = in_.data[i].shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
-                        in_.data[i] = crop( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
+                        mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
+                        in_.data.Slice(i,i+step) = crop( pack_col2patchX( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
                     }
                 }
             }
@@ -308,10 +328,17 @@ namespace cxxnet {
                         (in_.data.shape[1] + 2 * param_.pad - ksize)/kstride + 1,
                         (in_.data.shape[0] + 2 * param_.pad - ksize)/kstride + 1 );
             out_.data.shape = oshape;
-
+            // this is the unit size of eacj temp structure
+            shape_colunit_ = mshadow::Shape2( in_.data.shape[2]*ksize*ksize, oshape[1]*oshape[0] );
+            shape_dstunit_ = mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[1]*oshape[0] );
+            index_t nstep_ = std::max( std::min( (index_t)(param_.temp_col_max / shape_colunit_.Size()), in_.data.shape[3] ), 1U );
             // helper structure
-            temp_col_.Resize( mshadow::Shape2( in_.data.shape[2]*ksize*ksize, oshape[1]*oshape[0] ) );
-            temp_dst_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[1]*oshape[0] ) );
+            temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*nstep_ ));
+            temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*nstep_) );
+            
+            if( param_.silent == 0 ){
+                printf("ConvolutionLayer: nstep=%u\n", nstep_ );
+            }
         }
         virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
             updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, wmat_, gwmat_, "wmat" ) );
@@ -372,6 +399,12 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu,2> temp_col_;
         /*! \brief temporary data structure to store results */
         mshadow::TensorContainer<xpu,3> temp_dst_;
+        /*! \brief shape of column unit */
+        mshadow::Shape<2> shape_colunit_;
+        /*! \brief shape of dst unit */
+        mshadow::Shape<3> shape_dstunit_;
+        /*! \brief how many number of batches to be unpacked together */
+        mshadow::index_t nstep_;
     };
 
     template<typename Reducer, bool scalebysize, typename xpu>
