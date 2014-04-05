@@ -73,11 +73,9 @@ namespace cxxnet{
     private:
         inline void LoadImage( void ){
             if( buf_top_ >= num_inbuffer_ ){
-                if( num_inbuffer_ == 0 ){
-                    num_inbuffer_ = std::min( dshape_[3] - num_readed_, buffer_size_ );
-                    utils::Assert( num_inbuffer_ > 0 && num_readed_ <= dshape_[3], "list longer than binary file");
-                    utils::Assert( fpbin_->Read( &buf_[0], sizeof(unsigned char) * num_inbuffer_ * img_.shape.Size()), "read buffer" );
-                }
+                num_inbuffer_ = std::min( dshape_[3] - num_readed_, buffer_size_ );
+                utils::Assert( num_inbuffer_ > 0 && num_readed_ <= dshape_[3], "list longer than binary file");
+                utils::Assert( fpbin_->Read( &buf_[0], sizeof(unsigned char) * num_inbuffer_ * img_.shape.Size()), "read buffer" );
                 buf_top_ = 0; num_readed_ += num_inbuffer_;
             }
             mshadow::index_t n = img_.shape.Size();
