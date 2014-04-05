@@ -70,19 +70,6 @@ namespace cxxnet{
             }
             return fp;
         }
-
-        /*! \brief pair compare template, used for std::sort and others */
-        template<typename TA, typename TB>
-        class PairCompare {
-        private:
-            bool reverse_;
-        public:
-            PairCompare(bool rev=false) : reverse_(rev) {}
-            bool operator() (const std::pair<TA, TB> &lhs, const std::pair<TA, TB> &rhs) const {
-                if (reverse_) return (lhs.first > rhs.first);
-                else return (lhs.first < rhs.first);
-            }
-        };
     };
 };
 #endif

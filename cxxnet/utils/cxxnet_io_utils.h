@@ -76,6 +76,9 @@ namespace cxxnet{
             /*! \brief constructor */
             StdFile( const char *fname, const char *mode ){
                 fp_ = utils::FopenCheck( fname, mode );
+                fseek(fp_, 0L, SEEK_END);
+                sz_ = ftell(fp_);
+                fseek(fp_, 0L, SEEK_SET);
             }
             virtual ~StdFile( void ){
                 this->Close();
@@ -94,8 +97,12 @@ namespace cxxnet{
                     fclose( fp_ ); fp_ = NULL;
                 }
             }
+            inline size_t Size() {
+                return sz_;
+            }
         private:
             FILE *fp_;
+            size_t sz_;
         };
     };
 };
@@ -105,7 +112,7 @@ namespace cxxnet {
     class BinaryPage {
     public:
         /*! \brief page size */
-        static const size_t kPageSize = 1 << 24;
+        static const size_t kPageSize = 1 << 22;
     public:
         /*! \brief memory data object */
         struct Obj{
@@ -117,10 +124,15 @@ namespace cxxnet {
         };
     public:
         /*! \brief constructor of page */
-        BinaryPage( void ):nelem_(data_[0]){
+        BinaryPage( void )  {
+            data_ = new int[kPageSize];
+            utils::Assert(data_ != NULL);
             this->Clear();
         };
-        /*! 
+        ~BinaryPage() {
+            if (data_) delete [] data_;
+        }
+        /*!
          * \brief load one page form instream
          * \return true if loading is successful
          */
@@ -132,8 +144,8 @@ namespace cxxnet {
             fo.Write( &data_[0], sizeof(int)*kPageSize );
         }
         /*! \return number of elements */
-        inline int nelem( void ){
-            return nelem_;
+        inline int Size( void ){
+            return data_[0];
         }
         /*! \brief Push one binary object into page
          *  \param fname file name of obj need to be pushed into
@@ -141,35 +153,34 @@ namespace cxxnet {
          */
         inline bool Push( const Obj &dat ) {
             if( this->FreeBytes() < dat.sz + sizeof(int) ) return false;
-            data_[ nelem_ + 2 ] = data_[ nelem_ + 1 ] + dat.sz;
-            memcpy( this->offset( data_[ nelem_ + 2 ]), dat.dptr, dat.sz );
-            ++ nelem_;
+            data_[ Size() + 2 ] = data_[ Size() + 1 ] + dat.sz;
+            memcpy( this->offset( data_[ Size() + 2 ]), dat.dptr, dat.sz );
+            ++ data_[0];
             return true;
         }
         /*! \brief Clear the page */
         inline void Clear( void ) {
-            memset( &data_[0], 0, sizeof(int) * kPageSize );            
+            memset( &data_[0], 0, sizeof(int) * kPageSize );
         }
-        /*! 
+        /*!
          * \brief Get one binary object from page
          *  \param r r th obj in the page
-         *  \param obj BinaryObj struct to save the obj info
          */
         inline Obj operator[]( int r ){
-            utils::Assert( r < nelem(), "index excceed bound" );
+            utils::Assert( r < Size(), "index excceed bound" );
             return Obj( this->offset( data_[ r + 2 ] ),  data_[ r + 2 ] - data_[ r + 1 ] );
         }
     private:
         /*! \return number of elements */
         inline size_t FreeBytes( void ){
-            return ( kPageSize - (nelem_ + 2) ) * sizeof(int) - data_[ nelem_ + 1 ];
+            return ( kPageSize - (Size() + 2) ) * sizeof(int) - data_[ Size() + 1 ];
         }
         inline void* offset( int pos ){
             return (char*)(&data_[0]) + (kPageSize*sizeof(int) - pos);
         }
     private:
-        int data_[ kPageSize ];
-        int &nelem_;
+        //int data_[ kPageSize ];
+        int *data_;
     }; // class BinaryPage
 }; // namespace cxxnet
 #endif
