@@ -331,7 +331,7 @@ namespace cxxnet {
             // this is the unit size of eacj temp structure
             shape_colunit_ = mshadow::Shape2( in_.data.shape[2]*ksize*ksize, oshape[1]*oshape[0] );
             shape_dstunit_ = mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[1]*oshape[0] );
-            index_t nstep_ = std::max( std::min( (index_t)(param_.temp_col_max / shape_colunit_.Size()), in_.data.shape[3] ), 1U );
+            nstep_ = std::max( std::min( (index_t)(param_.temp_col_max / shape_colunit_.Size()), in_.data.shape[3] ), 1U );
             // helper structure
             temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*nstep_ ));
             temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*nstep_) );
