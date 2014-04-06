@@ -419,10 +419,11 @@ namespace cxxnet {
         virtual ~PoolingLayer() {}
         virtual void Forward(bool is_train) {
             const int ksize = param_.kernel_size;
+            mshadow::Shape<2> pshape = out_.data[0][0].shape;
             if( !scalebysize ){
-                tmp_ = pool<Reducer>(in_.data, ksize, param_.stride);
+                tmp_ = pool<Reducer>(in_.data, pshape, ksize, param_.stride);
             }else{                
-                tmp_ = pool<Reducer>(in_.data, ksize, param_.stride) * (1.0f/(ksize*ksize) );
+                tmp_ = pool<Reducer>(in_.data, pshape, ksize, param_.stride) * (1.0f/(ksize*ksize) );
             }
             mshadow::Copy( out_.data, tmp_ );
         }
@@ -444,10 +445,11 @@ namespace cxxnet {
             const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
             Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
+            // conform to same shape style as caffe, though maybe not necessary
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], in_.data.shape[2],
-                        (in_.data.shape[1] - ksize)/kstride + 1,
-                        (in_.data.shape[0] - ksize)/kstride + 1 );
+                        (in_.data.shape[1] - ksize + kstride-1)/kstride + 1,
+                        (in_.data.shape[0] - ksize + kstride-1)/kstride + 1 );
             tmp_.Resize( oshape ); out_.data.shape = oshape;
         }
     private:

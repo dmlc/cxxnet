@@ -359,6 +359,7 @@ namespace cxxnet {
             loss_type = 0; round = 0;
             update_period = 1;
             sample_counter = 0;
+            eval_train = 1;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
         }
         virtual ~CXXNetTrainer( void ){
@@ -366,8 +367,10 @@ namespace cxxnet {
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
             if( !strcmp( name, "update_period" ) )  update_period = atoi( val );
-            if( !strcmp( name, "metric") ) { metric.AddMetric( val ); train_metric.AddMetric(val); }
-            if( !strcmp( name, "train_eval")) train_eval = atoi(val);
+            if( !strcmp( name, "metric") ) { 
+                metric.AddMetric( val ); train_metric.AddMetric(val); 
+            }
+            if( !strcmp( name, "eval_train")) eval_train = atoi(val);
             net.SetParam( name, val );
         }
         virtual void InitModel( void ) {
@@ -411,7 +414,8 @@ namespace cxxnet {
                 metric.AddEval( temp, batch.labels );
             }
             metric.Print( fo, evname );
-            if (train_eval == 1) {
+            
+            if (eval_train != 0 ) {
                 train_metric.Print(fo, "train");
                 train_metric.Clear();
             }
@@ -464,10 +468,10 @@ namespace cxxnet {
             if( loss_type == 1 || loss_type == 2 ){
                 Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
             }
-            if (train_eval == 1) {
+            // evlauate training loss
+            if (eval_train != 0) {
                 train_metric.AddEval(temp, labels);
             }
-
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 this->SetLoss( temp[i], labels[i] );
             }
@@ -502,7 +506,7 @@ namespace cxxnet {
         // tmp stoage of top index
         std::vector<index_t> tmp_index_;
         // show train eval
-        int train_eval;
+        int eval_train;
         // evaluator for train
         utils::MetricSet train_metric;
     }; // class NeuralNet
