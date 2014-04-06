@@ -38,8 +38,8 @@ namespace cxxnet{
                 printf("ThreadImagePageIterator:image_list=%s, bin=%s\n", path_imglst_.c_str(), path_imgbin_.c_str() );
             }
             itr.get_factory().fi.Open( path_imgbin_.c_str(), "rb" );
-            itr.Init();            
-            this->BeforeFirst();            
+            itr.Init();
+            this->BeforeFirst();
         }
         virtual void BeforeFirst( void ){
             fseek( fplst_ , 0, SEEK_SET );
@@ -48,7 +48,7 @@ namespace cxxnet{
         }
         virtual bool Next( void ){
             while( fscanf( fplst_,"%u%f%*[^\n]\n", &out_.index, &out_.label ) == 2 ){
-                this->NextBuffer( buf_ );              
+                this->NextBuffer( buf_ );
                 this->LoadImage( img_, out_, buf_ );
                 return true;
             }
@@ -58,7 +58,7 @@ namespace cxxnet{
             return out_;
         }
     protected:
-        inline static void LoadImage( mshadow::TensorContainer<cpu,3> &img, 
+        inline static void LoadImage( mshadow::TensorContainer<cpu,3> &img,
                                       DataInst &out,
                                       std::vector<unsigned char>& buf ){
             cv::Mat res = cv::imdecode( buf, 1 );
@@ -107,7 +107,7 @@ namespace cxxnet{
     private:
         struct PagePtr{
             utils::BinaryPage *page;
-        };        
+        };
         struct Factory{
         public:
             utils::StdFile fi;
@@ -137,7 +137,7 @@ namespace cxxnet{
         PagePtr page_;
         int     ptop_;
         utils::ThreadBuffer<PagePtr,Factory> itr;
-    };    
+    };
 };
 #endif
 
