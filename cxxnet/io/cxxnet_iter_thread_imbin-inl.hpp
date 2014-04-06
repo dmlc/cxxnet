@@ -2,11 +2,12 @@
 #define CXXNET_ITER_THREAD_IMBIN_INL_HPP
 #pragma once
 /*!
- * \file cxxnet_iter_proc-inl.hpp
- * \brief definition of preprocessing iterators that takes an iterator and do some preprocessing
+ * \file cxxnet_iter_thread_imbin-inl.hpp
+ * \brief threaded version of page iterator
  * \author Tianqi Chen
  */
 #include "cxxnet_data.h"
+#include <opencv2/opencv.hpp>
 #include "../utils/cxxnet_thread_buffer.h"
 #include "../utils/cxxnet_io_utils.h"
 
@@ -28,7 +29,7 @@ namespace cxxnet{
         }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "image_list" ) )    path_imglst_ = val;
-            if( !strcmp( name, "image_bin") )      path_imgbin_ = val;
+            if( !strcmp( name, "image_bin") )     path_imgbin_ = val;
             if( !strcmp( name, "silent"   ) )      silent_ = atoi( val );
         }
         virtual void Init( void ){
@@ -46,9 +47,7 @@ namespace cxxnet{
             this->LoadNextPage();
         }
         virtual bool Next( void ){
-            char fname[ 256 ];
-            while( fscanf( fplst_,"%u%f %[^\n]\n", &out_.index, &out_.label, fname ) == 3 ){
-                if( fname[0] == '\0' ) continue; 
+            while( fscanf( fplst_,"%u%f%*[^\n]\n", &out_.index, &out_.label ) == 2 ){
                 this->NextBuffer( buf_ );              
                 this->LoadImage( img_, out_, buf_ );
                 return true;

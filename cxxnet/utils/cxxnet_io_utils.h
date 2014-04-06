@@ -75,6 +75,10 @@ namespace cxxnet{
         public:
             /*! \brief constructor */
             StdFile( const char *fname, const char *mode ){
+                Open(fname, mode);
+            }
+            StdFile() {}
+            virtual void Open(const char *fname, const char *mode) {
                 fp_ = utils::FopenCheck( fname, mode );
                 fseek(fp_, 0L, SEEK_END);
                 sz_ = ftell(fp_);

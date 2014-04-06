@@ -21,7 +21,7 @@ namespace cxxnet {
 #include "cxxnet_iter_img-inl.hpp"
 #include "cxxnet_iter_bin-inl.hpp"
 #include "cxxnet_iter_proc-inl.hpp"
-
+#include "cxxnet_iter_page-inl.hpp"
 #include "cxxnet_iter_thread_imbin-inl.hpp"
 
 namespace cxxnet{
@@ -52,7 +52,14 @@ namespace cxxnet{
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator( new BinaryIterator() ); continue;
                 }
-
+                if( !strcmp( val, "imagepage")) {
+                     utils::Assert( it == NULL );
+                     it = new BatchAdaptIterator(new PageIterator()); continue;
+                }
+                if( !strcmp( val, "imagethreadpage")) {
+                     utils::Assert( it == NULL );
+                     it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
+                }
                 if( !strcmp( val, "threadbuffer") ){
                     utils::Assert( it != NULL, "must specify input of threadbuffer" );
                     it = new ThreadBufferIterator( it );
