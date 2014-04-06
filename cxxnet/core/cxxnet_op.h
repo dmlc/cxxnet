@@ -22,8 +22,7 @@ namespace cxxnet {
             }
         };
 
-        /*! \brief Rectified Linear Operation
-                   https://en.wikipedia.org/wiki/Rectifier_(neural_networks) */
+        /*! \brief Rectified Linear Operation */
         struct relu {
             MSHADOW_XINLINE static real_t Map(real_t a) {
                 using namespace std;
@@ -87,7 +86,7 @@ namespace cxxnet {
             }
         };
 
-        /*! \brief used for generate Bernoulli mask */
+        /*! \brief used for generate element of power */
         struct power {
             MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
                 return powf( a, b );
