@@ -130,13 +130,7 @@ namespace cxxnet {
     class NodeFactory{
     public:
         NodeFactory( void ){
-            if( xpu::kDevCPU ){
-                // CPU, always not use backup
-                max_mem_ = std::numeric_limits<size_t>::max();
-            }else{
-                // GPU, 1.6 GB bydefault
-                max_mem_ = 700L * 1000000;
-            }
+            max_mem_ = std::numeric_limits<size_t>::max();
             warning_ = 1;
             total_mem_ = 0;
         }
