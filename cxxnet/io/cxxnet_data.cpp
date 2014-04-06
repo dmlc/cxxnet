@@ -19,9 +19,7 @@ namespace cxxnet {
 #include "cxxnet_iter_mnist-inl.hpp"
 #include "cxxnet_iter_spfeat-inl.hpp"
 #include "cxxnet_iter_img-inl.hpp"
-#include "cxxnet_iter_bin-inl.hpp"
 #include "cxxnet_iter_proc-inl.hpp"
-#include "cxxnet_iter_page-inl.hpp"
 #include "cxxnet_iter_thread_imbin-inl.hpp"
 
 namespace cxxnet{
@@ -48,15 +46,7 @@ namespace cxxnet{
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator( new ImageIterator() ); continue;
                 }
-                if( !strcmp( val, "imagebin") ) {
-                    utils::Assert( it == NULL );
-                    it = new BatchAdaptIterator( new BinaryIterator() ); continue;
-                }
-                if( !strcmp( val, "imagepage")) {
-                     utils::Assert( it == NULL );
-                     it = new BatchAdaptIterator(new PageIterator()); continue;
-                }
-                if( !strcmp( val, "imagethreadpage")) {
+                if( !strcmp( val, "imgbin")) {
                      utils::Assert( it == NULL );
                      it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
                 }
