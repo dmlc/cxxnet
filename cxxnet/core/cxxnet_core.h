@@ -79,7 +79,7 @@ namespace cxxnet {
          */
         virtual void Forward(bool is_train) = 0;
         /*!
-         * \brief Back propagation from out_node to in_node, generate the gradient, out_node already stores gradient value
+         * \brief Back propagation from out_node to in_node, accumulate!! the gradient into storage, out_node already stores gradient value
          * \param prop_grad if true, then the layer will propagate gradient back to its input node
          */
         virtual void Backprop(bool prop_grad) = 0;

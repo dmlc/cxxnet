@@ -134,6 +134,8 @@ namespace cxxnet{
             m_w *= param.momentum;
             m_w += (-param.learning_rate) * ( dw + param.wd * w );
             w += m_w;
+            // dw accumulate gradient instead of storing them, updater need to reset then to 0 after each update
+            dw = 0.0f;
         }
         virtual void StartRound( int round ) {
             param.round = round;
@@ -198,7 +200,7 @@ namespace cxxnet{
                 m_w += rnd.gaussian( w.shape ) * param.GetSigma();
             }
             w += m_w;
-            // set dw = 0, so we get fresh gradient
+            // dw accumulate gradient instead of storing them, updater need to reset then to 0 after each update
             dw = 0.0f;
         }
         // update hyper parameters

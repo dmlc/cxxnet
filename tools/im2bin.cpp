@@ -14,11 +14,11 @@ int main(int argc, char **argv) {
     float label = 0.0f;
     std::string root_path = argv[2];
     BinaryPage pg;
- 
+
     StdFile writer(argv[3], "wb");
     std::vector<unsigned char> buf( BinaryPage::kPageSize * sizeof(int), 0 );
 
-    FILE *fplst = FopenCheck(argv[1], "r");    
+    FILE *fplst = FopenCheck(argv[1], "r");
     time_t start = time( NULL );
     long imcnt = 0, pgcnt = 0;
     long elapsed;
@@ -45,14 +45,14 @@ int main(int argc, char **argv) {
             pg.Clear();
             if( !pg.Push(fobj) ){
                 fprintf( stderr, "image %s is too large to fit into a single page, considering increase kPageSize\n", path.c_str() );
-                Error("image size too large");                    
+                Error("image size too large");
             }
             pgcnt += 1;
         }
         if( imcnt % 1000 == 0 ){
             elapsed = (long)(time(NULL) - start);
             printf("\r                                                               \r");
-            printf("[%8lu] images processed to %08lu pages, %ld sec elapsed", imcnt, pgcnt, elapsed );
+            printf("[%8lu] images processed to %lu pages, %ld sec elapsed", imcnt, pgcnt, elapsed );
             fflush( stdout );
         }
     }
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
         pgcnt += 1;
     }
     elapsed = (long)(time(NULL) - start);
-    printf("finished [%8lu] images processed to %08lu pages, %ld sec elapsed\n", imcnt, pgcnt, elapsed );
+    printf("\nfinished [%8lu] images processed to %lu pages, %ld sec elapsed\n", imcnt, pgcnt, elapsed );
     writer.Close();
     return 0;
 }
