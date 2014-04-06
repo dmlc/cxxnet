@@ -367,8 +367,8 @@ namespace cxxnet {
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
             if( !strcmp( name, "update_period" ) )  update_period = atoi( val );
-            if( !strcmp( name, "metric") ) { 
-                metric.AddMetric( val ); train_metric.AddMetric(val); 
+            if( !strcmp( name, "metric") ) {
+                metric.AddMetric( val ); train_metric.AddMetric(val);
             }
             if( !strcmp( name, "eval_train")) eval_train = atoi(val);
             net.SetParam( name, val );
@@ -414,7 +414,7 @@ namespace cxxnet {
                 metric.AddEval( temp, batch.labels );
             }
             metric.Print( fo, evname );
-            
+
             if (eval_train != 0 ) {
                 train_metric.Print(fo, "train");
                 train_metric.Clear();
@@ -489,25 +489,25 @@ namespace cxxnet {
             return maxidx;
         }
     protected:
-        // current round
+        /*! \brief current round */
         int round;
-        // loss function
+        /*! \brief loss function */
         int loss_type;
-        // update period
+        /*! \brief update period */
         int update_period;
-        // sample counter
+        /*! \brief sample counter */
         int sample_counter;
-        // evaluator
+        /*! \brief evaluator */
         utils::MetricSet metric;
-        // temp space
+        /*! \brief temp space */
         mshadow::TensorContainer<cpu,2> temp;
-        // true net
+        /*! \brief true net */
         NeuralNet<xpu> net;
-        // tmp stoage of top index
+        /*! \brief tmp stoage of top index */
         std::vector<index_t> tmp_index_;
-        // show train eval
+        /*! \brief show train eval */
         int eval_train;
-        // evaluator for train
+        /*! \brief evaluator for train */
         utils::MetricSet train_metric;
     }; // class NeuralNet
 
@@ -566,13 +566,13 @@ namespace cxxnet {
             }
         }
     private:
-        // number of burn in rounds, start averagin after this
+        /*! \brief  number of burn in rounds, start averagin after this */
         int num_burn;
-        // number of records to do averaging
+        /*! \brief  number of records to do averaging */
         unsigned num_avg_record;
-        // reference counter
+        /*! \brief  reference counter */
         std::vector<int> ref_counter;
-        // average prediction
+        /*! \brief  average prediction */
         mshadow::TensorContainer<cpu,2> avg_pred;
     };
 }; // namespace cxxnet
