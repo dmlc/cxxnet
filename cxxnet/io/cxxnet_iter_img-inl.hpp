@@ -96,4 +96,3 @@ namespace cxxnet{
     };
 };
 #endif
-

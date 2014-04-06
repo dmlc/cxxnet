@@ -22,6 +22,8 @@ namespace cxxnet {
 #include "cxxnet_iter_bin-inl.hpp"
 #include "cxxnet_iter_proc-inl.hpp"
 
+#include "cxxnet_iter_thread_imbin-inl.hpp"
+
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
         size_t i = 0;
