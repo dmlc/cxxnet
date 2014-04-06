@@ -116,8 +116,8 @@ namespace cxxnet {
         /*! \brief Basic page class */
         class BinaryPage {
         public:
-            /*! \brief page size */
-            static const size_t kPageSize = 1 << 22;
+            /*! \brief page size 64 MB */
+            static const size_t kPageSize = 64 << 18;
         public:
             /*! \brief memory data object */
             struct Obj{
