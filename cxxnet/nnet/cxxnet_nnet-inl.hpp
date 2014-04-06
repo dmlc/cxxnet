@@ -103,7 +103,7 @@ namespace cxxnet {
         NetConfigHelper( NetMetaModel &meta ):meta(meta){
             this->netcfg_mode = 0;
             this->updater_type = "sgd";
-            this->batch_size   = 100;                        
+            this->batch_size   = 100;
         }
         // set parameters
         inline void SetParam( const char *name, const char *val ){
@@ -356,7 +356,7 @@ namespace cxxnet {
     class CXXNetTrainer : public INetTrainer{
     public:
         CXXNetTrainer( void ){
-            loss_type = 0; round = 0; 
+            loss_type = 0; round = 0;
             update_period = 1;
             sample_counter = 0;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
@@ -366,7 +366,8 @@ namespace cxxnet {
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
             if( !strcmp( name, "update_period" ) )  update_period = atoi( val );
-            if( !strcmp( name, "metric") ) metric.AddMetric( val );
+            if( !strcmp( name, "metric") ) { metric.AddMetric( val ); train_metric.AddMetric(val); }
+            if( !strcmp( name, "train_eval")) train_eval = atoi(val);
             net.SetParam( name, val );
         }
         virtual void InitModel( void ) {
@@ -405,11 +406,15 @@ namespace cxxnet {
             metric.Clear();
             iter_eval->BeforeFirst();
             while( iter_eval->Next() ){
-                const DataBatch& batch = iter_eval->Value();               
+                const DataBatch& batch = iter_eval->Value();
                 this->PreparePredTemp( batch );
                 metric.AddEval( temp, batch.labels );
             }
             metric.Print( fo, evname );
+            if (train_eval == 1) {
+                train_metric.Print(fo, "train");
+                train_metric.Clear();
+            }
         }
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) {
             this->PreparePredTemp( batch );
@@ -448,7 +453,7 @@ namespace cxxnet {
             case 0:{
                 index_t k = static_cast<index_t>(label);
                 utils::Assert( k < pred.shape[0], "label exceed output bound" );
-                pred[ k ] -= 1.0f; break;                
+                pred[ k ] -= 1.0f; break;
             }
             case 1: pred[ 0 ] -=  label; break;
             case 2: pred[ 0 ] = 1.0f/(1.0f+std::exp(-pred[0])) - label; break;
@@ -459,6 +464,10 @@ namespace cxxnet {
             if( loss_type == 1 || loss_type == 2 ){
                 Assert( temp.shape[0] == 1, "regression can only have 1 output size" );
             }
+            if (train_eval == 1) {
+                train_metric.AddEval(temp, labels);
+            }
+
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 this->SetLoss( temp[i], labels[i] );
             }
@@ -480,7 +489,7 @@ namespace cxxnet {
         int round;
         // loss function
         int loss_type;
-        // update period 
+        // update period
         int update_period;
         // sample counter
         int sample_counter;
@@ -492,6 +501,10 @@ namespace cxxnet {
         NeuralNet<xpu> net;
         // tmp stoage of top index
         std::vector<index_t> tmp_index_;
+        // show train eval
+        int train_eval;
+        // evaluator for train
+        utils::MetricSet train_metric;
     }; // class NeuralNet
 
 
