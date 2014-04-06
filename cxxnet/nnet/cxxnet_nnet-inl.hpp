@@ -103,7 +103,7 @@ namespace cxxnet {
         NetConfigHelper( NetMetaModel &meta ):meta(meta){
             this->netcfg_mode = 0;
             this->updater_type = "sgd";
-            this->batch_size   = 100;
+            this->batch_size   = 100;                        
         }
         // set parameters
         inline void SetParam( const char *name, const char *val ){
@@ -356,13 +356,16 @@ namespace cxxnet {
     class CXXNetTrainer : public INetTrainer{
     public:
         CXXNetTrainer( void ){
-            loss_type = 0; round = 0;
+            loss_type = 0; round = 0; 
+            update_period = 1;
+            sample_counter = 0;
             printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
         }
         virtual ~CXXNetTrainer( void ){
         }
         virtual void SetParam( const char *name, const char *val ){
             if( !strcmp( name, "loss" ) )  loss_type = atoi( val );
+            if( !strcmp( name, "update_period" ) )  update_period = atoi( val );
             if( !strcmp( name, "metric") ) metric.AddMetric( val );
             net.SetParam( name, val );
         }
@@ -394,7 +397,9 @@ namespace cxxnet {
 
             this->SetLoss( batch.labels );
             net.Backprop();
-            net.Update();
+            if( ++ sample_counter >= update_period ){
+                net.Update(); sample_counter = 0;
+            }
         }
         virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ){
             metric.Clear();
@@ -459,6 +464,8 @@ namespace cxxnet {
             }
             net.out().Pin();
             mshadow::Copy( net.out().data[0][0], temp );
+            // scale by batch_size
+            net.out().data *= 1.0f / ( temp.shape[1] * update_period );
             net.out().Unpin();
         }
         inline static int GetMaxIndex( mshadow::Tensor<cpu,1> pred ){
@@ -473,6 +480,10 @@ namespace cxxnet {
         int round;
         // loss function
         int loss_type;
+        // update period 
+        int update_period;
+        // sample counter
+        int sample_counter;
         // evaluator
         utils::MetricSet metric;
         // temp space

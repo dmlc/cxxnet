@@ -193,9 +193,10 @@ namespace cxxnet {
             }
         }
         inline void Backprop(bool prop_grad, mshadow::Tensor<xpu,2> wmat){
-            gwmat_ = dot( out_.mat().T(), in_.mat() );
+            // accumulate gradient
+            gwmat_ += dot( out_.mat().T(), in_.mat() );
             if( param_.no_bias == 0 ){
-                gbias_ = sum_rows( out_.mat() );
+                gbias_ += sum_rows( out_.mat() );
             }
             // backprop
             if( prop_grad ){
@@ -232,8 +233,6 @@ namespace cxxnet {
             mshadow::Softmax( out_.mat(), out_.mat() );
         }
         virtual void Backprop(bool prop_grad){
-            index_t nbatch =  out_.mat().shape[1];
-            out_.mat() *= 1.0f / nbatch;
         }
     private:
         /*! \brief only transform on out */
@@ -277,9 +276,8 @@ namespace cxxnet {
             const index_t nbatch = in_.data.shape[3];
 
             if( param_.no_bias == 0 ){
-                gbias_ = sumall_except_dim<2>( out_.data );
+                gbias_ += sumall_except_dim<2>( out_.data );
             }
-            gwmat_ = 0.0f;
 
             for( index_t i = 0; i < nbatch; i += nstep_ ){
                 const index_t step = std::min(nstep_, nbatch-i);
