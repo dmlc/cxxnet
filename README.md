@@ -7,7 +7,7 @@ CXXNET is a neural network toolkit build on mshadow(https://github.com/tqchen/ms
 Creater: [Tianqi Chen](http://homes.cs.washington.edu/~tqchen/) and [Bing Xu](http://ca.linkedin.com/in/binghsu)
 
 ## Introduction
-cxxnet is yet another implementation of (convolutional) neural network. It is in C++, about 1000 lines of [layer implementations](../blob/master/cxxnet/core/cxxnet_layer-inl.hpp), easily configuration via config file, and can get the state of art performance.
+cxxnet is yet another implementation of (convolutional) neural network. It is in C++, with less than 1000 lines of [network layer implementations](https://github.com/antinucleon/cxxnet/blob/master/cxxnet/core/cxxnet_layer-inl.hpp), easily configuration via config file, and can get the state of art performance.
 
 ## Features
 * Small but sharp knife: the core part of the implementation is less than 2000 lines, and easily extendible.
