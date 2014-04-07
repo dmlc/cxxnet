@@ -64,6 +64,7 @@ namespace cxxnet{
                 printf("initializing end, start working\n");
             }
             if( task == "train" ) this->TaskTrain();
+            if( task == "predict") this->TaskPredict();
             return 0;
         }
 
@@ -212,6 +213,22 @@ namespace cxxnet{
             }
         }
     private:
+        inline void TaskPredict() {
+            printf("Predicting...\n");
+            this->LoadModel();
+            FILE *outfp = utils::FopenCheck(name_pred.c_str(), "w");
+            for (mshadow::index_t i = 0; i < itr_evals.size(); ++i) {
+                std::vector<float> pred;
+                itr_evals[i]->BeforeFirst();
+                while (itr_evals[i]->Next()) {
+                    const DataBatch& batch = itr_evals[i]->Value();
+                    net_trainer->Predict(pred, batch);
+                }
+                for (mshadow::index_t j = 0; j < pred.size(); ++j) {
+                    fprintf(outfp, "%d\n", static_cast<int>(pred[j]));
+                }
+            }
+        }
         inline void TaskTrain( void ){
             time_t start    = time( NULL );
             unsigned long elapsed = 0;
