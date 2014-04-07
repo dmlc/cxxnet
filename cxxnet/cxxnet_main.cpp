@@ -107,7 +107,7 @@ namespace cxxnet{
             do{
                 if( last != NULL ) fclose( last );
                 last = fi;
-                sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++ );                
+                sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++ );
                 fi = fopen64( name, "rb");
             }while( fi != NULL );
 
@@ -156,7 +156,7 @@ namespace cxxnet{
             }
 
             INetTrainer *net = cxxnet::CreateNet( net_type, device.c_str() );
-            
+
             for( size_t i = 0; i < cfg.size(); ++ i ){
                 net->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );
             }
@@ -218,7 +218,7 @@ namespace cxxnet{
             if( continue_training == 0 ){
                 this->SaveModel();
             }
-            if( test_io != 0 ){ 
+            if( test_io != 0 ){
                 printf("start I/O test\n");
             }
             int cc = max_round;
@@ -243,7 +243,7 @@ namespace cxxnet{
                         }
                     }
                 }
-                
+
                 if( test_io == 0 ){
                     // code handling evaluation
                     fprintf( stderr, "[%d]", start_counter );
@@ -251,7 +251,7 @@ namespace cxxnet{
                     for( size_t i = 0; i < itr_evals.size(); ++i ){
                         net_trainer->Evaluate( stderr, itr_evals[i], eval_names[i].c_str() );
                     }
-                    fprintf( stderr, "\n" ); 
+                    fprintf( stderr, "\n" );
                     fflush( stderr );
                 }
                 elapsed = (unsigned long)(time(NULL) - start);
@@ -263,47 +263,47 @@ namespace cxxnet{
             }
         }
     private:
-        // type of net implementation
+        /*! \brief type of net implementation */
         int net_type;
-        // trainer
+        /*! \brief trainer */
         INetTrainer *net_trainer;
-        // training iterator
+        /*! \brief training iterator */
         IIterator<DataBatch>* itr_train;
-        // validation iterators
+        /*! \brief validation iterators */
         std::vector< IIterator<DataBatch>* > itr_evals;
-        // evaluation names
+        /*! \brief evaluation names */
         std::vector<std::string> eval_names;
     private:
-        // all the configurations
+        /*! \brief all the configurations */
         std::vector< std::pair< std::string, std::string> > cfg;
     private:
-        // whether test io only
+        /*! \brief whether test io only */
         int test_io;
-        // how may samples before print information
+        /*! \brief  how may samples before print information */
         int print_step;
-        // number of round to train
+        /*! \brief number of round to train */
         int num_round;
-        // maximum number of round to train
+        /*! \brief maximum number of round to train */
         int max_round;
-        // continue from model folder
+        /*! \brief continue from model folder */
         int continue_training;
-        // whether to save model after each round
+        /*! \brief  whether to save model after each round */
         int save_period;
-        // start counter of model
+        /*! \brief  start counter of model */
         int start_counter;
-        // whether to be silent
+        /*! \brief  whether to be silent */
         int silent;
-        // device of the trainer
+        /*! \brief  device of the trainer */
         std::string device;
-        // task of the job
+        /*! \brief  task of the job */
         std::string task;
-        // input model name
+        /*! \brief  input model name */
         std::string name_model_in;
-        // training data
+        /*! \brief training data */
         std::string name_data;
-        // folder name of output
+        /*! \brief folder name of output */
         std::string name_model_dir;
-        // file name to write prediction
+        /*! \brief file name to write prediction */
         std::string name_pred;
     };
 };
