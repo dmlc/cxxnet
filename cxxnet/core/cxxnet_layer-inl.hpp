@@ -81,7 +81,8 @@ namespace cxxnet{
             if( !strcmp( name, "init_sigma") )  init_sigma = (float)atof(val);
             if( !strcmp( name, "init_bias") )   init_bias  = (float)atof(val);
             if( !strcmp( name, "nhidden") )     num_hidden = atoi(val);
-            if( !strcmp( name, "random_type"))  random_type = atoi(val);
+            if( !strcmp( name, "random_type") && !strcmp(val, "gaussian"))  random_type = 0;
+            if( !strcmp( name, "random_type") && !strcmp(val, "xavier")) random_type = 1;
             if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
             if( !strcmp( name, "ngroup") )      num_group = atoi(val);
             if( !strcmp( name, "kernel_size") ) kernel_size = atoi(val);
@@ -164,7 +165,7 @@ namespace cxxnet {
             } else {
                 EdgeLayer<xpu>::template InitXavier<2> (wmat_, wmat_.shape[0], wmat_.shape[1]);
             }
-            bias_ = param_.init_bias; 
+            bias_ = param_.init_bias;
             // setup gradient weight
             gwmat_.Resize( wmat_.shape );
             gbias_.Resize( bias_.shape );
@@ -253,7 +254,7 @@ namespace cxxnet {
                 const index_t step = std::min(nstep_, nbatch-i);
                 temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
                 temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
-                
+
                 if( param_.pad == 0 ){
                     temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
                 }else{
@@ -303,7 +304,7 @@ namespace cxxnet {
                         mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                         tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
                     }
-                    if( param_.pad == 0 ){                        
+                    if( param_.pad == 0 ){
                         in_.data.Slice(i,i+step) = pack_col2patch( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
                     }else{
                         mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
@@ -338,7 +339,7 @@ namespace cxxnet {
             // helper structure
             temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*nstep_ ));
             temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*nstep_) );
-            
+
             if( param_.silent == 0 ){
                 printf("ConvolutionLayer: nstep=%u\n", nstep_ );
             }
@@ -364,7 +365,7 @@ namespace cxxnet {
                 EdgeLayer<xpu>::InitXavier(wmat_, wmat_.shape[1], wmat_.shape[0]);
             }
             bias_ = param_.init_bias;
-            // setup gradient 
+            // setup gradient
             gwmat_.Resize( wmat_.shape );
             gbias_.Resize( bias_.shape );
             gwmat_ = 0.0f; gbias_ = 0.0f;
@@ -378,7 +379,7 @@ namespace cxxnet {
             Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
             wmat_.LoadBinary( fi );
             bias_.LoadBinary( fi );
-            // setup gradient 
+            // setup gradient
             gwmat_.Resize( wmat_.shape );
             gbias_.Resize( bias_.shape );
             gwmat_ = 0.0f; gbias_ = 0.0f;
@@ -422,7 +423,7 @@ namespace cxxnet {
             mshadow::Shape<2> pshape = out_.data[0][0].shape;
             if( !scalebysize ){
                 tmp_ = pool<Reducer>(in_.data, pshape, ksize, param_.stride);
-            }else{                
+            }else{
                 tmp_ = pool<Reducer>(in_.data, pshape, ksize, param_.stride) * (1.0f/(ksize*ksize) );
             }
             mshadow::Copy( out_.data, tmp_ );
@@ -532,14 +533,14 @@ namespace cxxnet{
             : in_(in), out_(out) {
             // default values
             this->knorm_ = 1.0f;
-            this->nsize_ = 3;            
+            this->nsize_ = 3;
         }
         virtual ~LRNLayer( void ){}
         virtual void SetParam(const char *name, const char *val) {
             if (!strcmp(name, "local_size")) nsize_ = static_cast<index_t>( atoi(val) );
             if (!strcmp(name, "alpha"))      alpha_ = static_cast<real_t>( atof(val) );
             if (!strcmp(name, "beta"))       beta_  = static_cast<real_t>( atof(val) );
-            if (!strcmp(name, "knorm"))      knorm_ = static_cast<real_t>( atof(val) );            
+            if (!strcmp(name, "knorm"))      knorm_ = static_cast<real_t>( atof(val) );
         }
         virtual void Forward(bool is_train) {
             using namespace mshadow;
@@ -560,7 +561,7 @@ namespace cxxnet{
                 in_.data += ( - 2.0f * beta_ * salpha ) * chpool<red::sum>( out_.data * tmp_in * F<op::power>( tmp_norm, -beta_-1.0f ), nsize_ )  * tmp_in;
             }
         }
-        virtual void InitLayer( void ) {            
+        virtual void InitLayer( void ) {
             out_.data.shape = in_.data.shape;
             tmp_in.Resize( in_.data.shape );
             tmp_norm.Resize( in_.data.shape );
