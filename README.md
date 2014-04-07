@@ -14,7 +14,3 @@ cxxnet is yet another implementation of (convolutional) neural network. It is in
 * Speed:  On Bing Xu’s EVGA GeForce 780 GTX with 2304 CUDA cores, cxxnet archived 211 images per second in training on ImageNet data with Alex Krizhevsky’s deep network structure. It means one round of ImageNet training can be done in less 2 hours, and is able to train more than  18 million images per day.
 
 
-## License
-cxxnet is licenced in Apache License, Version 2.0 (refer to the [LICENSE](https://github.com/antinucleon/cxxnet/blob/master/LICENSE) for details)
-
-
