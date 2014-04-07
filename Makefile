@@ -4,7 +4,14 @@ export CXX = g++
 export NVCC =nvcc
 
 export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow/
-export LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz -lX11 `pkg-config --libs opencv`
+
+ifeq ($(blas),1)
+ LDFLAGS= -lm -lcudart -lcublas -lcurand -lz `pkg-config --libs opencv` -lblas
+ CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
+else
+ LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz `pkg-config --libs opencv`
+endif
+
 export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
 
 # specify tensor path
