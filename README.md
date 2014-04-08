@@ -1,17 +1,14 @@
 cxxnet
 ======
 
-CXXNET is a neural network toolkit build on mshadow(https://github.com/tqchen/mshadow). 
+CXXNET is a neural network toolkit build on mshadow(https://github.com/tqchen/mshadow). It is yet another implementation of (convolutional) neural network. It is in C++, with about 1000 lines of [network layer implementations](https://github.com/antinucleon/cxxnet/blob/master/cxxnet/core/cxxnet_layer-inl.hpp), easily configuration via config file, and can get the state of art performance.
 
 
-Creater: Tianqi Chen and Bing Hsu
+Creater: [Tianqi Chen](http://homes.cs.washington.edu/~tqchen/) and [Bing Xu](http://ca.linkedin.com/in/binghsu)
 
+Documentation and Tutorial: https://github.com/antinucleon/cxxnet/wiki
 
-Layout
-=====
-
-* core: core implementation of layers and updaters of neural net
-* nnet: implementation of network that connects layers and updaters together
-* io: handles data input and preprecessing
-* utils: some utils to help simple tasks
-
+## Features
+* Small but sharp knife: the core part of the implementation is less than 2000 lines, and easily extendible.
+  - cxxnet is build with [mshadow](https://github.com/tqchen/mshadow), a tensor template library for unified CPU/GPU computation. All the functions are only implemented once, as a result.
+* Speed:  On Bing Xu’s EVGA GeForce 780 GTX with 2304 CUDA cores, cxxnet archived 211 images per second in training on ImageNet data with Alex Krizhevsky’s deep network structure.
