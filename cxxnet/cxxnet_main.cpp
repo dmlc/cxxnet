@@ -217,6 +217,9 @@ namespace cxxnet{
             if( itr_train != NULL ){
                 this->InitIter( itr_train, defcfg );
             }
+            if (itr_pred != NULL) {
+                this->InitIter(itr_pred, defcfg);
+            }
             for( size_t i = 0; i < itr_evals.size(); ++ i ){
                 this->InitIter( itr_evals[i], defcfg );
             }
