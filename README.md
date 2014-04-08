@@ -16,5 +16,5 @@ Documentation and Tutorial: https://github.com/antinucleon/cxxnet/wiki
 ## Build Guide
 * Common Requirement:  NVIDIA CUDA with cuBLAS, cuRAND and cudaRT; OpenCV; mshadow (will be downloaded by using build.sh)
 * MKL version: Intel MKL directly run `build.sh`
-* If you don’t have MKL, using `make/build.sh` to build with CBLAS
+* If you don’t have MKL, using `build.sh blas=1` to build with CBLAS
     - Depending your version of CBLAS(ATLAS, etc.), you may need to change -lblas to -lcblas in Makefile 
