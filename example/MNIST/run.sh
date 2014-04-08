@@ -28,4 +28,4 @@ if [ ! -d "models" ]; then
     mkdir models
 fi
 
-../../cxxnet_learner $1
+../../bin/cxxnet $1
