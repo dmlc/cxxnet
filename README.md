@@ -6,6 +6,8 @@ CXXNET is a neural network toolkit build on mshadow(https://github.com/tqchen/ms
 
 Creater: [Tianqi Chen](http://homes.cs.washington.edu/~tqchen/) and [Bing Xu](http://ca.linkedin.com/in/binghsu)
 
+Documentation and Tutorial: https://github.com/antinucleon/cxxnet/wiki
+
 ## Features
 * Small but sharp knife: the core part of the implementation is less than 2000 lines, and easily extendible.
   - cxxnet is build with [mshadow](https://github.com/tqchen/mshadow), a tensor template library for unified CPU/GPU computation. All the functions are only implemented once, as a result.
