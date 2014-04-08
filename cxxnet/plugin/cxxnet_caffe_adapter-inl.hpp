@@ -3,7 +3,7 @@
 #pragma once
 /*!
  * \file cxxnet_caffee_adapter-inl.hpp
- * \brief try to adapt caffe layers
+ * \brief try to adapt caffe layers, this code comes as plugin of cxxnet, and by default not included in the code.
  * \author Tianqi Chen
  */
 #include <climits>
