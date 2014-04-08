@@ -18,6 +18,7 @@ namespace cxxnet{
             this->net_type = 0;
             this->net_trainer = NULL;
             this->itr_train = NULL;
+            this->itr_pred  = NULL;
             name_model_dir = "models";
             device = "gpu";
             num_round = 10;
@@ -39,6 +40,7 @@ namespace cxxnet{
             }
 
             if( itr_train != NULL )   delete itr_train;
+            if( itr_pred  != NULL )   delete itr_pred;
             for( size_t i = 0; i < itr_evals.size(); ++ i ){
                 delete itr_evals[i];
             }
@@ -64,7 +66,7 @@ namespace cxxnet{
                 printf("initializing end, start working\n");
             }
             if( task == "train" ) this->TaskTrain();
-            if( task == "predict") this->TaskPredict();
+            if( task == "pred")   this->TaskPredict();
             return 0;
         }
 
@@ -80,7 +82,6 @@ namespace cxxnet{
             if( !strcmp( name,"num_round"  ))         num_round     = atoi( val );
             if( !strcmp( name,"max_round"))           max_round = atoi( val );
             if( !strcmp( name, "silent") )            silent        = atoi( val );
-            if( !strcmp( name, "pred" ))              name_pred   = val;
             if( !strcmp( name, "task") )              task = val;
             if( !strcmp( name, "dev") )               device = val;
             if( !strcmp( name, "test_io") )           test_io = atoi(val);
@@ -93,6 +94,7 @@ namespace cxxnet{
                 continue_training = 0;
                 net_trainer = this->CreateNet();
                 if( name_model_in == "NULL" ){
+                    utils::Assert( task == "train", "must specify model_in if not training" );
                     net_trainer->InitModel();
                 }else{
                     this->LoadModel();
@@ -187,6 +189,9 @@ namespace cxxnet{
                     evname = std::string( val );
                     flag = 2; continue;
                 }
+                if( !strcmp( name, "pred" ) ){
+                    flag = 3; name_pred = val; continue;
+                }
                 if( !strcmp( name, "iter" ) && !strcmp( val, "end" ) ){
                     utils::Assert( flag != 0, "wrong configuration file" );
                     if( flag == 1 ){
@@ -196,6 +201,10 @@ namespace cxxnet{
                     if( flag == 2 ){
                         itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
                         eval_names.push_back( evname );
+                    }
+                    if( flag == 3 && task == "pred" ){
+                        utils::Assert( itr_pred == NULL, "can only have one data:test" );
+                        itr_pred = cxxnet::CreateIterator( itcfg );
                     }
                     flag = 0; itcfg.clear();
                 }
@@ -213,21 +222,21 @@ namespace cxxnet{
             }
         }
     private:
-        inline void TaskPredict() {
-            printf("Predicting...\n");
-            this->LoadModel();
-            FILE *outfp = utils::FopenCheck(name_pred.c_str(), "w");
-            for (mshadow::index_t i = 0; i < itr_evals.size(); ++i) {
+        inline void TaskPredict( void ) {
+            utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate predictions");
+            printf("start predicting...\n");
+            FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
+            itr_pred->BeforeFirst();
+            while (itr_pred->Next()) {
+                const DataBatch& batch = itr_pred->Value();
                 std::vector<float> pred;
-                itr_evals[i]->BeforeFirst();
-                while (itr_evals[i]->Next()) {
-                    const DataBatch& batch = itr_evals[i]->Value();
-                    net_trainer->Predict(pred, batch);
-                }
+                net_trainer->Predict(pred, batch);
                 for (mshadow::index_t j = 0; j < pred.size(); ++j) {
-                    fprintf(outfp, "%d\n", static_cast<int>(pred[j]));
+                    fprintf(fo, "%d\n", static_cast<int>(pred[j]));
                 }
             }
+            fclose( fo );
+            printf("finished prediction, write into %s\n", name_pred.c_str());
         }
         inline void TaskTrain( void ){
             time_t start    = time( NULL );
@@ -284,8 +293,8 @@ namespace cxxnet{
         int net_type;
         /*! \brief trainer */
         INetTrainer *net_trainer;
-        /*! \brief training iterator */
-        IIterator<DataBatch>* itr_train;
+        /*! \brief training iterator, prediction iterator */
+        IIterator<DataBatch>* itr_train, *itr_pred;
         /*! \brief validation iterators */
         std::vector< IIterator<DataBatch>* > itr_evals;
         /*! \brief evaluation names */
