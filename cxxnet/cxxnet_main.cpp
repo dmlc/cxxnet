@@ -194,11 +194,11 @@ namespace cxxnet{
                 }
                 if( !strcmp( name, "iter" ) && !strcmp( val, "end" ) ){
                     utils::Assert( flag != 0, "wrong configuration file" );
-                    if( flag == 1 ){
+                    if( flag == 1 && task != "pred" ){
                         utils::Assert( itr_train == NULL, "can only have one data" );
                         itr_train = cxxnet::CreateIterator( itcfg );
                     }
-                    if( flag == 2 ){
+                    if( flag == 2 && task != "pred" ){
                         itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
                         eval_names.push_back( evname );
                     }
