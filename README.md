@@ -11,7 +11,7 @@ Documentation and Tutorial: https://github.com/antinucleon/cxxnet/wiki
 ## Features
 * Small but sharp knife: the core part of the implementation is less than 2000 lines, and easily extendible.
   - cxxnet is build with [mshadow](https://github.com/tqchen/mshadow), a tensor template library for unified CPU/GPU computation. All the functions are only implemented once, as a result.
-* Speed:  On Bing Xu’s EVGA GeForce 780 GTX with 2304 CUDA cores, cxxnet archived 211 images per second in training on ImageNet data with Alex Krizhevsky’s deep network structure.
+* Speed:  On Bing Xu’s EVGA GeForce 780 GTX with 2304 CUDA cores, cxxnet archived 211 images per second in training on ImageNet data with Alex Krizhevsky’s deep network structure. The prediction speed is 400 pic / second on the same card.
 
 ## Build Guide
 * Common Requirement:  NVIDIA CUDA with cuBLAS, cuRAND and cudaRT; OpenCV; mshadow (will be downloaded by using build.sh)
