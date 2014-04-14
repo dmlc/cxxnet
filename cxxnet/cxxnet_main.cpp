@@ -30,6 +30,7 @@ namespace cxxnet{
             name_model_in = "NULL";
             name_pred     = "pred.txt";
             print_step    = 100;
+            reset_net_type = -1;
             this->SetParam("dev", "gpu");
         }
         ~CXXNetLearnTask( void ){
@@ -73,6 +74,7 @@ namespace cxxnet{
         inline void SetParam( const char *name , const char *val ){
             if( !strcmp( val, "default") ) return;
             if( !strcmp( name,"net_type"))            net_type = atoi( val );
+            if( !strcmp( name,"reset_net_type"))      reset_net_type = atoi( val );
             if( !strcmp( name,"print_step"))          print_step = atoi( val );
             if( !strcmp( name,"continue"))            continue_training = atoi( val );
             if( !strcmp( name,"save_model" ) )        save_period = atoi( val );
@@ -92,9 +94,9 @@ namespace cxxnet{
         inline void Init( void ){
             if( continue_training == 0 || SyncLastestModel() == 0 ){
                 continue_training = 0;
-                net_trainer = this->CreateNet();
                 if( name_model_in == "NULL" ){
                     utils::Assert( task == "train", "must specify model_in if not training" );
+                    net_trainer = this->CreateNet();
                     net_trainer->InitModel();
                 }else{
                     this->LoadModel();
@@ -157,7 +159,9 @@ namespace cxxnet{
                     mshadow::InitTensorEngine( -1 );
                 }
             }
-
+            if( reset_net_type != -1 ){
+                net_type = reset_net_type;
+            } 
             INetTrainer *net = cxxnet::CreateNet( net_type, device.c_str() );
 
             for( size_t i = 0; i < cfg.size(); ++ i ){
@@ -294,6 +298,8 @@ namespace cxxnet{
     private:
         /*! \brief type of net implementation */
         int net_type;
+        /*! \brief whether to force reset network implementation */
+        int reset_net_type;
         /*! \brief trainer */
         INetTrainer *net_trainer;
         /*! \brief training iterator, prediction iterator */

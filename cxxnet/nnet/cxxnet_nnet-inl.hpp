@@ -360,7 +360,9 @@ namespace cxxnet {
             update_period = 1;
             sample_counter = 0;
             eval_train = 1;
-            printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
+            if( net.silent == 0 ){
+                printf("CXXNetTrainer, devCPU=%d\n", xpu::kDevCPU );
+            }
         }
         virtual ~CXXNetTrainer( void ){
         }
@@ -531,9 +533,7 @@ namespace cxxnet {
         }
         virtual void InitModel( void ){
             CXXNetTrainer<xpu>::InitModel();
-            ref_counter.resize( num_avg_record, 0 );
-            mshadow::Shape<2> s = this->net.out().data[0][0].shape;
-            avg_pred.Resize( mshadow::Shape2( num_avg_record, s[0] ), 0.0f );
+            this->InitAvgRecord();
         }
         virtual void SaveModel( mshadow::utils::IStream &fo ) const {
             CXXNetTrainer<xpu>::SaveModel( fo );
@@ -543,10 +543,17 @@ namespace cxxnet {
         }
         virtual void LoadModel( mshadow::utils::IStream &fi ) {
             CXXNetTrainer<xpu>::LoadModel( fi );
-            Assert( fi.Read( &num_avg_record, sizeof(int) )!= 0 );
-            ref_counter.resize( num_avg_record );
-            Assert( fi.Read( &ref_counter[0], ref_counter.size() * sizeof(int) ) != 0 );
-            avg_pred.LoadBinary( fi );
+            if( this->net.meta.param.reserved_flag != 0 ){
+                Assert( fi.Read( &num_avg_record, sizeof(int) )!= 0 );
+                ref_counter.resize( num_avg_record );
+                Assert( fi.Read( &ref_counter[0], ref_counter.size() * sizeof(int) ) != 0 );
+                avg_pred.LoadBinary( fi );
+            }else{
+                this->InitAvgRecord();
+                if( this->net.silent == 0 ){
+                    printf("CXXNetAvgTrainer: init load from CXXNetTrainer model\n");
+                }
+            }
         }
     protected:
         virtual void PreparePredTemp( const DataBatch& batch ){
@@ -564,6 +571,14 @@ namespace cxxnet {
                 avg_pred[ridx] = (1.0f-alpha) * avg_pred[ridx] + alpha*temp[i];
                 mshadow::Copy( temp[ i ], avg_pred[ridx] );
             }
+        }
+    private:
+        inline void InitAvgRecord(void){
+            ref_counter.resize( num_avg_record, 0 );
+            mshadow::Shape<2> s = this->net.out().data[0][0].shape;
+            avg_pred.Resize( mshadow::Shape2( num_avg_record, s[0] ), 0.0f );
+            // mark avg record is available
+            this->net.meta.param.reserved_flag = 1;
         }
     private:
         /*! \brief  number of burn in rounds, start averagin after this */
