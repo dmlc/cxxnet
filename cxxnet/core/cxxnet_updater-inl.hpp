@@ -31,9 +31,12 @@ namespace cxxnet{
         float wd;
         /*! \brief momentum  */
         float momentum;
+
         // scheduling parameters
         /*! \brief type of learning rate schedule */
         int lr_schedule;
+        /*! \brief type of momentum schedule */
+        int momentum_schedule;
         /*! \brief base learning rate */
         float base_lr_;
         /*! \brief period of lr decay */
@@ -48,9 +51,16 @@ namespace cxxnet{
         float lr_minimum;
         /*! \brief start scheduling epoch */
         long start_epoch;
+        /*! \brief base momentum */
+        float base_momentum_;
+        /*! \brief final momentum */
+        float final_momentum_;
         /*! \brief constructor that sets default parameters */
         UpdaterParam( void ){
             base_lr_ = 0.01f;
+            base_momentum_ = 0.5f;
+            final_momentum_ = 0.65f;
+            momentum_schedule = 0;
             lr_schedule = 0;
             lr_step = 1;
             lr_alpha = 0.5f;
@@ -159,13 +169,70 @@ namespace cxxnet{
             w = reshape( tmp_w, w.shape );
             dw = reshape( tmp_dw, dw.shape );
         }
-    private:
+    public:
         UpdaterParam param;
         // variales
         mshadow::Tensor<xpu,dim> &w, &dw;
         // momentum variable
         mshadow::TensorContainer<xpu,dim> m_w;
-    };
+    }; // class SGDUpdater
+
+    template<typename xpu, int dim>
+    class NoiseSGDUpdater : public SGDUpdater<xpu, dim> {
+    public:
+        NoiseSGDUpdater(mshadow::Tensor<xpu,dim> &w, mshadow::Tensor<xpu,dim> &dw, const char *tag, mshadow::Random<xpu> &rnd)
+    : Parent(w, dw, tag), rnd_(rnd), noise_type_(1), a_(-0.001f), b_(0.001f), mu_(0.0f), sigma_(0.001f)  {}
+        virtual ~NoiseSGDUpdater() {}
+        virtual void Init() {
+            if (Parent::param.silent == 0) {
+                printf("NoiseSGDUpdater: eta=%f, mom=%f\n", Parent::param.base_lr_, Parent::param.momentum );
+            }
+            this->mask_.Resize(Parent::dw.shape);
+        }
+        virtual void Update(long epoch) {
+            if (noise_type_ == 0) {
+                mask_ = rnd_.uniform(mask_.shape);
+                mask_ = a_ + (b_ - a_) * mask_;
+            } else if (noise_type_ == 1) {
+                mask_ = rnd_.gaussian(mask_.shape);
+                mask_ = mask_ * sigma_ + mu_;
+            }
+            Parent::dw += mask_;
+            Parent::Update(epoch);
+        }
+        virtual void GetData(mshadow::TensorContainer<cpu,2>& weight,
+                                              mshadow::TensorContainer<cpu,2>& gradient) const {
+            Parent::GetData(weight, gradient);
+        }
+        virtual void SetData(const mshadow::Tensor<cpu,2>& weight,
+                                const mshadow::Tensor<cpu,2>& gradient ) {
+            Parent::SetData(weight, gradient);
+        }
+        virtual void SetParam(const char *name, const char *val) {
+            Parent::SetParam(name, val);
+            if (!strcmp(name, "updater_noise") && !strcmp(val, "gaussian")) noise_type_ = 1;
+            if (!strcmp(name, "updater_noise") && !strcmp(val, "uniform")) noise_type_ = 1;
+            if (!strcmp(name, "noise_mu")) mu_ = atof(val);
+            if (!strcmp(name, "noise_a")) a_ = (float)atof(val);
+            if (!strcmp(name, "noise_b")) b_ = (float)atof(val);
+            if (!strcmp(name, "noise_sigma")) sigma_ = (float)atof(val);
+        }
+        virtual void StartRound(int round) {
+            Parent::StartRound(round);
+        }
+
+    private:
+        typedef SGDUpdater<xpu, dim> Parent;
+        mshadow::Random<xpu> &rnd_;
+        mshadow::TensorContainer<xpu, dim> mask_;
+        int noise_type_;
+        // Uniform param
+        float a_;
+        float b_;
+        // Gaussian param
+        float mu_;
+        float sigma_;
+    }; // class NoiseSGDUpdater
 }; // namespace cxxnet
 
 namespace cxxnet{
@@ -333,6 +400,7 @@ namespace cxxnet{
                                     const char *tag ){
         if( !strcmp( type, "sgd" ) ) return new SGDUpdater<xpu,dim>( weight, wgrad, tag );
         if( !strcmp( type, "sghmc" ) ) return new SGHMCUpdater<xpu,dim>( rnd, weight, wgrad, tag );
+        if( !strcmp( type, "noise_sgd")) return new NoiseSGDUpdater<xpu, dim>(weight, wgrad, tag, rnd);
         Error("unknown updater type");
         return NULL;
     }
