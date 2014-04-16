@@ -169,7 +169,7 @@ namespace cxxnet{
             w = reshape( tmp_w, w.shape );
             dw = reshape( tmp_dw, dw.shape );
         }
-    public:
+    protected:
         UpdaterParam param;
         // variales
         mshadow::Tensor<xpu,dim> &w, &dw;
