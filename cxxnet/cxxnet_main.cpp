@@ -152,7 +152,7 @@ namespace cxxnet{
         inline INetTrainer* CreateNet( void ){
             if( !strncmp( device.c_str(), "gpu", 3 ) ){
                 int devid;
-                if( sscanf( device.c_str(), "gpu:%d", &devid ) ) {
+                if( sscanf( device.c_str(), "gpu:%d", &devid ) == 1 ) {
                     mshadow::InitTensorEngine( devid );
                     this->device = "gpu";
                 }else{
