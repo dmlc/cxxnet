@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include "mshadow/tensor.h"
-
 namespace cxxnet {
     typedef mshadow::cpu cpu;
     typedef mshadow::gpu gpu;
@@ -21,6 +20,7 @@ namespace cxxnet {
 #include "cxxnet_iter_img-inl.hpp"
 #include "cxxnet_iter_proc-inl.hpp"
 #include "cxxnet_iter_thread_imbin-inl.hpp"
+#include "cxxnet_iter_thread_npybin-inl.hpp"
 
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
@@ -49,6 +49,10 @@ namespace cxxnet{
                 if( !strcmp( val, "imgbin")) {
                      utils::Assert( it == NULL );
                      it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
+                }
+                if( !strcmp( val, "npybin")) {
+                    utils::Assert( it == NULL );
+                    it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;
                 }
                 if( !strcmp( val, "threadbuffer") ){
                     utils::Assert( it != NULL, "must specify input of threadbuffer" );
