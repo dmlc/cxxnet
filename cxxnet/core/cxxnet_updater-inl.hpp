@@ -195,10 +195,10 @@ namespace cxxnet{
             mshadow::Tensor<xpu,dim> &dw = Parent::dw;
             // multiplicative noise 
             switch (noise_type_) {
-            case 0:{
+            case 1:{
                 dw *= ( 1.0f + sigma_ * (rnd_.uniform(dw.shape) - 0.5f) ); break;
             }
-            case 1:{
+            case 0:{
                 dw *= ( 1.0f + sigma_ * rnd_.gaussian(dw.shape) ); break;
             }
             default: utils::Error("unknown noise type");
