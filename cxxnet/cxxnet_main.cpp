@@ -156,12 +156,12 @@ namespace cxxnet{
                     mshadow::InitTensorEngine( devid );
                     this->device = "gpu";
                 }else{
-                    mshadow::InitTensorEngine( -1 );
+                    mshadow::InitTensorEngine( 0 );
                 }
             }
             if( reset_net_type != -1 ){
                 net_type = reset_net_type;
-            } 
+            }
             INetTrainer *net = cxxnet::CreateNet( net_type, device.c_str() );
 
             for( size_t i = 0; i < cfg.size(); ++ i ){
