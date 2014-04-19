@@ -31,6 +31,7 @@ namespace cxxnet{
             name_pred     = "pred.txt";
             print_step    = 100;
             reset_net_type = -1;
+            stop_layer = 1;
             this->SetParam("dev", "gpu");
         }
         ~CXXNetLearnTask( void ){
@@ -68,6 +69,7 @@ namespace cxxnet{
             }
             if( task == "train" ) this->TaskTrain();
             if( task == "pred")   this->TaskPredict();
+            if( task == "dump") this->TaskDump();
             return 0;
         }
 
@@ -87,6 +89,7 @@ namespace cxxnet{
             if( !strcmp( name, "task") )              task = val;
             if( !strcmp( name, "dev") )               device = val;
             if( !strcmp( name, "test_io") )           test_io = atoi(val);
+            if( !strcmp( name, "stop_layer"))         stop_layer = atoi(val);
             cfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
         }
     private:
@@ -206,7 +209,7 @@ namespace cxxnet{
                         itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
                         eval_names.push_back( evname );
                     }
-                    if( flag == 3 && task == "pred" ){
+                    if( flag == 3 && (task == "pred" || task == "dump")){
                         utils::Assert( itr_pred == NULL, "can only have one data:test" );
                         itr_pred = cxxnet::CreateIterator( itcfg );
                     }
@@ -245,6 +248,19 @@ namespace cxxnet{
             fclose( fo );
             printf("finished prediction, write into %s\n", name_pred.c_str());
         }
+        inline void TaskDump() {
+            utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate dumped feature");
+            FILE *fo  = utils::FopenCheck(name_pred.c_str(), "wb" );
+            mshadow::utils::FileStream fs( fo );
+            printf("start dumping...\n");
+            itr_pred->BeforeFirst();
+            while (itr_pred->Next()) {
+                const DataBatch& batch = itr_pred->Value();
+                net_trainer->Dump(stop_layer, batch, fs);
+            }
+            printf("dumping finished...\n");
+        }
+
         inline void TaskTrain( void ){
             time_t start    = time( NULL );
             unsigned long elapsed = 0;
@@ -328,6 +344,8 @@ namespace cxxnet{
         int start_counter;
         /*! \brief  whether to be silent */
         int silent;
+        /*! \brief stop layer for dump */
+        int stop_layer;
         /*! \brief  device of the trainer */
         std::string device;
         /*! \brief  task of the job */

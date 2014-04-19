@@ -231,6 +231,8 @@ namespace cxxnet {
         mshadow::Random<xpu>     rnd;
         /*! \brief node factory */
         NodeFactory<xpu> nfactory;
+        /*! \brief temp space */
+        mshadow::TensorContainer<cpu,2> temp;
     public:
         /*! \brief constructor */
         NeuralNet( void ): cfg(meta),rnd(0){
@@ -301,6 +303,23 @@ namespace cxxnet {
             for( size_t i = 0; i < layers.size(); ++ i ){
                 layers[i]->Forward( is_train );
             }
+        }
+        /*!
+         * \brief dump forward prop
+         * \param stop_layer
+         */
+        inline void Dump(int stop_layer, mshadow::utils::IStream &fo) {
+            utils::Assert(stop_layer < layers.size() && stop_layer > 0, "Incorrect stop layer");
+            for (size_t i = 0; i < stop_layer + 1; ++i) {
+                layers[i]->Forward(false);
+            }
+            mshadow::Shape<4> oshape  = nodes[stop_layer].data.shape;
+            Assert( nodes[stop_layer].is_mat() );
+            temp.Resize( mshadow::Shape2( oshape[1], oshape[0] ) );
+            nodes[stop_layer].Pin();
+            mshadow::Copy( temp, nodes[stop_layer].data[0][0] );
+            nodes[stop_layer].Unpin();
+            temp.SaveBinary(fo);
         }
         /*! \brief backprop */
         inline void Backprop( void ){
@@ -427,6 +446,12 @@ namespace cxxnet {
             for( index_t i = 0; i <temp.shape[1]; ++i ){
                 preds.push_back( this->TransformPred( temp[i] ) );
             }
+        }
+        virtual void Dump(int layer, const DataBatch& batch, mshadow::utils::IStream &fo ) {
+            net.in().Pin();
+            mshadow::Copy( net.in().data, batch.data);
+            net.in().Unpin();
+            net.Dump(layer, fo);
         }
     protected:
         // put prediction into temp

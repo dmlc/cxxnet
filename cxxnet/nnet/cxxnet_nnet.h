@@ -38,6 +38,8 @@ namespace cxxnet {
         virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ) = 0;
         /*! \brief  predict labels */
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) = 0;
+        /*! \brief dump feature */
+        virtual void Dump(int stop_layer, const DataBatch& batch, mshadow::utils::IStream &fo) = 0;
     };
 };
 
