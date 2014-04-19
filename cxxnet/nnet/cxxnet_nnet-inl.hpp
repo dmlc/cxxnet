@@ -235,7 +235,7 @@ namespace cxxnet {
         mshadow::TensorContainer<cpu,2> temp;
     public:
         /*! \brief constructor */
-        NeuralNet( void ): cfg(meta),rnd(0){
+        NeuralNet( void ): cfg(meta),rnd(0) {
             silent = 0;
         }
         /*! \brief destructor */
@@ -313,13 +313,10 @@ namespace cxxnet {
             for (size_t i = 0; i < stop_layer + 1; ++i) {
                 layers[i]->Forward(false);
             }
-            mshadow::Shape<4> oshape  = nodes[stop_layer].data.shape;
             Assert( nodes[stop_layer].is_mat() );
-            temp.Resize( mshadow::Shape2( oshape[1], oshape[0] ) );
             nodes[stop_layer].Pin();
-            mshadow::Copy( temp, nodes[stop_layer].data[0][0] );
+            mshadow::SaveBinary(fo, nodes[stop_layer].data);
             nodes[stop_layer].Unpin();
-            temp.SaveBinary(fo);
         }
         /*! \brief backprop */
         inline void Backprop( void ){
@@ -447,9 +444,9 @@ namespace cxxnet {
                 preds.push_back( this->TransformPred( temp[i] ) );
             }
         }
-        virtual void Dump(int layer, const DataBatch& batch, mshadow::utils::IStream &fo ) {
+        virtual void Dump(int layer, const DataBatch& batch, mshadow::utils::IStream &fo) {
             net.in().Pin();
-            mshadow::Copy( net.in().data, batch.data);
+            mshadow::Copy(net.in().data, batch.data);
             net.in().Unpin();
             net.Dump(layer, fo);
         }

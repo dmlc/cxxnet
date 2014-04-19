@@ -31,7 +31,7 @@ namespace cxxnet{
             name_pred     = "pred.txt";
             print_step    = 100;
             reset_net_type = -1;
-            stop_layer = 1;
+            dump_layer = 1;
             this->SetParam("dev", "gpu");
         }
         ~CXXNetLearnTask( void ){
@@ -89,7 +89,7 @@ namespace cxxnet{
             if( !strcmp( name, "task") )              task = val;
             if( !strcmp( name, "dev") )               device = val;
             if( !strcmp( name, "test_io") )           test_io = atoi(val);
-            if( !strcmp( name, "stop_layer"))         stop_layer = atoi(val);
+            if( !strcmp( name, "dump_layer"))         dump_layer = atoi(val);
             cfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
         }
     private:
@@ -253,10 +253,12 @@ namespace cxxnet{
             FILE *fo  = utils::FopenCheck(name_pred.c_str(), "wb" );
             mshadow::utils::FileStream fs( fo );
             printf("start dumping...\n");
+            // mshadow::index_t dim = net_trainer->DumpDim(dump_layer);
+            // fs.Write(&dim, sizeof(mshadow::index_t));
             itr_pred->BeforeFirst();
             while (itr_pred->Next()) {
                 const DataBatch& batch = itr_pred->Value();
-                net_trainer->Dump(stop_layer, batch, fs);
+                net_trainer->Dump(dump_layer, batch, fs);
             }
             printf("dumping finished...\n");
         }
@@ -344,8 +346,8 @@ namespace cxxnet{
         int start_counter;
         /*! \brief  whether to be silent */
         int silent;
-        /*! \brief stop layer for dump */
-        int stop_layer;
+        /*! \brief layer for dump */
+        int dump_layer;
         /*! \brief  device of the trainer */
         std::string device;
         /*! \brief  task of the job */
