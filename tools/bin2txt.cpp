@@ -21,4 +21,7 @@ int main(int argc, char **argv) {
         }
         mshadow::FreeSpace(data);
     }
+    fclose(fp);
+    fclose(wp);
+    // Incorrect assert =,=, but result seems right
 }
