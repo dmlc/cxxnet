@@ -305,17 +305,31 @@ namespace cxxnet {
             }
         }
         /*!
-         * \brief dump forward prop
+         * \brief inference forward prop
          * \param stop_layer
          */
-        inline void Dump(int stop_layer, mshadow::utils::IStream &fo) {
+        inline void Inference(int stop_layer, long total_length, int &header_flag, mshadow::utils::IStream &fo) {
             utils::Assert(stop_layer < layers.size() && stop_layer > 0, "Incorrect stop layer");
             for (size_t i = 0; i < stop_layer + 1; ++i) {
                 layers[i]->Forward(false);
             }
             Assert( nodes[stop_layer].is_mat() );
+            if (header_flag == 0) {
+                header_flag = 1;
+                // Write total length and feature
+                fo.Write(&total_length, sizeof(long));
+                fo.Write(&(nodes[stop_layer].data.shape[0]), sizeof(mshadow::index_t));
+            }
             nodes[stop_layer].Pin();
-            mshadow::SaveBinary(fo, nodes[stop_layer].data);
+            mshadow::Tensor<cpu, 4> tmp(nodes[stop_layer].data.shape);
+            mshadow::AllocSpace(tmp);
+            mshadow::Copy(tmp, nodes[stop_layer].data);
+            for (int i = 0; i < tmp.shape[1]; ++i) {
+                for (int j = 0; j < tmp.shape[0]; ++j) {
+                    fo.Write(&(tmp[0][0][i][j]), sizeof(mshadow::real_t));
+                }
+            }
+            mshadow::FreeSpace(tmp);
             nodes[stop_layer].Unpin();
         }
         /*! \brief backprop */
@@ -444,11 +458,11 @@ namespace cxxnet {
                 preds.push_back( this->TransformPred( temp[i] ) );
             }
         }
-        virtual void Dump(int layer, const DataBatch& batch, mshadow::utils::IStream &fo) {
+        virtual void Inference(int layer, const DataBatch& batch, long total_length, int &header_flag, mshadow::utils::IStream &fo) {
             net.in().Pin();
             mshadow::Copy(net.in().data, batch.data);
             net.in().Unpin();
-            net.Dump(layer, fo);
+            net.Inference(layer, total_length, header_flag, fo);
         }
     protected:
         // put prediction into temp

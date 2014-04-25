@@ -31,7 +31,7 @@ namespace cxxnet{
             name_pred     = "pred.txt";
             print_step    = 100;
             reset_net_type = -1;
-            dump_layer = 1;
+            inference_layer = 1;
             this->SetParam("dev", "gpu");
         }
         ~CXXNetLearnTask( void ){
@@ -69,7 +69,7 @@ namespace cxxnet{
             }
             if( task == "train" ) this->TaskTrain();
             if( task == "pred")   this->TaskPredict();
-            if( task == "dump") this->TaskDump();
+            if( task == "inference") this->TaskInference();
             return 0;
         }
 
@@ -89,7 +89,7 @@ namespace cxxnet{
             if( !strcmp( name, "task") )              task = val;
             if( !strcmp( name, "dev") )               device = val;
             if( !strcmp( name, "test_io") )           test_io = atoi(val);
-            if( !strcmp( name, "dump_layer"))         dump_layer = atoi(val);
+            if( !strcmp( name, "inference_layer"))         inference_layer = atoi(val);
             cfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
         }
     private:
@@ -209,7 +209,7 @@ namespace cxxnet{
                         itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
                         eval_names.push_back( evname );
                     }
-                    if( flag == 3 && (task == "pred" || task == "dump")){
+                    if( flag == 3 && (task == "pred" || task == "inference")){
                         utils::Assert( itr_pred == NULL, "can only have one data:test" );
                         itr_pred = cxxnet::CreateIterator( itcfg );
                     }
@@ -248,19 +248,28 @@ namespace cxxnet{
             fclose( fo );
             printf("finished prediction, write into %s\n", name_pred.c_str());
         }
-        inline void TaskDump() {
-            utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate dumped feature");
+        inline void TaskInference() {
+            utils::Assert( itr_pred != NULL, "must specify a predict iterator to inference feature");
             FILE *fo  = utils::FopenCheck(name_pred.c_str(), "wb" );
-            mshadow::utils::FileStream fs( fo );
-            printf("start dumping...\n");
-            // mshadow::index_t dim = net_trainer->DumpDim(dump_layer);
-            // fs.Write(&dim, sizeof(mshadow::index_t));
+            mshadow::utils::FileStream fs(fo);
+            printf("start inferencing...\n");
+            itr_pred->BeforeFirst();
+            long total_length = 0;
+            int header_flag = 0;
+            while (itr_pred->Next()) {
+                const DataBatch& batch = itr_pred->Value();
+                total_length += batch.batch_size;
+                // net_trainer->Dump(dump_layer, batch, fs);
+            }
             itr_pred->BeforeFirst();
             while (itr_pred->Next()) {
                 const DataBatch& batch = itr_pred->Value();
-                net_trainer->Dump(dump_layer, batch, fs);
+                net_trainer->Inference(inference_layer, batch, total_length, header_flag, fs);
             }
+
+            // printf("%ld\n", total_length);
             printf("dumping finished...\n");
+            fclose(fo);
         }
 
         inline void TaskTrain( void ){
@@ -346,8 +355,8 @@ namespace cxxnet{
         int start_counter;
         /*! \brief  whether to be silent */
         int silent;
-        /*! \brief layer for dump */
-        int dump_layer;
+        /*! \brief layer for inference */
+        int inference_layer;
         /*! \brief  device of the trainer */
         std::string device;
         /*! \brief  task of the job */
