@@ -3,7 +3,7 @@ export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
 
-export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -DMSHADOW_USE_CUDA=0
+export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -DMSHADOW_USE_CUDA=0 -DMSHADOW_USE_SSE=1
 
 ifeq ($(blas),1)
  LDFLAGS= -lm -lz `pkg-config --libs opencv` -lopenblas
