@@ -437,7 +437,16 @@ namespace cxxnet {
                 net.Update(); sample_counter = 0;
             }
         }
-        virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ){
+
+        virtual std::string Evaluate( IIterator<DataBatch> *iter_eval, const char* evname ){          
+            std::string res;            
+            if (eval_train != 0 ) {
+                res += train_metric.Print("train");
+                train_metric.Clear();
+            }
+            
+            if( iter_eval == NULL ) return res;
+            
             metric.Clear();
             iter_eval->BeforeFirst();
             while( iter_eval->Next() ){
@@ -445,13 +454,12 @@ namespace cxxnet {
                 this->PreparePredTemp( batch );
                 metric.AddEval( temp, batch.labels );
             }
-            metric.Print( fo, evname );
 
-            if (eval_train != 0 ) {
-                train_metric.Print(fo, "train");
-                train_metric.Clear();
-            }
+            res += metric.Print( evname );
+
+            return res;
         }
+     
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) {
             this->PreparePredTemp( batch );
             for( index_t i = 0; i <temp.shape[1]; ++i ){

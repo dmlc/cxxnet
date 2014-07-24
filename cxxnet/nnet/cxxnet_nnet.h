@@ -35,7 +35,7 @@ namespace cxxnet {
          */
         virtual void Update( const DataBatch& data ) = 0;
         /*! \brief  evaluate a test statistics, output results into fo */
-        virtual void Evaluate( FILE *fo, IIterator<DataBatch> *iter_eval, const char* evname ) = 0;
+        virtual std::string Evaluate( IIterator<DataBatch> *iter_eval, const char* evname ) = 0;
         /*! \brief  predict labels */
         virtual void Predict( std::vector<float> &preds, const DataBatch& batch ) = 0;
         /*! \brief inference feature */

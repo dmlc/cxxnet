@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 #include "cxxnet_global_random.h"
 
 namespace cxxnet{
@@ -186,11 +187,16 @@ namespace cxxnet{
                     delete evals_[i];
                 }
             }
+            static IMetric* Create( const char *name ){
+                if( !strcmp( name, "rmse") ) return new MetricRMSE();
+                if( !strcmp( name, "error") ) return new MetricError();
+                if( !strcmp( name, "r2") )    return new MetricCorrSqr();
+                if( !strncmp( name, "rec@",4) ) return new MetricRecall(name);
+                return NULL;
+            }
             void AddMetric( const char *name ){
-                if( !strcmp( name, "rmse") )  evals_.push_back( new MetricRMSE() );
-                if( !strcmp( name, "error") ) evals_.push_back( new MetricError() );
-                if( !strcmp( name, "r2") )    evals_.push_back( new MetricCorrSqr() );
-                if( !strncmp( name, "rec@",4) )  evals_.push_back( new MetricRecall( name ) );
+                IMetric *metric = this->Create(name);
+                if( metric != NULL ) evals_.push_back( metric );                
                 // simple way to enforce uniqueness, not a good way, not ok here
                 std::sort( evals_.begin(), evals_.end(), CmpName );
                 evals_.resize( std::unique( evals_.begin(), evals_.end(), EqualName ) - evals_.begin() );
@@ -205,10 +211,14 @@ namespace cxxnet{
                     evals_[i]->AddEval( predscore, labels );
                 }
             }
-            inline void Print( FILE *fo, const char *evname ){
+            inline std::string Print( const char *evname ){
+                std::string res = "";
                 for( size_t i = 0; i < evals_.size(); ++ i ){
-                    fprintf( fo, "\t%s-%s:%f", evname, evals_[i]->Name(), evals_[i]->Get() );
+                    char tmp[1024];
+                    sprintf( tmp, "\t%s-%s:%f", evname, evals_[i]->Name(), evals_[i]->Get() );
+                    res += tmp;
                 }
+                return res;
             }
         private:
             inline static bool CmpName( const IMetric *a, const IMetric *b ){
