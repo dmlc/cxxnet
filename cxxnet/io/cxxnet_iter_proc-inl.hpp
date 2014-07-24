@@ -34,7 +34,7 @@ namespace cxxnet {
         }
         virtual ~BatchAdaptIterator( void ){
             delete base_;
-            out_.FreeSpace();
+            out_.FreeSpaceDense();
         }
         virtual void SetParam( const char *name, const char *val ){
             base_->SetParam( name, val );
@@ -58,7 +58,7 @@ namespace cxxnet {
             if( shape_[2] == 1 && shape_[1] == 1 ){
                 shape_[1] = shape_[3]; shape_[3] = 1;
             }
-            out_.AllocSpace( shape_, batch_size, false );
+            out_.AllocSpaceDense( shape_, batch_size, false );
 
             if( name_meanimg_.length() != 0 ){
                 FILE *fi = fopen64( name_meanimg_.c_str(), "rb" );
@@ -260,18 +260,18 @@ namespace cxxnet{
             }
             inline bool LoadNext( DataBatch &val ){
                 if( base_->Next() ){
-                    val.CopyFrom( base_->Value() );
+                    val.CopyFromDense( base_->Value() );
                     return true;
                 }else{
                     return false;
                 }
             }
             inline DataBatch Create( void ){
-                DataBatch a; a.AllocSpace( oshape_, batch_size_ );
+                DataBatch a; a.AllocSpaceDense( oshape_, batch_size_ );
                 return a;
             }
             inline void FreeSpace( DataBatch &a ){
-                a.FreeSpace();
+                a.FreeSpaceDense();
             }
             inline void Destroy(){
                 if( base_ != NULL ) delete base_;

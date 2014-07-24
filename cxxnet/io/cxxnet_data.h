@@ -49,29 +49,72 @@ namespace cxxnet {
         mshadow::Tensor<mshadow::cpu,3> data;
     };
 
-    /*! \brief a standard batch of data commonly used by iterator */
+    /*! \brief a sparse data instance, in sparse vector */
+    struct SparseInst{ 
+        /*! \brief an entry of sparse vector */
+        struct Entry{
+            /*! \brief feature index */
+            unsigned findex;
+            /*! \brief feature value */
+            float fvalue;
+        };
+        /*! \brief label information */
+        float  label;
+        /*! \brief unique id for instance */
+        unsigned index; 
+        /*! \brief length of the instance */
+        unsigned length;
+        /*! \brief pointer to the elements*/
+        const Entry *data;
+        /*! \brief get i-th pair in the sparse vector*/
+        inline const Entry& operator[](size_t i)const{
+            return data[i];
+        }
+    };
+
+    /*! 
+     * \brief a standard batch of data commonly used by iterator 
+     *        this could be a dense batch or sparse matrix, 
+     *        the iterator configuration should be aware what kind of batch can be generated and feed in to each type of neuralnet
+     */
     struct DataBatch{
+    public:
         /*! \brief label information */
         float*  labels;
         /*! \brief unique id for instance, can be NULL, sometimes is useful */
         unsigned* inst_index;
         /*! \brief number of instance */
         mshadow::index_t batch_size;
-        /*! \brief content of data */
+        /*! \brief number of padding elements in this batch, 
+             this is used to indicate the last elements in the batch are only padded up to match the batch, and should be discarded */
+        mshadow::index_t num_batch_padd;
+    public:
+        /*! \brief content of dense data, if this DataBatch is dense */
         mshadow::Tensor<mshadow::cpu,4> data;
+    public:
+        // sparse part of the DataBatch, in CSR format
+        /*! \brief array[batch_size+1], row pointer of each of the elements */
+        size_t *sparse_row_ptr;
+        /*! \brief array[row_ptr.back()], content of the sparse element */
+        SparseInst::Entry *sparse_data;
+    public:        
         /*! \brief constructor */
         DataBatch( void ){
-            labels = NULL; inst_index = NULL; batch_size = 0;
+            labels = NULL; inst_index = NULL; 
+            data.dptr = NULL; 
+            batch_size = 0; num_batch_padd = 0;
+            sparse_row_ptr = NULL;
+            sparse_data = NULL;
         }
-        /*! \brief auxiliary to allocate space, if needed */
-        inline void AllocSpace( mshadow::Shape<4> shape, mshadow::index_t batch_size, bool pad = false ){
+        /*! \brief auxiliary  functionto allocate space, if needed */
+        inline void AllocSpaceDense( mshadow::Shape<4> shape, mshadow::index_t batch_size, bool pad = false ){
             data = mshadow::NewTensor<mshadow::cpu>( shape, 0.0f, pad );
             labels = new float[ batch_size ];
             inst_index = new unsigned[ batch_size ];
             this->batch_size = batch_size;
         }
-        /*! \brief auxiliary function to free space, if needed*/
-        inline void FreeSpace( void ){
+        /*! \brief auxiliary function to free space, if needed, dense only */
+        inline void FreeSpaceDense( void ){
             if( labels != NULL ){
                 delete [] labels;
                 delete [] inst_index;
@@ -79,12 +122,30 @@ namespace cxxnet {
                 labels = NULL;
             }
         }
-        /*! \brief copy content from existing data */
-        inline void CopyFrom( const DataBatch &src ){
+        /*! \brief copy dense content from existing data, dense only */
+        inline void CopyFromDense( const DataBatch &src ){
             utils::Assert( batch_size == src.batch_size );
             memcpy( labels, src.labels, batch_size * sizeof( float ) );
             memcpy( inst_index, src.inst_index, batch_size * sizeof( unsigned ) );
             mshadow::Copy( data, src.data );
+        }
+    public:
+        /*! \brief helper function to check if a element is sparse */
+        inline bool is_sparse(void) const{
+            return sparse_row_ptr != NULL;
+        }
+        /*! \brief get rid'th row from the sparse element, the data must be in sparse format */
+        inline SparseInst GetRowSparse(unsigned rid) const{
+            SparseInst inst;
+            inst.data = sparse_data + sparse_row_ptr[rid];
+            inst.length = sparse_row_ptr[rid+1]- sparse_row_ptr[rid];
+            inst.label = labels[rid];
+            if( inst_index != NULL ){
+                inst.index = inst_index[rid];
+            }else{
+                inst.index = 0; 
+            }
+            return inst;
         }
     };
 };
