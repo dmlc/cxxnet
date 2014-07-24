@@ -13,6 +13,11 @@
 #define CXXNET_ADAPT_CAFFE 0
 #endif
 
+/*! \brief whether to use opencv support, without it, we will not be able to use load image iterarators */
+#ifndef CXXNET_USE_OPENCV
+#define CXXNET_USE_OPENCV 1
+#endif
+
 #include <vector>
 #include <limits>
 #include <queue>

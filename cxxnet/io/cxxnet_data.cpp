@@ -17,10 +17,14 @@ namespace cxxnet {
 #include "cxxnet_iter_cifar-inl.hpp"
 #include "cxxnet_iter_mnist-inl.hpp"
 #include "cxxnet_iter_spfeat-inl.hpp"
-#include "cxxnet_iter_img-inl.hpp"
+
 #include "cxxnet_iter_proc-inl.hpp"
-#include "cxxnet_iter_thread_imbin-inl.hpp"
 #include "cxxnet_iter_thread_npybin-inl.hpp"
+
+#if CXXNET_USE_OPENCV
+#include "cxxnet_iter_img-inl.hpp"
+#include "cxxnet_iter_thread_imbin-inl.hpp"
+#endif
 
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
@@ -42,6 +46,7 @@ namespace cxxnet{
                     utils::Assert( it == NULL );
                     it = new CIFARIterator(); continue;
                 }
+                #if CXXNET_USE_OPENCV
                 if( !strcmp( val, "image") ) {
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator( new ImageIterator() ); continue;
@@ -50,6 +55,7 @@ namespace cxxnet{
                      utils::Assert( it == NULL );
                      it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
                 }
+                #endif
                 if( !strcmp( val, "npybin")) {
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;
