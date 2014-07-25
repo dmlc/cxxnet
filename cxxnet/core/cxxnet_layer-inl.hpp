@@ -464,6 +464,179 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu, 4> tmp_;
     }; // class PoolingLayer
 
+    
+    // 1D convolution along x
+    template<typename xpu>
+    class Convolution1DLayer : public EdgeLayer<xpu> {
+    public:
+        Convolution1DLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
+            : EdgeLayer<xpu>(rnd), in_(in), out_(out) {
+        }
+        virtual ~Convolution1DLayer( void ){}
+        virtual void Forward(bool is_train) {
+            const index_t nbatch = in_.data.shape[3];
+            for( index_t i = 0; i < nbatch; i += nstep_ ){
+                // resize, incase last batch is smaller
+                const index_t step = std::min(nstep_, nbatch-i);
+                temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
+                temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
+
+                if( param_.pad == 0 ){
+                    temp_col_ = unpack_window2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                }else{
+                    temp_col_ = unpack_window2col( pad(in_.data.Slice(i,i+step),1,param_.pad), param_.kernel_size, param_.stride );
+                }
+
+                const index_t gstride = temp_col_.shape[1] / param_.num_group;
+                for( int gid = 0; gid < param_.num_group; ++ gid ){
+                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
+                    temp_dst_[ gid ] = dot( wmat_[gid], tmpc );
+                }
+                out_.data.Slice(i,i+step)  = swapaxis<2,3>( reshape( temp_dst_, mshadow::Shape4( param_.num_channel, step, out_.data.shape[1], out_.data.shape[0] ) ) );
+            }
+            if( param_.no_bias == 0 ){
+                // add bias, broadcast bias to dim 2: channel
+                out_.data += broadcast<2>( bias_, out_.data.shape );
+            }
+        }
+        virtual void Backprop(bool prop_grad){
+            const index_t nbatch = in_.data.shape[3];
+
+            if( param_.no_bias == 0 ){
+                gbias_ += sumall_except_dim<2>( out_.data );
+            }
+            
+            for( index_t i = 0; i < nbatch; i += nstep_ ){
+                const index_t step = std::min(nstep_, nbatch-i);
+                temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
+                temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
+
+                temp_dst_ = reshape( swapaxis<2,3>( out_.data.Slice(i,i+step) ), temp_dst_.shape );
+
+                if( param_.pad == 0 ){
+                    temp_col_ = unpack_window2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                }else{
+                    temp_col_ = unpack_window2col( pad(in_.data.Slice(i,i+step),1,param_.pad), param_.kernel_size, param_.stride );
+                }
+
+                const index_t gstride = temp_col_.shape[1] / param_.num_group;
+                for( int gid = 0; gid < param_.num_group; ++ gid ){
+                    mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
+                    gwmat_[gid] += dot( temp_dst_[gid], tmpc.T() );
+                }
+
+                if( prop_grad ){
+                    for( int gid = 0; gid < param_.num_group; ++ gid ){
+                        mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
+                        tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
+                    }
+                    if( param_.pad == 0 ){
+                        in_.data.Slice(i,i+step) = pack_col2window( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
+                    }else{
+                        mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad; 
+                        utils::Assert( pshape[1] == 1, "CheckShape");
+                        in_.data.Slice(i,i+step) = crop( pack_col2window( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
+                    }
+                }
+            }
+        }
+        virtual void InitLayer( void ) {
+            const index_t ksize   = static_cast<index_t>( param_.kernel_size );
+            const index_t kstride = static_cast<index_t>( param_.stride );
+            Assert( in_.data.shape[2] % param_.num_group == 0,  "input channels must divide group size" );
+            Assert( param_.num_channel % param_.num_group == 0, "output channels must divide group size" );
+            Assert( param_.num_channel > 0, "must set nchannel correctly" );
+            Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
+            Assert( ksize <= in_.data.shape[0], "kernel size exceed input" );
+            Assert( in_.data.shape[1] == 1, "Convolution1DLayer must be applied to series data with shape[1]=1" );
+
+            mshadow::Shape<4> oshape = mshadow::
+                Shape4( in_.data.shape[3], param_.num_channel, 1,
+                        (in_.data.shape[0] + 2 * param_.pad - ksize)/kstride + 1 );
+            out_.data.shape = oshape;
+            // this is the unit size of eacj temp structure
+            shape_colunit_ = mshadow::Shape2( in_.data.shape[2]*ksize, oshape[0] );
+            shape_dstunit_ = mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[0] );
+            nstep_ = std::max( std::min( (index_t)(param_.temp_col_max / shape_colunit_.Size()), in_.data.shape[3] ), 1U );
+            // make nstep more balanced,  nstep will use exactly same number of operations to finish,
+            index_t nop = (in_.data.shape[3]+nstep_-1) / nstep_;
+            nstep_ = (in_.data.shape[3] + nop - 1 )/ nop;
+            utils::Assert( nstep_ > 0 );
+
+            // helper structure
+            temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*nstep_ ));
+            temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*nstep_) );
+
+            if( param_.silent == 0 ){
+                printf("Convolution1DLayer: nstep=%u\n", nstep_ );
+            }
+        }
+        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
+            updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, wmat_, gwmat_, "wmat" ) );
+            if( param_.no_bias == 0 ){
+                updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, bias_, gbias_, "bias" ) );
+            }
+        }
+        virtual void SetParam(const char *name, const char* val){
+            param_.SetParam( name, val );
+        }
+        virtual void InitModel(void){
+            // resize to correct shape, use 2d to store the weight, since we use dot
+            wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group,
+                                           in_.data.shape[2] / param_.num_group * param_.kernel_size ) );
+            bias_.Resize( mshadow::Shape1( param_.num_channel ) );
+
+            if (param_.random_type == kGaussian) {
+                EdgeLayer<xpu>::InitGaussian(wmat_, param_.init_sigma);
+            } else {
+                EdgeLayer<xpu>::InitXavier(wmat_, wmat_.shape[1], wmat_.shape[0]);
+            }
+            bias_ = param_.init_bias;
+            // setup gradient
+            gwmat_.Resize( wmat_.shape );
+            gbias_.Resize( bias_.shape );
+            gwmat_ = 0.0f; gbias_ = 0.0f;
+        }
+        virtual void SaveModel(mshadow::utils::IStream &fo) const{
+            fo.Write( &param_, sizeof(LayerParam) );
+            wmat_.SaveBinary( fo );
+            bias_.SaveBinary( fo );
+        }
+        virtual void LoadModel(mshadow::utils::IStream &fi){
+            Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
+            wmat_.LoadBinary( fi );
+            bias_.LoadBinary( fi );
+            // setup gradient
+            gwmat_.Resize( wmat_.shape );
+            gbias_.Resize( bias_.shape );
+            gwmat_ = 0.0f; gbias_ = 0.0f;
+        }
+    private:
+        /*! \brief parameters that potentially be useful */
+        LayerParam param_;
+        /*! \brief input node */
+        Node<xpu> &in_;
+        /*! \brief output node */
+        Node<xpu> &out_;
+        /*! \brief weight matrix */
+        mshadow::TensorContainer<xpu,3> wmat_;
+        /*! \brief bias */
+        mshadow::TensorContainer<xpu,1> bias_;
+        /*! \brief accumulates the gradient of weight matrix */
+        mshadow::TensorContainer<xpu,3> gwmat_;
+        /*! \brief accumulates the gradient of bias */
+        mshadow::TensorContainer<xpu,1> gbias_;
+        /*! \brief temporary data structure to store windows */
+        mshadow::TensorContainer<xpu,2> temp_col_;
+        /*! \brief temporary data structure to store results */
+        mshadow::TensorContainer<xpu,3> temp_dst_;
+        /*! \brief shape of column unit */
+        mshadow::Shape<2> shape_colunit_;
+        /*! \brief shape of dst unit */
+        mshadow::Shape<3> shape_dstunit_;
+        /*! \brief how many number of batches to be unpacked together */
+        mshadow::index_t nstep_;
+    };
 
     template<typename xpu,typename ForwardOp, typename BackOp >
     class ActivationLayer : public ILayer{
@@ -742,6 +915,7 @@ namespace cxxnet{
         if( !strcmp( type, "dropout") ) return kDropout;
         if( !strcmp( type, "dropconn") ) return kDropConn;
         if( !strcmp( type, "conv") )     return kConv;
+        if( !strcmp( type, "conv1d") )     return kConv1D;
         if( !strcmp( type, "max_pooling")) return kMaxPooling;
         if( !strcmp( type, "sum_pooling")) return kSumPooling;
         if( !strcmp( type, "avg_pooling")) return kAvgPooling;
@@ -770,6 +944,7 @@ namespace cxxnet{
         case kDropConn: return new DropConnLayer<xpu>(rnd, in, out);
         case kDropout: return new DropoutLayer<xpu>(rnd, in, out);
         case kConv:    return new ConvolutionLayer<xpu>( rnd, in, out );
+        case kConv1D:  return new Convolution1DLayer<xpu>( rnd, in, out );
         case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>(in, out);
         case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>(in, out);
         case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>(in, out);

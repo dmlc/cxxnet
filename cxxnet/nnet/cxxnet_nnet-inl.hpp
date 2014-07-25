@@ -467,17 +467,19 @@ namespace cxxnet {
             }
         }
         virtual void Inference(int layer, const DataBatch& batch, long total_length, int &header_flag, mshadow::utils::IStream &fo) {
-            net.in().Pin();
-            mshadow::Copy(net.in().data, batch.data);
-            net.in().Unpin();
+            this->MakeInput(batch);
             net.Inference(layer, total_length, header_flag, fo);
         }
     protected:
-        // put prediction into temp
-        virtual void PreparePredTemp( const DataBatch& batch ){
+        // given existing batch, make input layer parameters
+        virtual void MakeInput( const DataBatch& batch ){
             net.in().Pin();
             mshadow::Copy( net.in().data, batch.data );
             net.in().Unpin();
+        }
+        // put prediction into temp
+        virtual void PreparePredTemp( const DataBatch& batch ){
+            this->MakeInput(batch);
             net.Forward( false );
             this->SyncOuput();
         }
@@ -635,6 +637,43 @@ namespace cxxnet {
         mshadow::TensorContainer<cpu,2> avg_pred;
     };
 }; // namespace cxxnet
+
+namespace cxxnet{
+    
+    template<typename xpu>
+    class CXXNetSparseTrainer: public CXXNetTrainer<xpu>{
+    public:
+        CXXNetSparseTrainer(void){
+        }
+        virtual ~CXXNetSparseTrainer(void){
+        }
+        virtual void SetParam( const char *name, const char *val ){
+            CXXNetTrainer<xpu>::SetParam( name, val );
+            
+        }
+        virtual void InitModel( void ){
+            CXXNetTrainer<xpu>::InitModel();
+            utils::Assert( this->net.in().is_mat(), "sparse input only accepts plain matrix input" );
+            // TODO
+            //mshadow::Tensor<cpu,2> data = net.in().mat();
+            
+        }
+        virtual void SaveModel( mshadow::utils::IStream &fo ) const {
+            CXXNetTrainer<xpu>::SaveModel( fo );
+
+        }
+        virtual void LoadModel( mshadow::utils::IStream &fi ) {
+            CXXNetTrainer<xpu>::LoadModel( fi );
+
+        }
+    protected:
+        virtual void MakeInput( const DataBatch& batch ){
+        }
+    private:
+        mshadow::TensorContainer<cpu,2> Wsp;
+        mshadow::TensorContainer<cpu,1> bias_in;
+    };
+};
 
 namespace cxxnet{
     template<typename xpu>

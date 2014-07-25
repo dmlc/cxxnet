@@ -57,6 +57,7 @@ namespace cxxnet {
             unsigned findex;
             /*! \brief feature value */
             float fvalue;
+            Entry( unsigned findex, float fvalue ):findex(findex),fvalue(fvalue){}
         };
         /*! \brief label information */
         float  label;
@@ -94,9 +95,9 @@ namespace cxxnet {
     public:
         // sparse part of the DataBatch, in CSR format
         /*! \brief array[batch_size+1], row pointer of each of the elements */
-        size_t *sparse_row_ptr;
+        const size_t *sparse_row_ptr;
         /*! \brief array[row_ptr.back()], content of the sparse element */
-        SparseInst::Entry *sparse_data;
+        const SparseInst::Entry *sparse_data;
     public:        
         /*! \brief constructor */
         DataBatch( void ){

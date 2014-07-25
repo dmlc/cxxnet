@@ -19,6 +19,7 @@ namespace cxxnet {
 #include "cxxnet_iter_spfeat-inl.hpp"
 
 #include "cxxnet_iter_proc-inl.hpp"
+#include "cxxnet_iter_sparse-inl.hpp"
 #include "cxxnet_iter_thread_npybin-inl.hpp"
 
 #if CXXNET_USE_OPENCV
@@ -63,6 +64,12 @@ namespace cxxnet{
                 if( !strcmp( val, "threadbuffer") ){
                     utils::Assert( it != NULL, "must specify input of threadbuffer" );
                     it = new ThreadBufferIterator( it );
+                    continue;
+                }
+
+                if( !strcmp( val, "d2sparse") ){
+                    utils::Assert( it != NULL, "must specify input of threadbuffer" );
+                    it = new Dense2SparseAdapter( it );
                     continue;
                 }
                 utils::Error("unknown iterator type" );

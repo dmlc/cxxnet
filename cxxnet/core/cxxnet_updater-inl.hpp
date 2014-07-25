@@ -31,7 +31,6 @@ namespace cxxnet{
         float wd;
         /*! \brief momentum  */
         float momentum;
-
         // scheduling parameters
         /*! \brief type of learning rate schedule */
         int lr_schedule;

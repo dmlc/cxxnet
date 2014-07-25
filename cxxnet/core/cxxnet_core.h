@@ -209,11 +209,11 @@ namespace cxxnet {
             if( backup_.dptr != NULL ) mshadow::FreeSpace( backup_ );
             if( data.dptr != NULL )   mshadow::FreeSpace( data );
         }
-            /*! \brief matrix view of the node */
+        /*! \brief matrix view of the node */
         inline mshadow::Tensor<xpu,2> mat( void ){
             return data[0][0];
         }
-            /*! \brief whether it holds a matrix data */
+        /*! \brief whether it holds a matrix data */
         inline bool is_mat( void ) const{
             return data.shape[2] == 1 && data.shape[3] == 1;
         }
@@ -294,6 +294,7 @@ namespace cxxnet {
         const int kAvgPooling = 13;
         const int kPadding = 14;
         const int kLRN   = 15;
+        const int kConv1D = 16;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */
