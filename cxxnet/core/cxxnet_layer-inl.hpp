@@ -55,6 +55,12 @@ namespace cxxnet{
         int temp_col_max;
         /*! \brief shut up */
         int silent;
+        /*! \brief kernel height */        
+        int kernel_height;
+        /*! \brief kernel width */        
+        int kernel_width;
+        /*! \brief reserved fields, for future compatibility */
+        int reserved[64];
         /*! \brief construtor */
         LayerParam( void ){
             init_sigma = 0.01f;
@@ -64,6 +70,8 @@ namespace cxxnet{
             num_channel = 0;
             num_group = 1;
             kernel_size = 0;
+            kernel_width = 0;
+            kernel_height = 0;
             stride = 1;
             pad = 0;
             dropout_threshold = 0.0f;
@@ -71,6 +79,7 @@ namespace cxxnet{
             silent = 0;
             // 64 MB
             temp_col_max = 64<<18;
+            memset(reserved, 0, sizeof(reserved));
         }
         /*!
          * \brief Set param for the layer from string
@@ -85,7 +94,11 @@ namespace cxxnet{
             if( !strcmp( name, "random_type") && !strcmp(val, "xavier")) random_type = 1;
             if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
             if( !strcmp( name, "ngroup") )      num_group = atoi(val);
-            if( !strcmp( name, "kernel_size") ) kernel_size = atoi(val);
+            if( !strcmp( name, "kernel_size") ) {
+                kernel_width = kernel_height = kernel_size = atoi(val);
+            }
+            if( !strcmp( name, "kernel_height") ) kernel_height = atoi(val);
+            if( !strcmp( name, "kernel_width") )  kernel_width = atoi(val);
             if( !strcmp( name, "stride") )      stride      = atoi(val);
             if( !strcmp( name, "pad") )         pad      = atoi(val);
             if( !strcmp( name, "no_bias") )     no_bias = atoi(val);
@@ -419,22 +432,24 @@ namespace cxxnet {
         }
         virtual ~PoolingLayer() {}
         virtual void Forward(bool is_train) {
-            const int ksize = param_.kernel_size;
+            const int ksize_y = param_.kernel_height;
+            const int ksize_x = param_.kernel_width;
             mshadow::Shape<2> pshape = out_.data[0][0].shape;
             if( !scalebysize ){
-                tmp_ = pool<Reducer>(in_.data, pshape, ksize, param_.stride);
+                tmp_ = pool<Reducer>(in_.data, pshape, ksize_y, ksize_x, param_.stride);
             }else{
-                tmp_ = pool<Reducer>(in_.data, pshape, ksize, param_.stride) * (1.0f/(ksize*ksize) );
+                tmp_ = pool<Reducer>(in_.data, pshape, ksize_y, ksize_x, param_.stride) * (1.0f/(ksize_y*ksize_x) );
             }
             mshadow::Copy( out_.data, tmp_ );
         }
         virtual void Backprop(bool prop_grad) {
             if (prop_grad) {
-                const int ksize = param_.kernel_size;
+                const int ksize_y = param_.kernel_height;
+                const int ksize_x = param_.kernel_width;
                 if( !scalebysize ){
-                    in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride);
+                    in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, ksize_y, ksize_x, param_.stride);
                 }else{
-                    in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, param_.kernel_size, param_.stride) * (1.0f/(ksize*ksize) );
+                    in_.data = unpool<Reducer>(in_.data, tmp_, out_.data, ksize_y, ksize_x, param_.stride) * (1.0f/(ksize_y*ksize_x) );
                 }
             }
         }
@@ -442,15 +457,19 @@ namespace cxxnet {
             param_.SetParam( name, val );
         }
         virtual void InitLayer() {
-            const index_t ksize   = static_cast<index_t>( param_.kernel_size );
+            const index_t ksize_y   = static_cast<index_t>( param_.kernel_height );
+            const index_t ksize_x   = static_cast<index_t>( param_.kernel_width );
             const index_t kstride = static_cast<index_t>( param_.stride );
-            Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
-            Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
+            Assert( param_.kernel_height > 0 && param_.kernel_width > 0, "must set kernel_size correctly" );
+            Assert( ksize_x <= in_.data.shape[0] && ksize_y <= in_.data.shape[1], "kernel size exceed input" );
+            
+            
+                
             // conform to same shape style as caffe, though maybe not necessary
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], in_.data.shape[2],
-                        (in_.data.shape[1] - ksize + kstride-1)/kstride + 1,
-                        (in_.data.shape[0] - ksize + kstride-1)/kstride + 1 );
+                        std::min(in_.data.shape[1] - ksize_y + kstride-1, in_.data.shape[1] - 1) / kstride + 1,
+                        std::min(in_.data.shape[0] - ksize_x + kstride-1, in_.data.shape[0] - 1) / kstride + 1 );
             tmp_.Resize( oshape ); out_.data.shape = oshape;
         }
     private:
