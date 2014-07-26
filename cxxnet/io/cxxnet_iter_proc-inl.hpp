@@ -26,7 +26,7 @@ namespace cxxnet {
             // use round roubin to handle overflow batch
             round_batch_ = 0;
             // number of overflow instances that readed in round_batch mode
-            num_oveflow_ = 0;
+            num_overflow_ = 0;
             // silent
             silent_ = 0;
             // by default, not mean image file
@@ -75,33 +75,37 @@ namespace cxxnet {
             }
         }
         virtual void BeforeFirst( void ){
-            if( round_batch_ == 0 || num_oveflow_ == 0 ){
+            if( round_batch_ == 0 || num_overflow_ == 0 ){
                 // otherise, we already called before first
                 base_->BeforeFirst();
             }else{
-                num_oveflow_ = 0;
+                num_overflow_ = 0;
             }
             head_ = 1;
         }
         virtual bool Next( void ){
+            out_.num_batch_padd = 0;
+
             // skip read if in head version
             if( test_skipread_ != 0 && head_ == 0 ) return true;
             else this->head_ = 0;
             
             // if overflow from previous round, directly return false, until before first is called
-            if( num_oveflow_ != 0 ) return false;
+            if( num_overflow_ != 0 ) return false;
             index_t top = 0;
+
             while( base_->Next() ){
                 this->SetData( top, base_->Value() );
                 if( ++ top >= shape_[3] ) return true;
             }
             if( top != 0 && round_batch_ != 0 ){
-                num_oveflow_ = 0;
+                num_overflow_ = 0;
                 base_->BeforeFirst();
-                for( ;top < shape_[3]; ++top, ++num_oveflow_ ){
+                for( ;top < shape_[3]; ++top, ++num_overflow_ ){
                     utils::Assert( base_->Next(), "number of input must be bigger than batch size" );
                     this->SetData( top, base_->Value() );
                 }
+                out_.num_batch_padd = num_overflow_;
                 return true;
             }
             return false;
@@ -196,7 +200,7 @@ namespace cxxnet {
         // use round roubin to handle overflow batch
         int round_batch_;
         // number of overflow instances that readed in round_batch mode
-        int num_oveflow_;
+        int num_overflow_;
         // mean image, if needed
         mshadow::TensorContainer<cpu,3> meanimg_;
         // mean image file, if specified, will generate mean image file, and substract by mean

@@ -238,6 +238,8 @@ namespace cxxnet{
                 const DataBatch& batch = itr_pred->Value();
                 std::vector<float> pred;
                 net_trainer->Predict(pred, batch);
+                utils::Assert( batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
+                pred.resize( pred.size() - batch.num_batch_padd );
                 for (mshadow::index_t j = 0; j < pred.size(); ++j) {
                     fprintf(fo, "%d\n", static_cast<int>(pred[j]));
                 }

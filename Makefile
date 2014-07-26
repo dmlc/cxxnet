@@ -2,14 +2,20 @@
 export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
-
 export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/
 
+
 ifeq ($(blas),1)
- LDFLAGS= -lm -lcudart -lcublas -lcurand -lz `pkg-config --libs opencv` -lblas
+ LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lblas
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
 else
- LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz `pkg-config --libs opencv`
+ LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz 
+endif
+
+ifeq ($(noopencv),1)
+	CFLAGS+= -DCXXNET_USE_OPENCV=0
+else
+	LDFLAGS+= `pkg-config --libs opencv`
 endif
 
 export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)

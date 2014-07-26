@@ -467,9 +467,7 @@ namespace cxxnet {
             const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( param_.kernel_height > 0 && param_.kernel_width > 0, "must set kernel_size correctly" );
             Assert( ksize_x <= in_.data.shape[0] && ksize_y <= in_.data.shape[1], "kernel size exceed input" );
-            
-            
-                
+                                       
             // conform to same shape style as caffe, though maybe not necessary
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], in_.data.shape[2],
