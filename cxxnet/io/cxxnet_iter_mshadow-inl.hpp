@@ -40,8 +40,8 @@ namespace cxxnet {
             if( shuffle_ ) this->Shuffle();
             if( silent_ == 0 ){
                 mshadow::Shape<4> s = img_.shape;
-                printf("MShadowTIterator: load %u images, shuffle=%d, data=%u,%u,%u,%u\n", 
-                       (unsigned)img_.shape[2], shuffle_, s[3],s[2],s[1],s[0] );
+                printf("MShadowTIterator: shuffle=%d, data=%u,%u,%u,%u\n", 
+                       shuffle_, s[3],s[2],s[1],s[0] );
             }
         }
         virtual void BeforeFirst( void ) {
