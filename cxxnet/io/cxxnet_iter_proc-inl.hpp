@@ -98,14 +98,18 @@ namespace cxxnet {
                 this->SetData( top, base_->Value() );
                 if( ++ top >= shape_[3] ) return true;
             }
-            if( top != 0 && round_batch_ != 0 ){
-                num_overflow_ = 0;
-                base_->BeforeFirst();
-                for( ;top < shape_[3]; ++top, ++num_overflow_ ){
-                    utils::Assert( base_->Next(), "number of input must be bigger than batch size" );
-                    this->SetData( top, base_->Value() );
+            if( top != 0 ){
+                if( round_batch_ != 0 ){
+                    num_overflow_ = 0;
+                    base_->BeforeFirst();
+                    for( ;top < shape_[3]; ++top, ++num_overflow_ ){
+                        utils::Assert( base_->Next(), "number of input must be bigger than batch size" );
+                        this->SetData( top, base_->Value() );
+                    }
+                    out_.num_batch_padd = num_overflow_;
+                }else{                    
+                    out_.num_batch_padd = shape_[3] - top;
                 }
-                out_.num_batch_padd = num_overflow_;
                 return true;
             }
             return false;

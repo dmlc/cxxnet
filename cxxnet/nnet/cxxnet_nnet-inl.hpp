@@ -452,7 +452,7 @@ namespace cxxnet {
             while( iter_eval->Next() ){
                 const DataBatch& batch = iter_eval->Value();
                 this->PreparePredTemp( batch );
-                metric.AddEval( temp, batch.labels );
+                metric.AddEval( temp.Slice(0, temp.shape[1]-batch.num_batch_padd), batch.labels );
             }
 
             res += metric.Print( evname );

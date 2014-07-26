@@ -16,6 +16,7 @@ namespace cxxnet {
 #include "../utils/cxxnet_io_utils.h"
 #include "cxxnet_iter_cifar-inl.hpp"
 #include "cxxnet_iter_mnist-inl.hpp"
+#include "cxxnet_iter_mshadow-inl.hpp"
 #include "cxxnet_iter_spfeat-inl.hpp"
 
 #include "cxxnet_iter_proc-inl.hpp"
@@ -46,6 +47,10 @@ namespace cxxnet{
                 if( !strcmp( val, "cifar") ) {
                     utils::Assert( it == NULL );
                     it = new CIFARIterator(); continue;
+                }
+                if( !strcmp( val, "mshadow") ){
+                    utils::Assert( it == NULL );
+                    it = new BatchAdaptIterator( new MShadowIterator() ); continue;
                 }
                 #if CXXNET_USE_OPENCV
                 if( !strcmp( val, "image") ) {
