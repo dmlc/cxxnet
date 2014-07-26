@@ -41,12 +41,16 @@ namespace cxxnet{
         int num_channel;
         /*! \brief number of parallel group */
         int num_group;
-        /*! \brief kernel size */
-        int kernel_size;
+        /*! \brief kernel height */        
+        int kernel_height;
+        /*! \brief kernel width */        
+        int kernel_width;
         /*! \brief stride prameter */
         int stride;
-        /*! \brief padding */
-        int pad;
+        /*! \brief padding in y dimension */
+        int pad_y;
+        /*! \brief padding in x dimension */
+        int pad_x;
         /*! \brief whether not include bias term */
         int no_bias;
         /*! \brief dropout threshold  */
@@ -55,10 +59,6 @@ namespace cxxnet{
         int temp_col_max;
         /*! \brief shut up */
         int silent;
-        /*! \brief kernel height */        
-        int kernel_height;
-        /*! \brief kernel width */        
-        int kernel_width;
         /*! \brief reserved fields, for future compatibility */
         int reserved[64];
         /*! \brief construtor */
@@ -69,11 +69,10 @@ namespace cxxnet{
             random_type = 0;
             num_channel = 0;
             num_group = 1;
-            kernel_size = 0;
             kernel_width = 0;
             kernel_height = 0;
             stride = 1;
-            pad = 0;
+            pad_x = pad_y = 0;
             dropout_threshold = 0.0f;
             no_bias = 0;
             silent = 0;
@@ -95,12 +94,16 @@ namespace cxxnet{
             if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
             if( !strcmp( name, "ngroup") )      num_group = atoi(val);
             if( !strcmp( name, "kernel_size") ) {
-                kernel_width = kernel_height = kernel_size = atoi(val);
+                kernel_width = kernel_height = atoi(val);
             }
             if( !strcmp( name, "kernel_height") ) kernel_height = atoi(val);
             if( !strcmp( name, "kernel_width") )  kernel_width = atoi(val);
             if( !strcmp( name, "stride") )      stride      = atoi(val);
-            if( !strcmp( name, "pad") )         pad      = atoi(val);
+            if( !strcmp( name, "pad") ){
+                pad_y = pad_x  = atoi(val);
+            }
+            if( !strcmp( name, "pad_y") )       pad_y = atoi(val);
+            if( !strcmp( name, "pad_x") )       pad_x = atoi(val);
             if( !strcmp( name, "no_bias") )     no_bias = atoi(val);
             if( !strcmp( name, "threshold"))    dropout_threshold = (float)atof(val);
             if( !strcmp( name, "silent") )      silent   = atoi(val);
@@ -268,10 +271,10 @@ namespace cxxnet {
                 temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
                 temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
 
-                if( param_.pad == 0 ){
-                    temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                if( param_.pad_x == 0 && param_.pad_y == 0 ){
+                    temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_height, param_.kernel_width, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2col( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( pad(in_.data.Slice(i,i+step),param_.pad_y, param_.pad_x), param_.kernel_height, param_.kernel_width, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -300,10 +303,10 @@ namespace cxxnet {
 
                 temp_dst_ = reshape( swapaxis<2,3>( out_.data.Slice(i,i+step) ), temp_dst_.shape );
 
-                if( param_.pad == 0 ){
-                    temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                if( param_.pad_x == 0 && param_.pad_y == 0 ){
+                    temp_col_ = unpack_patch2col( in_.data.Slice(i, i+step), param_.kernel_height, param_.kernel_width, param_.stride );
                 }else{
-                    temp_col_ = unpack_patch2col( pad(in_.data.Slice(i,i+step),param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_patch2col( pad(in_.data.Slice(i,i+step),param_.pad_y, param_.pad_x), param_.kernel_height, param_.kernel_width, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -317,31 +320,33 @@ namespace cxxnet {
                         mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                         tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
                     }
-                    if( param_.pad == 0 ){
-                        in_.data.Slice(i,i+step) = pack_col2patch( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
+
+                    if( param_.pad_x == 0 && param_.pad_y == 0 ){
+                        in_.data.Slice(i,i+step) = pack_col2patch( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_height, param_.kernel_width, param_.stride );
                     }else{
-                        mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad; pshape[1] += 2*param_.pad;
-                        in_.data.Slice(i,i+step) = crop( pack_col2patch( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
+                        mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad_y; pshape[1] += 2*param_.pad_x;
+                        in_.data.Slice(i,i+step) = crop( pack_col2patch( temp_col_, pshape, param_.kernel_height, param_.kernel_width, param_.stride ), in_.data[i][0].shape );
                     }
                 }
             }
         }
         virtual void InitLayer( void ) {
-            const index_t ksize   = static_cast<index_t>( param_.kernel_size );
+            const index_t ksize_y = static_cast<index_t>( param_.kernel_height );
+            const index_t ksize_x = static_cast<index_t>( param_.kernel_width );
             const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( in_.data.shape[2] % param_.num_group == 0,  "input channels must divide group size" );
             Assert( param_.num_channel % param_.num_group == 0, "output channels must divide group size" );
             Assert( param_.num_channel > 0, "must set nchannel correctly" );
-            Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
-            Assert( ksize <= in_.data.shape[0] && ksize <= in_.data.shape[1], "kernel size exceed input" );
+            Assert( param_.kernel_height > 0 && param_.kernel_width > 0, "must set kernel_size correctly" );
+            Assert( ksize_x <= in_.data.shape[0] && ksize_y <= in_.data.shape[1], "kernel size exceed input" );
 
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], param_.num_channel,
-                        (in_.data.shape[1] + 2 * param_.pad - ksize)/kstride + 1,
-                        (in_.data.shape[0] + 2 * param_.pad - ksize)/kstride + 1 );
+                        (in_.data.shape[1] + 2 * param_.pad_y - ksize_y)/kstride + 1,
+                        (in_.data.shape[0] + 2 * param_.pad_x - ksize_x)/kstride + 1 );
             out_.data.shape = oshape;
             // this is the unit size of eacj temp structure
-            shape_colunit_ = mshadow::Shape2( in_.data.shape[2]*ksize*ksize, oshape[1]*oshape[0] );
+            shape_colunit_ = mshadow::Shape2( in_.data.shape[2]*ksize_y*ksize_x, oshape[1]*oshape[0] );
             shape_dstunit_ = mshadow::Shape3( param_.num_group, param_.num_channel/param_.num_group, oshape[1]*oshape[0] );
             nstep_ = std::max( std::min( (index_t)(param_.temp_col_max / shape_colunit_.Size()), in_.data.shape[3] ), 1U );
             // make nstep more balanced,  nstep will use exactly same number of operations to finish,
@@ -369,7 +374,7 @@ namespace cxxnet {
         virtual void InitModel(void){
             // resize to correct shape, use 2d to store the weight, since we use dot
             wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group,
-                                           in_.data.shape[2] / param_.num_group * param_.kernel_size * param_.kernel_size ) );
+                                           in_.data.shape[2] / param_.num_group * param_.kernel_height * param_.kernel_width ) );
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
 
             if (param_.random_type == kGaussian) {
@@ -500,10 +505,10 @@ namespace cxxnet {
                 temp_col_.Resize( mshadow::Shape2( shape_colunit_[1], shape_colunit_[0]*step ) );
                 temp_dst_.Resize( mshadow::Shape3( shape_dstunit_[2], shape_dstunit_[1], shape_dstunit_[0]*step ) );
 
-                if( param_.pad == 0 ){
-                    temp_col_ = unpack_window2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                if( param_.pad_x == 0 ){
+                    temp_col_ = unpack_window2col( in_.data.Slice(i, i+step), param_.kernel_width, param_.stride );
                 }else{
-                    temp_col_ = unpack_window2col( pad(in_.data.Slice(i,i+step),1,param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_window2col( pad(in_.data.Slice(i,i+step),1,param_.pad_x), param_.kernel_width, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -532,10 +537,10 @@ namespace cxxnet {
 
                 temp_dst_ = reshape( swapaxis<2,3>( out_.data.Slice(i,i+step) ), temp_dst_.shape );
 
-                if( param_.pad == 0 ){
-                    temp_col_ = unpack_window2col( in_.data.Slice(i, i+step), param_.kernel_size, param_.stride );
+                if( param_.pad_x == 0 ){
+                    temp_col_ = unpack_window2col( in_.data.Slice(i, i+step), param_.kernel_width, param_.stride );
                 }else{
-                    temp_col_ = unpack_window2col( pad(in_.data.Slice(i,i+step),1,param_.pad), param_.kernel_size, param_.stride );
+                    temp_col_ = unpack_window2col( pad(in_.data.Slice(i,i+step),1,param_.pad_x), param_.kernel_width, param_.stride );
                 }
 
                 const index_t gstride = temp_col_.shape[1] / param_.num_group;
@@ -549,29 +554,29 @@ namespace cxxnet {
                         mshadow::Tensor<xpu,2> tmpc = temp_col_.Slice( gstride*gid, gstride*(gid+1) );
                         tmpc = dot( wmat_[gid].T(), temp_dst_[gid] );
                     }
-                    if( param_.pad == 0 ){
-                        in_.data.Slice(i,i+step) = pack_col2window( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_size, param_.stride );
+                    if( param_.pad_x == 0 ){
+                        in_.data.Slice(i,i+step) = pack_col2window( temp_col_, in_.data.Slice(i,i+step).shape, param_.kernel_width, param_.stride );
                     }else{
-                        mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad; 
+                        mshadow::Shape<4> pshape = in_.data.Slice(i,i+step).shape; pshape[0] += 2*param_.pad_x; 
                         utils::Assert( pshape[1] == 1, "CheckShape");
-                        in_.data.Slice(i,i+step) = crop( pack_col2window( temp_col_, pshape, param_.kernel_size, param_.stride ), in_.data[i][0].shape );
+                        in_.data.Slice(i,i+step) = crop( pack_col2window( temp_col_, pshape, param_.kernel_width, param_.stride ), in_.data[i][0].shape );
                     }
                 }
             }
         }
         virtual void InitLayer( void ) {
-            const index_t ksize   = static_cast<index_t>( param_.kernel_size );
+            const index_t ksize   = static_cast<index_t>( param_.kernel_width );
             const index_t kstride = static_cast<index_t>( param_.stride );
             Assert( in_.data.shape[2] % param_.num_group == 0,  "input channels must divide group size" );
             Assert( param_.num_channel % param_.num_group == 0, "output channels must divide group size" );
             Assert( param_.num_channel > 0, "must set nchannel correctly" );
-            Assert( param_.kernel_size > 0, "must set kernel_size correctly" );
+            Assert( param_.kernel_width > 0, "must set kernel_size correctly" );
             Assert( ksize <= in_.data.shape[0], "kernel size exceed input" );
             Assert( in_.data.shape[1] == 1, "Convolution1DLayer must be applied to series data with shape[1]=1" );
 
             mshadow::Shape<4> oshape = mshadow::
                 Shape4( in_.data.shape[3], param_.num_channel, 1,
-                        (in_.data.shape[0] + 2 * param_.pad - ksize)/kstride + 1 );
+                        (in_.data.shape[0] + 2 * param_.pad_x - ksize)/kstride + 1 );
             out_.data.shape = oshape;
             // this is the unit size of eacj temp structure
             shape_colunit_ = mshadow::Shape2( in_.data.shape[2]*ksize, oshape[0] );
@@ -602,7 +607,7 @@ namespace cxxnet {
         virtual void InitModel(void){
             // resize to correct shape, use 2d to store the weight, since we use dot
             wmat_.Resize( mshadow::Shape3( param_.num_group, param_.num_channel / param_.num_group,
-                                           in_.data.shape[2] / param_.num_group * param_.kernel_size ) );
+                                           in_.data.shape[2] / param_.num_group * param_.kernel_width ) );
             bias_.Resize( mshadow::Shape1( param_.num_channel ) );
 
             if (param_.random_type == kGaussian) {
