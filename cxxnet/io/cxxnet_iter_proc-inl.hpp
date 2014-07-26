@@ -31,6 +31,8 @@ namespace cxxnet {
             silent_ = 0;
             // by default, not mean image file
             name_meanimg_ = "";
+            crop_y_start_ = -1;
+            crop_x_start_ = -1;
         }
         virtual ~BatchAdaptIterator( void ){
             delete base_;
@@ -45,6 +47,8 @@ namespace cxxnet {
             }
             if( !strcmp( name, "round_batch") ) round_batch_ = atoi(val);
             if( !strcmp( name, "rand_crop") )   rand_crop_ = atoi(val);
+            if( !strcmp( name, "crop_y_start") )  crop_y_start_ = atoi(val);
+            if( !strcmp( name, "crop_x_start") )  crop_x_start_ = atoi(val);
             if( !strcmp( name, "rand_mirror") ) rand_mirror_ = atoi( val );
             if( !strcmp( name, "silent") )      silent_ = atoi( val );
             if( !strcmp( name, "divideby") )    scale_ = static_cast<mshadow::real_t>( 1.0f/atof(val) );
@@ -136,6 +140,9 @@ namespace cxxnet {
                 }else{
                     yy /= 2; xx/=2;
                 }
+                if( crop_y_start_ != -1 ) yy = crop_y_start_;
+                if( crop_x_start_ != -1 ) xx = crop_x_start_;
+                
                 if( name_meanimg_.length() == 0 ){
                     if( rand_mirror_ != 0 && utils::NextDouble() < 0.5f ){
                         out_.data[top] = mirror( crop( d.data, out_.data[0][0].shape, yy, xx ) ) * scale_;
@@ -203,6 +210,10 @@ namespace cxxnet {
         int rand_mirror_;
         // use round roubin to handle overflow batch
         int round_batch_;
+        // whether we do nonrandom croping
+        int crop_y_start_;
+        // whether we do nonrandom croping
+        int crop_x_start_;
         // number of overflow instances that readed in round_batch mode
         int num_overflow_;
         // mean image, if needed
