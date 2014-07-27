@@ -138,8 +138,12 @@ namespace cxxnet{
         protected:
             virtual float CalcMetric( const mshadow::Tensor<cpu,1> &pred, float label ) {
                 index_t maxidx = 0;
-                for( index_t i = 1; i < pred.shape[0]; ++ i ){
-                    if( pred[i] > pred[maxidx] ) maxidx = i;
+                if( pred.shape[0] != 1 ){
+                    for( index_t i = 1; i < pred.shape[0]; ++ i ){
+                        if( pred[i] > pred[maxidx] ) maxidx = i;
+                    }
+                }else{
+                    maxidx = pred[0] > 0.5 ? 1 : 0;
                 }
                 return maxidx !=(index_t)label;
             }
