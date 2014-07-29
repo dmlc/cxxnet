@@ -2,7 +2,7 @@
 export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
-export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/
+export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp 
 
 
 ifeq ($(blas),1)
@@ -10,6 +10,10 @@ ifeq ($(blas),1)
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
 else
  LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz 
+endif
+
+ifeq ($(xgboost),1)
+	CFLAGS+= -DCXXNET_ADAPT_XGBOOST=1 I../xgboost
 endif
 
 ifeq ($(noopencv),1)

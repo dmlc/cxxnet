@@ -28,6 +28,10 @@ namespace cxxnet {
 #include "cxxnet_iter_thread_imbin-inl.hpp"
 #endif
 
+#if CXXNET_ADAPT_XGBOOST
+#include "../plugin/cxxnet_xgboost_iter-inl.hpp"
+#endif
+
 namespace cxxnet{
     IIterator<DataBatch>* CreateIterator( const std::vector< std::pair<std::string,std::string> > &cfg ){
         size_t i = 0;
@@ -62,6 +66,14 @@ namespace cxxnet{
                      it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
                 }
                 #endif
+
+                #if CXXNET_ADAPT_XGBOOST
+                if( !strcmp( val, "xgboost")) {
+                    utils::Assert( it == NULL );
+                    it = new SparseBatchAdapter(new XGBoostIterator()); continue;
+                }
+                #endif
+
                 if( !strcmp( val, "npybin")) {
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;

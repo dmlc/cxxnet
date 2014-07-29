@@ -13,6 +13,11 @@
 #define CXXNET_ADAPT_CAFFE 0
 #endif
 
+/*! \brief whether to reuse xgboost input sparse data structure */
+#ifndef CXXNET_ADAPT_XGBOOST
+#define CXXNET_ADAPT_XGBOOST 0
+#endif
+
 /*! \brief whether to use opencv support, without it, we will not be able to use load image iterarators */
 #ifndef CXXNET_USE_OPENCV
 #define CXXNET_USE_OPENCV 1
