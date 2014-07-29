@@ -8,6 +8,7 @@
  */
 #include "cxxnet_nnet.h"
 #include "../core/cxxnet_core.h"
+#include "../utils/cxxnet_utils.h"
 #include "../utils/cxxnet_metric.h"
 
 namespace cxxnet {
@@ -95,6 +96,10 @@ namespace cxxnet {
                 Assert( fi.Read( &layers[0], sizeof(LayerInfo) * layers.size() ) != 0 );
             }
         }
+        inline int LastNode(void) const{
+            if( layers.size() == 0 ) return 0;
+            else return layers.back().nindex_out;
+        }
     };
 
     /*! \brief helper class to config networks */
@@ -116,7 +121,7 @@ namespace cxxnet {
             if( !strncmp( name, "layer[", 6 ) ){
                 netcfg_mode = 2;
                 if( meta.param.init_end == 0 ){
-                    meta.layers.push_back( this->GetLayerInfo( name, val ) );
+                    meta.layers.push_back( this->GetLayerInfo( name, val, meta.LastNode() ) );
                     meta.param.num_layers = static_cast<int>( meta.layers.size() );
                 }
             }
@@ -133,13 +138,17 @@ namespace cxxnet {
                                   std::vector<IUpdater*>& updaters, bool init_model ){
             // default configuration
             int layer_index = -1;
+            int top_node = 0;
             for( size_t i = 0; i < netcfg.size(); ++i ){
                 const char* name = netcfg[i].first.c_str();
                 const char* val  = netcfg[i].second.c_str();
                 if( !strncmp( name, "layer[", 6 ) ){
                     ++ layer_index;
                     Assert( layer_index >= 0 && layer_index < meta.param.num_layers );
-                    NetMetaModel::LayerInfo inf = this->GetLayerInfo( name, val );
+
+                    NetMetaModel::LayerInfo inf = this->GetLayerInfo( name, val, top_node );
+                    top_node = inf.nindex_out;
+
                     Assert( inf == meta.layers[layer_index], "config setting mismatch" );
                     // set global parameters
                     for( size_t j = 0; j < defcfg.size(); ++ j ){
@@ -186,10 +195,14 @@ namespace cxxnet {
             }
         }
     private:
-        inline NetMetaModel::LayerInfo GetLayerInfo( const char *name, const char *val ){
+        inline NetMetaModel::LayerInfo GetLayerInfo( const char *name, const char *val, int top_node ){
             int a, b;
             char ltype[256],tag[256];
-            Assert( sscanf( name, "layer[%d->%d]", &a, &b ) == 2, "invalid config format, correct example: layer[1->2]" );
+            if( sscanf( name, "layer[%d->%d]", &a, &b ) != 2 ){                
+                utils::Assert( sscanf( name, "layer[+%d]", &b ) == 1, 
+                               "invalid config format, correct example: layer[1->2]" );
+                a = top_node; b += top_node;
+            }
             Assert( sscanf( val , "%[^:]:%s", ltype, tag ) >= 1, "invalid config format" );
             NetMetaModel::LayerInfo inf;
             inf.nindex_in = a; inf.nindex_out = b;
@@ -229,13 +242,15 @@ namespace cxxnet {
         std::vector<IUpdater*>   updaters;
         /*! \brief random number generator */
         mshadow::Random<xpu>     rnd;
+        /*! \brief reserved  cpu random number generator */
+        mshadow::Random<cpu>     rnd_cpu;
         /*! \brief node factory */
         NodeFactory<xpu> nfactory;
         /*! \brief temp space */
         mshadow::TensorContainer<cpu,2> temp;
     public:
         /*! \brief constructor */
-        NeuralNet( void ): cfg(meta),rnd(0) {
+        NeuralNet( void ): cfg(meta),rnd(0), rnd_cpu(0) {
             silent = 0;
         }
         /*! \brief destructor */
@@ -252,7 +267,9 @@ namespace cxxnet {
         }
         /*! \brief set parameter */
         inline void SetParam( const char *name, const char *val ){
-            if( !strcmp( name, "seed") ) rnd.Seed( atoi( val ) );
+            if( !strcmp( name, "seed") ){
+                rnd.Seed( atoi( val ) ); rnd_cpu.Seed( atoi(val) );
+            }
             if( !strcmp( name, "silent") ) silent = atoi(val);
             if( !strcmp( name, "memlimit") ) nfactory.SetMemLimit( val );
             cfg.SetParam( name, val );
@@ -333,9 +350,9 @@ namespace cxxnet {
             nodes[stop_layer].Unpin();
         }
         /*! \brief backprop */
-        inline void Backprop( void ){
+        inline void Backprop( bool prop_to_firstlayer = false ){
             for( size_t i = layers.size(); i > 0; -- i ){
-                layers[i-1]->Backprop( i != 1 );
+                layers[i-1]->Backprop( i != 1 || prop_to_firstlayer );
             }
         }
         /*! \brief update model parameters  */
@@ -419,10 +436,8 @@ namespace cxxnet {
             net.StartRound( round );
             this->round = round;
         }
-        virtual void Update ( const DataBatch& batch ) {
-            net.in().Pin();
-            mshadow::Copy( net.in().data, batch.data );
-            net.in().Unpin();
+        virtual void ForwardBackprop ( const DataBatch& batch, bool prop_to_firstlayer ) {
+            this->MakeInput( batch );
 
             net.Forward( true );
             this->SyncOuput();
@@ -432,12 +447,15 @@ namespace cxxnet {
             net.out().Unpin();
 
             this->SetLoss( batch.labels );
-            net.Backprop();
+            net.Backprop( prop_to_firstlayer );
             if( ++ sample_counter >= update_period ){
                 net.Update(); sample_counter = 0;
             }
+        }        
+        virtual void Update ( const DataBatch& batch ) {
+            this->ForwardBackprop( batch, false );
         }
-
+        
         virtual std::string Evaluate( IIterator<DataBatch> *iter_eval, const char* evname ){          
             std::string res;            
             if (eval_train != 0 ) {
@@ -638,40 +656,137 @@ namespace cxxnet {
     };
 }; // namespace cxxnet
 
-namespace cxxnet{
-    
+namespace cxxnet{    
     template<typename xpu>
     class CXXNetSparseTrainer: public CXXNetTrainer<xpu>{
     public:
         CXXNetSparseTrainer(void){
+            tparam.tag = "sparse";            
         }
         virtual ~CXXNetSparseTrainer(void){
         }
         virtual void SetParam( const char *name, const char *val ){
-            CXXNetTrainer<xpu>::SetParam( name, val );
-            
+            if( !strcmp( name, "sparse:nhidden") ){
+                char tmp[256];
+                sparam.sparse_num_hidden = atoi(val);
+                sprintf(tmp, "1,1,%d", sparam.sparse_num_hidden);
+                CXXNetTrainer<xpu>::SetParam("input_shape", tmp);
+                return;
+            }
+            if( !strcmp( name, "input_shape") ){
+                unsigned x, y, z;
+                Assert( sscanf( val, "%u,%u,%u", &z,&y,&x ) ==3,
+                               "input_shape must be three consecutive integers without space example: 1,1,200 " );
+                sparam.shape_in[0] = x; sparam.shape_in[1] = y; sparam.shape_in[2] = z;                
+                utils::Assert( y == 1 && z == 1, "sparse net only accept vector as input" );
+                return;
+            }
+            if( !strcmp( name, "sparse:init_sigma") ) sparam.sparse_init_sigma = (float)atof(val);
+            if( !strcmp( name, "nthread") ){
+                sparam.nthread = atoi(val);
+                omp_set_num_threads(sparam.nthread);
+            }
+            tparam.SetParam(name, val);
+            CXXNetTrainer<xpu>::SetParam(name, val);
         }
         virtual void InitModel( void ){
             CXXNetTrainer<xpu>::InitModel();
-            utils::Assert( this->net.in().is_mat(), "sparse input only accepts plain matrix input" );
-            // TODO
-            //mshadow::Tensor<cpu,2> data = net.in().mat();
+            Wsp.Resize( mshadow::Shape2( sparam.shape_in[0], sparam.sparse_num_hidden ) );            
+            Wsp = this->net.rnd_cpu.gaussian( Wsp.shape ) * sparam.sparse_init_sigma;
             
+            if( this->net.silent == 0 ){
+                printf("CXXNetSparseTrainer: init with %ux%d connections\n", Wsp.shape[1], Wsp.shape[0]);
+                printf("SparseSGDUpdater: eta=%f, init_sigma=%f\n", tparam.base_lr_, sparam.sparse_init_sigma );
+            }
         }
         virtual void SaveModel( mshadow::utils::IStream &fo ) const {
             CXXNetTrainer<xpu>::SaveModel( fo );
-
+            fo.Write( &sparam, sizeof(SparseNetParam) );
+            Wsp.SaveBinary( fo );
         }
         virtual void LoadModel( mshadow::utils::IStream &fi ) {
             CXXNetTrainer<xpu>::LoadModel( fi );
-
+            utils::Assert( fi.Read( &sparam, sizeof(SparseNetParam) ) != 0, "SparseNet" );
+            Wsp.LoadBinary( fi );
+        }
+        virtual void Update ( const DataBatch& batch ) {
+            CXXNetTrainer<xpu>::ForwardBackprop( batch, true );
+            this->SparseUpdate( batch );
         }
     protected:
         virtual void MakeInput( const DataBatch& batch ){
+            utils::Assert( batch.is_sparse(), "SparseNet: only accept sparse input");
+            this->SparseForward( batch );
         }
     private:
+        inline void SparseForward( const DataBatch& batch ){
+            utils::Assert( this->net.in().is_mat(), "input must be vector" );
+            mshadow::Tensor<xpu, 2> din = this->net.in().mat();
+            node_hidden.Resize( din.shape ); 
+
+            // maybe put a OpenMP here           
+            #pragma omp parallel for schedule(static) 
+            for( index_t i = 0; i < batch.batch_size; ++ i ){
+                SparseInst line = batch.GetRowSparse(i);
+                mshadow::Tensor<cpu,1> node = node_hidden[i];
+                node = 0.0f;
+                for( unsigned j = 0; j < line.length; ++ j ){
+                    const SparseInst::Entry &e = line[j];
+                    node += e.fvalue * Wsp[ e.findex ];
+                }
+            }
+            mshadow::Copy( din, node_hidden );
+        }
+
+        inline void SparseUpdate( const DataBatch& batch ){
+            utils::Assert( this->net.in().is_mat(), "input must be vector" );
+            mshadow::Tensor<xpu, 2> din = this->net.in().mat();
+            node_hidden.Resize( din.shape );
+            mshadow::Copy( node_hidden, din );
+            tparam.ScheduleEpoch( this->net.meta.param.num_epoch_passed );
+                        
+            // maybe put a OpenMP here            
+            #pragma omp parallel for schedule(static)
+            for( index_t i = 0; i < batch.batch_size; ++ i ){
+                SparseInst line = batch.GetRowSparse(i);
+                mshadow::Tensor<cpu,1> grad = node_hidden[i];
+                for( unsigned j = 0; j < line.length; ++ j ){
+                    const SparseInst::Entry &e = line[j];
+                    Wsp[ e.findex ] += e.fvalue * (-tparam.learning_rate) * grad;
+                    Wsp[ e.findex ] *= ( 1.0f - tparam.learning_rate * tparam.wd );
+                }
+            }
+        }
+    private:
+        /*! \brief additional input for sparse net */
+        struct SparseNetParam{
+            /*! \brief intialize gaussian std for sparse layer */
+            float sparse_init_sigma;
+            /*! \brief number of hidden nodes in the first sparse layer */
+            int sparse_num_hidden;
+            /*! \brief input shape, not including batch dimension */
+            mshadow::Shape<3> shape_in;
+            /*! \brief number of threads used */
+            int nthread;
+            /*! \brief reserved field */
+            int reserved[32];
+            /*! \brief default constructor */
+            SparseNetParam(void){
+                nthread = 0;
+                shape_in = mshadow::Shape3( 1, 1, 0 );
+                sparse_init_sigma = 0.005f;
+                sparse_num_hidden = 100;
+                memset( reserved, 0, sizeof(reserved) );
+            }            
+        };
+    private:
+        /*! \brief training parameters */
+        UpdaterParam tparam;
+        /*! \brief neural net parameter */
+        SparseNetParam sparam;
+        /*! \brief temp hidden node for the model */
+        mshadow::TensorContainer<cpu,2> node_hidden;
         mshadow::TensorContainer<cpu,2> Wsp;
-        mshadow::TensorContainer<cpu,1> bias_in;
     };
 };
 
@@ -681,6 +796,7 @@ namespace cxxnet{
         switch( net_type ){
         case 0: return new CXXNetTrainer<xpu>();
         case 1: return new CXXAvgNetTrainer<xpu>();
+        case 2: return new CXXNetSparseTrainer<xpu>();
         default: Error("unknown net type");
         }
         return NULL;

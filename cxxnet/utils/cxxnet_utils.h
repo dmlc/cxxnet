@@ -30,6 +30,14 @@ extern "C"{
 #include <cstdio>
 #endif
 
+#if defined(_OPENMP)
+#include <omp.h>
+#else
+inline int omp_get_thread_num() { return 0; }
+inline int omp_get_num_threads() { return 1; }
+inline void omp_set_num_threads(int nthread) {}
+#endif
+
 #ifdef _MSC_VER
 typedef unsigned char uint8_t;
 typedef unsigned short int uint16_t;

@@ -294,7 +294,7 @@ namespace cxxnet {
         const int kAvgPooling = 13;
         const int kPadding = 14;
         const int kLRN   = 15;
-        const int kConv1D = 16;
+        const int kBias = 17;
         const int kCaffe = 100;
     };
     /*! \brief namespace for type of random init method */
