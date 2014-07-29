@@ -13,7 +13,7 @@ else
 endif
 
 ifeq ($(xgboost),1)
-	CFLAGS+= -DCXXNET_ADAPT_XGBOOST=1 I../xgboost
+	CFLAGS+= -DCXXNET_ADAPT_XGBOOST=1 -I../xgboost
 endif
 
 ifeq ($(noopencv),1)
