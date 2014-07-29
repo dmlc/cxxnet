@@ -6,6 +6,9 @@
  * \brief definition of iterator that relates to sparse data format
  * \author Tianqi Chen
  */
+#include "cxxnet_data.h"
+#include "../utils/cxxnet_io_utils.h"
+#include "../utils/cxxnet_thread_buffer.h"
 
 namespace cxxnet {
     /*! \brief a simple adapter */
@@ -142,7 +145,7 @@ namespace cxxnet {
         // base iterator
         IIterator<SparseInst> *base_;
         // batch size
-        index_t batch_size_;
+        mshadow::index_t batch_size_;
         // use round batch mode to reuse further things
         int round_batch_;
         // number of overflow items 
@@ -157,5 +160,131 @@ namespace cxxnet {
         // actual content of sparse data storage
         std::vector<SparseInst::Entry> data;
     };
+    
+    /*! \brief constant size binary page that can */
+    struct SparseInstObj{                
+    private:
+        unsigned *dptr;
+        unsigned length;   
+    public:     
+        SparseInstObj( const SparseInst &line ){
+            utils::Assert( sizeof(SparseInst::Entry) % sizeof(unsigned) == 0 );
+            dptr = new unsigned[ (line.length*sizeof(SparseInst::Entry)+2*sizeof(unsigned))/sizeof(unsigned) ];
+            this->label() = line.label;
+            this->index() = line.index;
+            memcpy( dptr+2, line.data, sizeof(SparseInst::Entry)*line.length );
+        }
+        SparseInstObj( const utils::BinaryPage::Obj &obj ){
+            this->dptr = (unsigned*)obj.dptr;
+            this->length = obj.sz - 2;
+        }
+        inline void FreeSpace(void){
+            delete [] dptr;
+        }
+        inline float& label(void){
+            return *(float*)(dptr+0);
+        }
+        inline unsigned& index(void){
+            return *(unsigned*)(dptr+1);
+        }
+        /*! \brief get sparse inst from this one */
+        inline SparseInst GetInst(void){
+            SparseInst inst;
+            inst.label = this->label();
+            inst.index = this->index();
+            inst.length = this->length;
+            inst.data  = (const SparseInst::Entry*)(dptr+2);
+            return inst;
+        }
+        /*! \brief get binary obj view of this object */
+        inline utils::BinaryPage::Obj GetObj(void){
+            return utils::BinaryPage::Obj( dptr, length+2);
+        }
+    };
+    
+    
+    /*! \brief thread buffer iterator */
+    class ThreadSparsePageIterator: public IIterator< SparseInst >{
+    public:
+        ThreadSparsePageIterator( void ){
+            silent_ = 0;
+            path_bin_ = "data.bin";
+            itr.SetParam( "buffer_size", "4" );
+            page_.page = NULL;
+        }
+        virtual ~ThreadSparsePageIterator( void ){
+        }
+        virtual void SetParam( const char *name, const char *val ){
+            if( !strcmp( name, "path_data") ) path_bin_ = val;
+            if( !strcmp( name, "silent"   ) ) silent_ = atoi( val );
+        }
+        virtual void Init( void ){
+            if( silent_ == 0 ){
+                printf("ThreadSparsePageIterator: bin=%s\n", path_bin_.c_str() );
+            }
+            itr.get_factory().fi.Open( path_bin_.c_str(), "rb" );
+            itr.Init();
+            this->BeforeFirst();
+        }
+        virtual void BeforeFirst( void ){
+            itr.BeforeFirst();
+            utils::Assert( this->LoadNextPage(), "BUG" );
+        }
+        virtual bool Next( void ){            
+            while( page_.page ==NULL || ptop_ >= page_.page->Size() ){
+                if( !this->LoadNextPage() ) return false;
+            }
+            out_ = SparseInstObj( (*page_.page)[ ptop_ ] ).GetInst();
+            ++ ptop_;            
+            return true;
+        }
+        virtual const SparseInst &Value( void ) const{
+            return out_;
+        }
+        inline bool LoadNextPage( void ){
+            ptop_ = 0;
+            return itr.Next( page_ );
+        }
+    protected:
+        // output data
+        SparseInst out_;
+        // silent
+        int silent_;
+        // prefix path of binary buffer
+        std::string path_bin_;
+    private:
+        struct PagePtr{
+            utils::BinaryPage *page;
+        };
+        struct Factory{
+        public:
+            utils::StdFile fi;
+        public:
+            Factory(){}
+            inline bool Init(){
+                return true;
+            }
+            inline void SetParam( const char *name, const char *val ){}
+            inline bool LoadNext( PagePtr &val ){
+                return val.page->Load( fi );
+            }
+            inline PagePtr Create( void ){
+                PagePtr a; a.page = new utils::BinaryPage();
+                return a;
+            }
+            inline void FreeSpace( PagePtr &a ){
+                delete a.page;
+            }
+            inline void Destroy(){
+            }
+            inline void BeforeFirst(){
+                fi.Seek( 0 );
+            }
+        };
+    protected:
+        PagePtr page_;
+        int     ptop_;
+        utils::ThreadBuffer<PagePtr,Factory> itr;
+    };    
 };
 #endif
