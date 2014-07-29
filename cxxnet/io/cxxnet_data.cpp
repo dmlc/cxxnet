@@ -74,6 +74,11 @@ namespace cxxnet{
                 }
                 #endif
 
+                if( !strcmp( val, "sparsebin")) {
+                    utils::Assert( it == NULL );
+                    it = new SparseBatchAdapter(new ThreadSparsePageIterator()); continue;
+                }
+
                 if( !strcmp( val, "npybin")) {
                     utils::Assert( it == NULL );
                     it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;
