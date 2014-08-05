@@ -326,8 +326,8 @@ namespace cxxnet {
          * \param stop_layer
          */
         inline void Inference(int stop_layer, long total_length, int &header_flag, mshadow::utils::IStream &fo) {
-            utils::Assert(stop_layer < layers.size() && stop_layer > 0, "Incorrect stop layer");
-            for (size_t i = 0; i < stop_layer + 1; ++i) {
+            utils::Assert(stop_layer < (int)layers.size() && stop_layer > 0, "Incorrect stop layer");
+            for (long i = 0; i < stop_layer + 1; ++i) {
                 layers[i]->Forward(false);
             }
             Assert( nodes[stop_layer].is_mat() );
@@ -341,8 +341,8 @@ namespace cxxnet {
             mshadow::Tensor<cpu, 4> tmp(nodes[stop_layer].data.shape);
             mshadow::AllocSpace(tmp);
             mshadow::Copy(tmp, nodes[stop_layer].data);
-            for (int i = 0; i < tmp.shape[1]; ++i) {
-                for (int j = 0; j < tmp.shape[0]; ++j) {
+            for (index_t i = 0; i < tmp.shape[1]; ++i) {
+                for (index_t j = 0; j < tmp.shape[0]; ++j) {
                     fo.Write(&(tmp[0][0][i][j]), sizeof(mshadow::real_t));
                 }
             }
@@ -692,7 +692,8 @@ namespace cxxnet{
         virtual void InitModel( void ){
             CXXNetTrainer<xpu>::InitModel();
             Wsp.Resize( mshadow::Shape2( sparam.shape_in[0], sparam.sparse_num_hidden ) );            
-            Wsp = this->net.rnd_cpu.gaussian( Wsp.shape ) * sparam.sparse_init_sigma;
+
+            this->net.rnd_cpu.SampleGaussian( Wsp, sparam.sparse_init_sigma );
             
             if( this->net.silent == 0 ){
                 printf("CXXNetSparseTrainer: init with %ux%d connections\n", Wsp.shape[1], Wsp.shape[0]);

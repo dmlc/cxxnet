@@ -143,12 +143,32 @@ namespace cxxnet{
                         if( pred[i] > pred[maxidx] ) maxidx = i;
                     }
                 }else{
-                    maxidx = pred[0] > 0.5 ? 1 : 0;
+                    maxidx = pred[0] > 0.0 ? 1 : 0;
                 }
                 return maxidx !=(index_t)label;
             }
         };
 
+        /*! \brief Logloss */
+        struct MetricLogloss : public MetricBase{
+        public:
+            MetricLogloss( void ):MetricBase("logloss"){
+            }
+            virtual ~MetricLogloss( void ){}
+        protected:
+            virtual float CalcMetric( const mshadow::Tensor<cpu,1> &pred, float label ) {
+                if( pred.shape[0] != 1 ){
+                    mshadow::TensorContainer<cpu,2> tmp(mshadow::Shape2(1,pred.shape[0]));
+                    mshadow::Copy( tmp[0], pred );
+                    mshadow::Softmax( tmp, tmp );
+                    return - std::log( tmp[0][(int)label] );
+                }else{
+                    const float py = 1.0f/(1.0f+std::exp(-pred[0]));
+                    const float y = label;
+                    return  - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
+                }
+            }
+        };
 
         /*! \brief Recall@n */
         struct MetricRecall : public MetricBase{
@@ -194,6 +214,7 @@ namespace cxxnet{
             static IMetric* Create( const char *name ){
                 if( !strcmp( name, "rmse") ) return new MetricRMSE();
                 if( !strcmp( name, "error") ) return new MetricError();
+                if( !strcmp( name, "logloss") ) return new MetricLogloss();
                 if( !strcmp( name, "r2") )    return new MetricCorrSqr();
                 if( !strncmp( name, "rec@",4) ) return new MetricRecall(name);
                 return NULL;

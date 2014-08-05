@@ -87,6 +87,7 @@ namespace cxxnet {
             inst_index.resize( batch_size_ );
             out_.labels = &labels[0];
             out_.inst_index = &inst_index[0];           
+            printf("SparseBatchAdapter: batch_size=%u\n", batch_size_);
         }
         virtual void BeforeFirst( void ){
             if( round_batch_ == 0 || num_overflow_ == 0 ){
@@ -101,7 +102,7 @@ namespace cxxnet {
             row_ptr.clear(); row_ptr.push_back(0);
             out_.num_batch_padd = 0;
             out_.batch_size = batch_size_;
-
+            
             while(base_->Next()){
                 this->Add( base_->Value() );
                 if( row_ptr.size() > batch_size_ ){
@@ -110,6 +111,7 @@ namespace cxxnet {
                     return true;
                 }
             }
+            
             if( row_ptr.size() == 1 ) return false;
             out_.num_batch_padd = batch_size_ + 1 - row_ptr.size();
             if( round_batch_ != 0 ){
@@ -172,11 +174,13 @@ namespace cxxnet {
             dptr = new unsigned[ (line.length*sizeof(SparseInst::Entry)+2*sizeof(unsigned))/sizeof(unsigned) ];
             this->label() = line.label;
             this->index() = line.index;
+            this->length = line.length;
             memcpy( dptr+2, line.data, sizeof(SparseInst::Entry)*line.length );
+            
         }
         SparseInstObj( const utils::BinaryPage::Obj &obj ){
             this->dptr = (unsigned*)obj.dptr;
-            this->length = obj.sz - 2;
+            this->length = (obj.sz - 2 * sizeof(unsigned))/sizeof(SparseInst::Entry);
         }
         inline void FreeSpace(void){
             delete [] dptr;
@@ -198,7 +202,7 @@ namespace cxxnet {
         }
         /*! \brief get binary obj view of this object */
         inline utils::BinaryPage::Obj GetObj(void){
-            return utils::BinaryPage::Obj( dptr, length+2);
+          return utils::BinaryPage::Obj( dptr, length*sizeof(SparseInst::Entry)+2*sizeof(unsigned));
         }
     };
     
@@ -211,6 +215,7 @@ namespace cxxnet {
             path_bin_ = "data.bin";
             itr.SetParam( "buffer_size", "4" );
             page_.page = NULL;
+            isend = false;
         }
         virtual ~ThreadSparsePageIterator( void ){
         }
@@ -228,14 +233,15 @@ namespace cxxnet {
         }
         virtual void BeforeFirst( void ){
             itr.BeforeFirst();
+            isend = false;
             utils::Assert( this->LoadNextPage(), "BUG" );
         }
         virtual bool Next( void ){            
-            while( page_.page ==NULL || ptop_ >= page_.page->Size() ){
+            while( page_.page ==NULL || ptop_ >= page_.page->Size() || isend ){
                 if( !this->LoadNextPage() ) return false;
             }
             out_ = SparseInstObj( (*page_.page)[ ptop_ ] ).GetInst();
-            ++ ptop_;            
+            ++ ptop_;
             return true;
         }
         virtual const SparseInst &Value( void ) const{
@@ -243,11 +249,14 @@ namespace cxxnet {
         }
         inline bool LoadNextPage( void ){
             ptop_ = 0;
-            return itr.Next( page_ );
+            bool ret = itr.Next( page_ );
+            isend = !ret;
+            return ret;
         }
     protected:
         // output data
         SparseInst out_;
+        bool isend;
         // silent
         int silent_;
         // prefix path of binary buffer

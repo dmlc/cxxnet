@@ -92,6 +92,7 @@ public:
         linelimit = -1; 
         fo = NULL;
         fp = NULL; fwlist = NULL; 
+        page.Clear();
     }
 private:
     inline void Load( std::vector<SparseInst::Entry> &data, std::vector<Header> &vec ){
@@ -159,6 +160,7 @@ public:
         inst.length = data.size();
         inst.data = &data[0];
         SparseInstObj obj(inst);
+
         if( !page.Push(obj.GetObj()) ){
             mshadow::utils::FileStream fs( fo );
             page.Save( fs );
