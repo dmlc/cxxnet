@@ -691,9 +691,9 @@ namespace cxxnet{
         }
         virtual void InitModel( void ){
             CXXNetTrainer<xpu>::InitModel();
-            Wsp.Resize( mshadow::Shape2( sparam.shape_in[0], sparam.sparse_num_hidden ) );            
+            Wsp.Resize( mshadow::Shape2( sparam.shape_in[0], sparam.sparse_num_hidden ) );
 
-            this->net.rnd_cpu.SampleGaussian( Wsp, sparam.sparse_init_sigma );
+            this->net.rnd_cpu.SampleGaussian( Wsp, 0.0f, sparam.sparse_init_sigma );
             
             if( this->net.silent == 0 ){
                 printf("CXXNetSparseTrainer: init with %ux%d connections\n", Wsp.shape[1], Wsp.shape[0]);
