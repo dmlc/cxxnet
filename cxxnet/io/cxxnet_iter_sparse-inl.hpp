@@ -72,6 +72,7 @@ namespace cxxnet {
     public:
         SparseBatchAdapter( IIterator<SparseInst> *base ):base_(base){
             batch_size_ = 0;
+            scale_fvalue_ = 1.0f;
         }   
         virtual ~SparseBatchAdapter(void){
             delete base_;
@@ -80,6 +81,7 @@ namespace cxxnet {
             base_->SetParam( name, val );
             if( !strcmp(name, "round_batch") ) round_batch_ = atoi(val);
             if( !strcmp(name, "batch_size") ) batch_size_ = (unsigned)atoi(val);
+            if( !strcmp(name, "scale_fvalue") ) scale_fvalue_ = (float)atof(val);
         }
         virtual void Init( void ){
             base_->Init();
@@ -87,7 +89,7 @@ namespace cxxnet {
             inst_index.resize( batch_size_ );
             out_.labels = &labels[0];
             out_.inst_index = &inst_index[0];           
-            printf("SparseBatchAdapter: batch_size=%u\n", batch_size_);
+            printf("SparseBatchAdapter: batch_size=%u,scale=%f\n", batch_size_,scale_fvalue_);
         }
         virtual void BeforeFirst( void ){
             if( round_batch_ == 0 || num_overflow_ == 0 ){
@@ -139,7 +141,9 @@ namespace cxxnet {
             labels[row_ptr.size()-1] = line.label;
             inst_index[row_ptr.size()-1] = line.index;
             for(unsigned i = 0; i < line.length; ++ i){
-                data.push_back( line[i] );
+                SparseInst::Entry e=line[i];
+                e.fvalue  *= scale_fvalue_;
+                data.push_back( e );
             }
             row_ptr.push_back( row_ptr.back() + line.length );
         }
@@ -148,6 +152,8 @@ namespace cxxnet {
         IIterator<SparseInst> *base_;
         // batch size
         mshadow::index_t batch_size_;
+        // scaling factor
+        float scale_fvalue_;
         // use round batch mode to reuse further things
         int round_batch_;
         // number of overflow items 
