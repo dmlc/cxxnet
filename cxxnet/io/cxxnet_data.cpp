@@ -73,7 +73,7 @@ namespace cxxnet{
                     it = new SparseBatchAdapter(new XGBoostPageIterator()); continue;
                 }
                 if( !strcmp( val, "xgboostdense")) {
-                    utils::Assert( it == NULL );
+                    utils::Assert( it == NULL, "xgboost dense must not be empty" );
                     it = new BatchAdaptIterator(new Sparse2DenseIterator(new XGBoostPageIterator())); continue;
                 }
                 #endif

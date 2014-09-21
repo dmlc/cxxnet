@@ -90,7 +90,6 @@ class XGBoostPageIterator : public IIterator<SparseInst> {
       batch_ = iter_->Value();
       top_ = 0;
     }
-    ++top_;
     ::xgboost::RowBatch::Inst inst = batch_[top_];
     size_t ridx = batch_.base_rowid + top_;
     entry_.clear();
@@ -101,7 +100,7 @@ class XGBoostPageIterator : public IIterator<SparseInst> {
     out_.index = ridx + index_offset_;
     out_.length = static_cast<unsigned>(entry_.size());
     if (dmat_.info.labels.size() != 0) out_.label = dmat_.info.labels[ridx];
-
+    ++top_;
     return true;
   }
   virtual const SparseInst& Value(void) const {

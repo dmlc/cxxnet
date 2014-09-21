@@ -40,7 +40,7 @@ namespace cxxnet {
         }
         virtual void SetParam( const char *name, const char *val ){
             base_->SetParam( name, val );
-            if( !strcmp( name, "batch_size") )  shape_[3] = (index_t)atoi( val );
+            if( !strcmp( name, "batch_size") )  batch_size_ = (index_t)atoi( val );
             if( !strcmp( name, "input_shape") ) {
                 utils::Assert( sscanf( val, "%u,%u,%u", &shape_[2],&shape_[1],&shape_[0] ) ==3,
                                "input_shape must be three consecutive integers without space example: 1,1,200 " );
@@ -58,11 +58,13 @@ namespace cxxnet {
         }
         virtual void Init( void ){
             base_->Init();
-            index_t batch_size = shape_[3];
-            if( shape_[2] == 1 && shape_[1] == 1 ){
-                shape_[1] = shape_[3]; shape_[3] = 1;
+            mshadow::Shape<4> tshape = shape_;
+            if( tshape[2] == 1 && tshape[1] == 1 ){
+                tshape[1] = batch_size_; tshape[3] = 1;
+            } else{
+                tshape[3] = batch_size_;
             }
-            out_.AllocSpaceDense( shape_, batch_size, false );
+            out_.AllocSpaceDense( tshape, batch_size_, false );
 
             if( name_meanimg_.length() != 0 ){
                 FILE *fi = fopen64( name_meanimg_.c_str(), "rb" );
@@ -100,19 +102,19 @@ namespace cxxnet {
 
             while( base_->Next() ){
                 this->SetData( top, base_->Value() );
-                if( ++ top >= shape_[3] ) return true;
+                if( ++ top >= batch_size_ ) return true;
             }
             if( top != 0 ){
                 if( round_batch_ != 0 ){
                     num_overflow_ = 0;
                     base_->BeforeFirst();
-                    for( ;top < shape_[3]; ++top, ++num_overflow_ ){
+                    for( ;top < batch_size_; ++top, ++num_overflow_ ){
                         utils::Assert( base_->Next(), "number of input must be bigger than batch size" );
                         this->SetData( top, base_->Value() );
                     }
                     out_.num_batch_padd = num_overflow_;
                 }else{                    
-                    out_.num_batch_padd = shape_[3] - top;
+                    out_.num_batch_padd = batch_size_ - top;
                 }
                 return true;
             }
@@ -127,11 +129,10 @@ namespace cxxnet {
             using namespace mshadow::expr;
             out_.labels[top] = d.label;
             out_.inst_index[top] = d.index;
-
-            utils::Assert( d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1] );
             if( shape_[1] == 1 ){
-                out_.data[top] = d.data * scale_;
+                out_.data[0][0][top] = d.data[0][0] * scale_;
             }else{
+                utils::Assert( d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1], "shape constraint" );
                 mshadow::index_t yy = d.data.shape[1] - shape_[1];
                 mshadow::index_t xx = d.data.shape[0] - shape_[0];
                 if( rand_crop_ != 0 ){
