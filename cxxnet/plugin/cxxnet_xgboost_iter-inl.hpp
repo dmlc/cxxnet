@@ -14,6 +14,56 @@
 #include "io/page_dmatrix-inl.hpp"
 
 namespace cxxnet {
+class Sparse2DenseIterator: public IIterator<DataInst> {
+ public:
+  Sparse2DenseIterator(IIterator<SparseInst> *iter) : base_(iter){
+    out_.data.dptr = NULL;
+  }
+  virtual ~Sparse2DenseIterator(void) {
+    delete base_;
+    if (out_.data.dptr != NULL) {
+      mshadow::FreeSpace(out_.data);
+    }
+  }
+  virtual void BeforeFirst(void) {
+    base_->BeforeFirst();
+  }
+  virtual void SetParam(const char *name, const char *val) {
+    base_->SetParam(name, val);
+    if (!strcmp(name, "input_shape")) {
+      utils::Assert(sscanf(val, "%u,%u,%u", &shape_[2], &shape_[1], &shape_[0]) == 3,
+                    "input_shape must be three consecutive integers without space example: 1,1,200");
+      utils::Assert(shape_[2] == 1 && shape_[1] == 1, "sparse data is empty");      
+    }
+  }
+  virtual void Init(void) {
+    base_->Init();
+    out_.data = mshadow::NewTensor<mshadow::cpu,3>(shape_, 1.0f);    
+  }
+  virtual bool Next(void) {
+    if (base_->Next()) {
+      const SparseInst &inst = base_->Value();
+      out_.data = 0.0f;
+      out_.label = inst.label;
+      out_.index = inst.index;
+      for (unsigned i = 0; i < inst.length; ++i) {
+        out_.data[0][0][inst[i].findex] = inst[i].fvalue;
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+  virtual const DataInst& Value(void) const {
+    return out_;
+  }
+ private:
+  DataInst out_;
+  // input shape
+  mshadow::Shape<3> shape_;
+  IIterator<SparseInst> *base_;
+};
+
 class XGBoostPageIterator : public IIterator<SparseInst> {
  public:
   XGBoostPageIterator(void) {
