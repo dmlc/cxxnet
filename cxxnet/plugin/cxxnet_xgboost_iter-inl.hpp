@@ -10,67 +10,65 @@
 #include <string>
 #include <cstring>
 #include "../io/cxxnet_data.h"
-#include "../utils/cxxnet_global_random.h"
-#include "regrank/xgboost_regrank_data.h"
+#include "io/io.h"
+#include "io/page_dmatrix-inl.hpp"
 
-namespace cxxnet{
-    /*! \brief iterator adapter of xgboost */
-    class XGBoostIterator:  public IIterator<SparseInst>{
-    public:
-        XGBoostIterator(void){
-            shuffle_ = 0;
-            silent_ = 0;
-            index_offset_ = 0;
-        }
-        virtual ~XGBoostIterator(void){}
-        virtual void SetParam( const char *name, const char *val ) {
-            if( !strcmp(name, "path_data") ) fname_ = val;
-            if( !strcmp(name, "silent") ) silent_ = atoi(val);
-            if( !strcmp(name, "shuffle") ) shuffle_ = atoi(val);           
-        }
-        virtual void Init( void ) {
-            dmat_.CacheLoad( fname_.c_str(), false, false );
-            index_set_.resize( dmat_.Size() );
-            for(size_t i = 0; i < index_set_.size(); ++i){
-                index_set_[i] = (unsigned)i;
-            }
-            if( shuffle_ ) utils::Shuffle( index_set_ );
-            if( silent_ == 0 ){
-                printf("XGBoostIterator: data=%s, %lu data loaded, shuffle=%d\n", fname_.c_str(), index_set_.size(), shuffle_ );
-            } 
-        }
-        virtual void BeforeFirst( void ) {
-            row_index_ = 0;
-        }        
-        virtual bool Next( void ) {
-            if( row_index_ >= index_set_.size() ) return false;
-            entry_.clear();
-            unsigned ridx = index_set_[row_index_];
-            for( xgboost::booster::FMatrixS::RowIter it = dmat_.data.GetRow(ridx); it.Next();){
-                entry_.push_back( SparseInst::Entry(it.findex(), it.fvalue()) );
-            }
-            out_.data = &entry_[0];
-            out_.index =  ridx + index_offset_;
-            out_.length = (unsigned)entry_.size();
-            if( dmat_.info.labels.size() != 0 ) out_.label = dmat_.info.labels[ridx];
-            ++ row_index_;
-            return true;
-        }
-        virtual const SparseInst &Value( void ) const {
-            return out_;
-        }
-    private:
-        SparseInst out_;
-        std::vector<SparseInst::Entry> entry_;
-    private:
-        int silent_;
-        int shuffle_;
-        size_t row_index_;
-        std::string fname_;
-        unsigned index_offset_;
-    private:
-        std::vector<unsigned> index_set_;
-        xgboost::regrank::DMatrix dmat_;
-    };
+namespace cxxnet {
+class XGBoostPageIterator : public IIterator<SparseInst> {
+ public:
+  XGBoostPageIterator(void) {
+    silent_ = 0;
+    index_offset_ = 0;
+  }
+  virtual void SetParam(const char *name, const char *val) {
+    if (!strcmp(name, "path_data")) fname_ = val;
+    if (!strcmp(name, "silent")) silent_ = atoi(val);    
+  }
+  virtual void Init( void ) {
+    ::xgboost::utils::FileStream fs(utils::FopenCheck(fname_.c_str(), "rb"));
+    dmat_.Load(fs, false, fname_.c_str(), true);
+    iter_ = dmat_.fmat()->RowIterator();
+  }
+  virtual void BeforeFirst( void ) {
+    iter_->BeforeFirst();
+    top_ = 0;
+    batch_.size = 0;
+  }        
+  virtual bool Next( void ) {
+    if (top_ >= batch_.size) {
+      if (!iter_->Next()) return false;
+      batch_ = iter_->Value();
+      top_ = 0;
+    }
+    ++top_;
+    ::xgboost::RowBatch::Inst inst = batch_[top_];
+    size_t ridx = batch_.base_rowid + top_;
+    entry_.clear();
+    for (unsigned i = 0; i < inst.length; ++i) {
+      entry_.push_back(SparseInst::Entry(inst[i].index, inst[i].fvalue));
+    }
+    out_.data = xgboost::BeginPtr(entry_);
+    out_.index = ridx + index_offset_;
+    out_.length = static_cast<unsigned>(entry_.size());
+    if (dmat_.info.labels.size() != 0) out_.label = dmat_.info.labels[ridx];
+
+    return true;
+  }
+  virtual const SparseInst& Value(void) const {
+    return out_;
+  }
+ private:
+  int silent_;
+  std::string fname_;
+  size_t index_offset_;
+  // internal data
+  size_t top_;
+  SparseInst out_;
+  ::xgboost::RowBatch batch_;
+  std::vector<SparseInst::Entry> entry_;
+  /*! \brief internal iterator */
+  ::xgboost::io::DMatrixPage dmat_;
+  ::xgboost::utils::IIterator< ::xgboost::RowBatch > *iter_;
 };
+}
 #endif

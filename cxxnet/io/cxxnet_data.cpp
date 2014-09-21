@@ -70,7 +70,7 @@ namespace cxxnet{
                 #if CXXNET_ADAPT_XGBOOST
                 if( !strcmp( val, "xgboost")) {
                     utils::Assert( it == NULL );
-                    it = new SparseBatchAdapter(new XGBoostIterator()); continue;
+                    it = new SparseBatchAdapter(new XGBoostPageIterator()); continue;
                 }
                 #endif
 
