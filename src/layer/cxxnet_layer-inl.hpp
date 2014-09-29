@@ -13,8 +13,8 @@
 
 #if CXXNET_ADAPT_CAFFE
 #include "../plugin/cxxnet_caffe_adapter-inl.hpp"
-#endif
 #include "cxxnet_pairtest-inl.hpp"
+#endif
 
 namespace cxxnet{
     template<typename xpu>
@@ -35,7 +35,7 @@ namespace cxxnet{
         float init_sigma;
         /*! \brief intialization value for bias */
         float init_bias;
-        /*! \brief initialization random type */
+v        /*! \brief initialization random type */
         int random_type;
         /*! \brief number of output channel */
         int num_channel;
