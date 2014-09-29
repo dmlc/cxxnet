@@ -13,6 +13,10 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
   virtual void SetParam(const char *name, const char* val) {
     param_.SetParam(name, val);
   }
+  virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {    
+    pvisitor->Visit("wmat", wmat_, gwmat_);
+    pvisitor->Visit("bias", bias_, gbias_);
+  }
   virtual void InitModel(void) {
     // rexsize to correct shape
     wmat_.Resize(mshadow::Shape2(this->pout_->data.shape[0], this->pin_->data.shape[0]));

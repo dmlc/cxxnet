@@ -70,15 +70,11 @@ class ILayer {
    * \brief visitor to the layer structure
    *    visits the weight and gradient in the layer
    */
-  class IVisitor {
+  struct IVisitor {
     /*!
      * \brief visit content of the layer, this is called by Layer
      *    when ApplyVisitor is called
      *
-     *    The weight and grad are presented in 4D Tensor,
-     *    but they can be 1D or 2D tensor, sharing the same data pointer
-     *    as the parameters in the call of Visit.
-     *    
      *    Visitor can use to get reference of weight content, copy/set weights, etc. 
      *   
      * \param field_name the name of field on the layer
@@ -87,8 +83,14 @@ class ILayer {
      *        it is ensured to be have same shape as weight
      */
     virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,4> weight,
-                       mshadow::Tensor<xpu,4> grad) = 0;
+                       mshadow::Tensor<xpu,1> weight,
+                       mshadow::Tensor<xpu,1> grad) = 0;
+    virtual void Visit(const char *field_name,
+                       mshadow::Tensor<xpu,2> weight,
+                       mshadow::Tensor<xpu,2> grad) = 0;
+    virtual void Visit(const char *field_name,
+                       mshadow::Tensor<xpu,3> weight,
+                       mshadow::Tensor<xpu,3> grad) = 0;
   };
  public:
   /*! \brief virtual destructor */
@@ -111,6 +113,11 @@ class ILayer {
    */
   virtual void Backprop(bool prop_grad) = 0;
  public:
+  /*! 
+   * \brief apply visitor to the layer,
+   *   this is used to visit tha content of the layer
+   */
+  virtual void ApplyVisitor(IVisitor *pvisitor) {}
   /*!
    * \brief Set param for the layer from string
    * \param name parameter name
