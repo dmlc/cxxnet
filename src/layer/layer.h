@@ -156,13 +156,13 @@ class CommonLayerBase : public ILayer<xpu> {
       : prnd_(p_rnd), pin_(p_in), pout_(p_out) {
   }
   virtual void InitLayer(void) {
-    this->InitLayer(*pin_, pout_);
+    this->InitLayer_(*pin_, pout_);
   }
   virtual void Forward(bool is_train) {
-    this->Forward(is_train, pin_, pout_);
+    this->Forward_(is_train, pin_, pout_);
   }
   virtual void Backprop(bool prop_grad) {
-    this->Backprop(prop_grad, pin_, pout_);
+    this->Backprop_(prop_grad, pin_, pout_);
   }
 
  protected:
@@ -172,8 +172,8 @@ class CommonLayerBase : public ILayer<xpu> {
    * \param pnode_out output node, whose shape should be set by InitLayer function,
    *                  based on the input node shape and the layer configuration
    */  
-  virtual void InitLayer(const Node<xpu> &node_in,
-                         Node<xpu> *pnode_out) = 0;
+  virtual void InitLayer_(const Node<xpu> &node_in,
+                          Node<xpu> *pnode_out) = 0;
   /*!
    * \brief Forward propagation from input nodes to output nodes
    * \param is_train the propagation is during training phase
@@ -182,9 +182,9 @@ class CommonLayerBase : public ILayer<xpu> {
    * \param pnode_out pointer to output node, the content should be set to
    *                  be activation value of output node
    */
-  virtual void Forward(bool is_train,
-                       Node<xpu> *pnode_in,
-                       Node<xpu> *pnode_out) = 0;
+  virtual void Forward_(bool is_train,
+                        Node<xpu> *pnode_in,
+                        Node<xpu> *pnode_out) = 0;
   /*!
    * \brief Backward propagation from input nodes to output nodes,
    *        and accumulate gradient to the internal gradient variable
@@ -194,9 +194,9 @@ class CommonLayerBase : public ILayer<xpu> {
    * \param pnode_out pointer to output node, the content should be set to
    *                  be activation value of output node
    */
-  virtual void Backprop(bool prop_grad,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) = 0;
+  virtual void Backprop_(bool prop_grad,
+                         Node<xpu> *pnode_in,
+                         Node<xpu> *pnode_out) = 0;
   /*! \brief random number generator, that can be used in child class */
   mshadow::Random<xpu> *prnd_;
   /*! \brief input and output node type */

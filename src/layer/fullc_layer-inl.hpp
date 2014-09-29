@@ -44,16 +44,16 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
  protected:
-  virtual void InitLayer(const Node<xpu> &node_in,
-                         Node<xpu> *pnode_out) {
+  virtual void InitLayer_(const Node<xpu> &node_in,
+                          Node<xpu> *pnode_out) {
     utils::Assert(node_in.is_mat(), "input need to be a matrix");
     utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
     // we change matrix convention 
     pnode_out->data.shape = mshadow::Shape4(node_in.data.shape[4], 1, 1, param_.num_hidden);
   }
-  virtual void Forward(bool is_train,
-                       Node<xpu> *pnode_in,
-                       Node<xpu> *pnode_out) {
+  virtual void Forward_(bool is_train,
+                        Node<xpu> *pnode_in,
+                        Node<xpu> *pnode_out) {
     mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
     mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
     index_t nbatch = m_in.shape[1];
@@ -62,9 +62,9 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
       m_out += repmat(bias_, nbatch);
     }
   }
-  virtual void Backprop(bool prop_grad,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
+  virtual void Backprop_(bool prop_grad,
+                         Node<xpu> *pnode_in,
+                         Node<xpu> *pnode_out) {
     mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
     mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
     // accumulate gradient
