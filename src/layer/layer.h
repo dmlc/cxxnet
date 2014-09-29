@@ -5,7 +5,10 @@
  * \brief abstract interface of layer
  * \author Tianqi Chen, Bing Xu
  */
+#include <vector>
 #include "mshadow/tensor.h"
+#include "../global.h"
+#include "../utils/utils.h"
 
 /*! \brief namespace of cxxnet */
 namespace cxxnet {
@@ -14,6 +17,7 @@ namespace layer {
 /*! 
  * \brief node structure, this is used to store forward activation,
  *    and backproped gradient in the network
+ * \tparam xpu the device name it lies in, can be cpu/gpu
  */
 template<typename xpu>
 struct Node {
@@ -56,6 +60,7 @@ struct Node {
  *  Parameters:
  *     Parameters related to each layer (e.g. number of hidden nodes), can be set by calling SetParam
  *
+ * \tparam xpu the device name it lies in, can be cpu/gpu
  * \sa CommonLayerBase, ILayer::IVisitor
  */
 template<typename xpu>
@@ -113,7 +118,7 @@ class ILayer {
    */
   virtual void SetParam(const char *name, const char* val) {}
   /*!
-   * \brief intialized model parameters, only called when model parameters are not initlzied
+   * \brief intialized model parameters, only called when model parameters are not initialzied
    */
   virtual void InitModel(void) {}
   /*!
@@ -135,8 +140,9 @@ class ILayer {
  *    The difference between ILayer, is that Forward, Backprop, InitLayer takes
  *    explicit argument of input/output nodes. This makes the logical explicit and clear,
  *    though less flexible than ILayer
+ * \tparam xpu the device name it lies in, can be cpu/gpu
  */
-template<template xpu>
+template<typename xpu>
 class CommonLayerBase : public ILayer<xpu> {
  public:
   CommonLayerBase(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
@@ -186,7 +192,6 @@ class CommonLayerBase : public ILayer<xpu> {
                         Node<xpu> *pnode_out) = 0;
   /*! \brief random number generator, that can be used in child class */
   mshadow::Random<xpu> *prnd_;
- private:
   /*! \brief input and output node type */
   Node<xpu> *pin_, *pout_;
 };
@@ -208,14 +213,32 @@ enum LayerType {
   kAvgPooling = 13,
   kPadding = 14,
   kLRN = 15,
-  kBias = 17,
-  kCaffe = 100
+  kBias = 17
 };
 /*!
  * \brief get the layer type from string
  * \param type indicate the type of a layer
  */
-LayerType GetLayerType(const char *type);
+inline LayerType GetLayerType(const char *type) {
+  if (!strcmp(type, "fullc")) return kFullConnect;
+  if (!strcmp(type, "bias")) return kBias;
+  if (!strcmp(type, "softmax")) return kSoftmax;
+  if (!strcmp(type, "relu")) return kRectifiedLinear;
+  if (!strcmp(type, "sigmoid")) return kSigmoid;
+  if (!strcmp(type, "tanh")) return kTanh;
+  if (!strcmp(type, "softplus")) return kSoftplus;
+  if (!strcmp(type, "flatten")) return kFlatten;
+  if (!strcmp(type, "dropout")) return kDropout;
+  if (!strcmp(type, "dropconn")) return kDropConn;
+  if (!strcmp(type, "conv")) return kConv;
+  if (!strcmp(type, "max_pooling")) return kMaxPooling;
+  if (!strcmp(type, "sum_pooling")) return kSumPooling;
+  if (!strcmp(type, "avg_pooling")) return kAvgPooling;
+  if (!strcmp(type, "padding")) return kPadding;
+  if (!strcmp(type, "lrn")) return kLRN;
+  utils::Error("unknown layer type: %s", type);
+  return kConv;
+}
 /*!
  * \brief factory: create an upadater algorithm of given type
  * \param type indicate the type of a layer

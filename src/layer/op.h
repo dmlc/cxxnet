@@ -1,8 +1,8 @@
-#ifndef CXXNET_OP_H
-#define CXXNET_OP_H
+#ifndef CXXNET_LAYER_OP_H_
+#define CXXNET_LAYER_OP_H_
 #pragma once
 /*!
- * \file cxxnet_op.h
+ * \file op.h
  * \brief extra mshadow operation for cxxnet
  * \author Bing Xu
  */
@@ -11,6 +11,7 @@
 namespace cxxnet {
 /*! \brief operations for algorithm */
 namespace op {
+/*! \brief sigmoid unit */
 struct sigmoid {
   MSHADOW_XINLINE static real_t Map(real_t a) {
     return 1.0f / (1.0f + expf(-a));
@@ -21,7 +22,6 @@ struct sigmoid_grad {
     return a * (1.0f - a);
   }
 };
-
 /*! \brief Rectified Linear Operation */
 struct relu {
   MSHADOW_XINLINE static real_t Map(real_t a) {
@@ -93,6 +93,6 @@ struct power {
   }
 };
 
-} // namespace op
-} // namespace cxxnet
-#endif // CXXNET_OP_H
+}  // namespace op
+}  // namespace cxxnet
+#endif // CXXNET_LAYER_OP_H

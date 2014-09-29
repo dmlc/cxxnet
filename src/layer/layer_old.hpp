@@ -1,25 +1,13 @@
-#ifndef CXXNET_LAYER_INL_HPP
-#define CXXNET_LAYER_INL_HPP
-#pragma once
+#ifndef CXXNET_LAYER_INL_HPP_
+#define CXXNET_LAYER_INL_HPP_
 /*!
- * \file cxxnet_layer-inl.hpp
+ * \file layer-inl.hpp
  * \brief implementation of different layers
  * \author Bing Xu, Tianqi Chen
  */
-
 #include "cxxnet_core.h"
 #include "cxxnet_op.h"
 #include "mshadow/tensor_container.h"
-
-#if CXXNET_ADAPT_CAFFE
-#include "../plugin/cxxnet_caffe_adapter-inl.hpp"
-#include "cxxnet_pairtest-inl.hpp"
-#endif
-
-namespace cxxnet{
-    template<typename xpu>
-    inline ILayer* CreateLayer_( int type, mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out );
-};
 
 namespace cxxnet{
     // expr is needed to use expression
@@ -27,89 +15,7 @@ namespace cxxnet{
     using namespace mshadow::utils;
     // Random init method
     using namespace cxxnet::rnd_type;
-    /*! \brief potential parameters for each layer */
-    struct LayerParam{
-        /*! \brief number of hidden layers */
-        int num_hidden;
-        /*! \brief initialization sd for weight */
-        float init_sigma;
-        /*! \brief intialization value for bias */
-        float init_bias;
-v        /*! \brief initialization random type */
-        int random_type;
-        /*! \brief number of output channel */
-        int num_channel;
-        /*! \brief number of parallel group */
-        int num_group;
-        /*! \brief kernel height */        
-        int kernel_height;
-        /*! \brief kernel width */        
-        int kernel_width;
-        /*! \brief stride prameter */
-        int stride;
-        /*! \brief padding in y dimension */
-        int pad_y;
-        /*! \brief padding in x dimension */
-        int pad_x;
-        /*! \brief whether not include bias term */
-        int no_bias;
-        /*! \brief dropout threshold  */
-        float dropout_threshold;
-        /*! \brief maximum temp_col_size allowed in each layer, we need at least one temp col */
-        int temp_col_max;
-        /*! \brief shut up */
-        int silent;
-        /*! \brief reserved fields, for future compatibility */
-        int reserved[64];
-        /*! \brief construtor */
-        LayerParam( void ){
-            init_sigma = 0.01f;
-            init_bias  = 0.0f;
-            num_hidden = 0;
-            random_type = 0;
-            num_channel = 0;
-            num_group = 1;
-            kernel_width = 0;
-            kernel_height = 0;
-            stride = 1;
-            pad_x = pad_y = 0;
-            dropout_threshold = 0.0f;
-            no_bias = 0;
-            silent = 0;
-            // 64 MB
-            temp_col_max = 64<<18;
-            memset(reserved, 0, sizeof(reserved));
-        }
-        /*!
-         * \brief Set param for the layer from string
-         * \param name parameter name
-         * \param val string for configuration
-         */
-        inline void SetParam(const char *name, const char* val) {
-            if( !strcmp( name, "init_sigma") )  init_sigma = (float)atof(val);
-            if( !strcmp( name, "init_bias") )   init_bias  = (float)atof(val);
-            if( !strcmp( name, "nhidden") )     num_hidden = atoi(val);
-            if( !strcmp( name, "random_type") && !strcmp(val, "gaussian"))  random_type = 0;
-            if( !strcmp( name, "random_type") && !strcmp(val, "xavier")) random_type = 1;
-            if( !strcmp( name, "nchannel") )    num_channel = atoi(val);
-            if( !strcmp( name, "ngroup") )      num_group = atoi(val);
-            if( !strcmp( name, "kernel_size") ) {
-                kernel_width = kernel_height = atoi(val);
-            }
-            if( !strcmp( name, "kernel_height") ) kernel_height = atoi(val);
-            if( !strcmp( name, "kernel_width") )  kernel_width = atoi(val);
-            if( !strcmp( name, "stride") )      stride      = atoi(val);
-            if( !strcmp( name, "pad") ){
-                pad_y = pad_x  = atoi(val);
-            }
-            if( !strcmp( name, "pad_y") )       pad_y = atoi(val);
-            if( !strcmp( name, "pad_x") )       pad_x = atoi(val);
-            if( !strcmp( name, "no_bias") )     no_bias = atoi(val);
-            if( !strcmp( name, "threshold"))    dropout_threshold = (float)atof(val);
-            if( !strcmp( name, "silent") )      silent   = atoi(val);
-            if( !strcmp( name, "temp_col_max") ) temp_col_max = atoi(val) << 18;
-        }
-    };
+
 };
 
 namespace cxxnet {
@@ -145,97 +51,6 @@ namespace cxxnet {
 
 namespace cxxnet {
     // simple fully connected layer that connects two nodes
-    template<typename xpu>
-    class FullConnectLayer : public EdgeLayer<xpu> {
-    public:
-        FullConnectLayer( mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out )
-            : EdgeLayer<xpu>(rnd), in_(in), out_(out) {}
-        virtual ~FullConnectLayer( void ){}
-        virtual void Forward(bool is_train) {
-            this->Forward( wmat_ );
-        }
-        virtual void Backprop(bool prop_grad){
-            this->Backprop( prop_grad, wmat_ );
-        }
-        virtual void InitLayer( void ) {
-            Assert( in_.is_mat(), "input need to be a matrix" );
-            Assert( param_.num_hidden > 0, "must set nhidden correctly" );
-            out_.data.shape = mshadow::Shape4( 1, 1, in_.data.shape[1], param_.num_hidden );
-        }
-        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ){
-            updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, wmat_, gwmat_, "wmat" ) );
-            if( param_.no_bias == 0 ){
-                updaters.push_back( CreateUpdater( updater, EdgeLayer<xpu>::rnd_, bias_, gbias_, "bias" ) );
-            }
-        }
-        virtual void SetParam(const char *name, const char* val){
-            param_.SetParam( name, val );
-        }
-        virtual void InitModel(void){
-            // resize to correct shape
-            wmat_.Resize( mshadow::Shape2( out_.data.shape[0], in_.data.shape[0] ) );
-            bias_.Resize( mshadow::Shape1( out_.data.shape[0] ) );
-            // random initalize
-            if (param_.random_type == kGaussian) {
-                EdgeLayer<xpu>::template InitGaussian<2> (wmat_, param_.init_sigma);
-            } else {
-                EdgeLayer<xpu>::template InitXavier<2> (wmat_, wmat_.shape[0], wmat_.shape[1]);
-            }
-            bias_ = param_.init_bias;
-            // setup gradient weight
-            gwmat_.Resize( wmat_.shape );
-            gbias_.Resize( bias_.shape );
-            gwmat_ = 0.0f; gbias_ = 0.0f;
-        }
-        virtual void SaveModel(mshadow::utils::IStream &fo) const{
-            fo.Write( &param_, sizeof(LayerParam) );
-            wmat_.SaveBinary( fo );
-            bias_.SaveBinary( fo );
-        }
-        virtual void LoadModel(mshadow::utils::IStream &fi){
-            Assert( fi.Read( &param_, sizeof(LayerParam) ) != 0, "load model");
-            wmat_.LoadBinary( fi );
-            bias_.LoadBinary( fi );
-            // setup gradient weight
-            gwmat_.Resize( wmat_.shape );
-            gbias_.Resize( bias_.shape );
-            gwmat_ = 0.0f; gbias_ = 0.0f;
-        }
-    protected:
-        inline void Forward(mshadow::Tensor<xpu,2> wmat) {
-            index_t nbatch = in_.data.shape[1];
-            out_.mat()  = dot( in_.mat(), wmat.T() );
-            if( param_.no_bias == 0 ){
-                out_.mat() += repmat( bias_, nbatch );
-            }
-        }
-        inline void Backprop(bool prop_grad, mshadow::Tensor<xpu,2> wmat){
-            // accumulate gradient
-            gwmat_ += dot( out_.mat().T(), in_.mat() );
-            if( param_.no_bias == 0 ){
-                gbias_ += sum_rows( out_.mat() );
-            }
-            // backprop
-            if( prop_grad ){
-                in_.mat() = dot( out_.mat(), wmat );
-            }
-        }
-    protected:
-        /*! \brief parameters that potentially be useful */
-        LayerParam param_;
-        /*! \brief input node */
-        Node<xpu> &in_;
-        /*! \brief output node */
-        Node<xpu> &out_;
-        /*! \brief weight matrix */
-        mshadow::TensorContainer<xpu,2> wmat_;
-        /*! \brief bias */
-        mshadow::TensorContainer<xpu,1> bias_;
-        /*! \brief accumulates the gradient of weight matrix */
-        mshadow::TensorContainer<xpu,2> gwmat_;
-        /*! \brief accumulates the gradient of bias */
-        mshadow::TensorContainer<xpu,1> gbias_;
-    };
 
     /*! \brief a simple layer that adds bias to every node in batch, this is a self-loop layer */
     template<typename xpu>
