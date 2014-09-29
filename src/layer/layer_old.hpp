@@ -355,29 +355,7 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu, 4> tmp_;
     }; // class PoolingLayer
    
-    template<typename xpu,typename ForwardOp, typename BackOp >
-    class ActivationLayer : public ILayer{
-    public:
-        ActivationLayer( Node<xpu> &in, Node<xpu> &out )
-            :in_(in), out_(out) {
-        }
-        virtual ~ActivationLayer( void ){}
-        virtual void Forward( bool is_train ) {
-            in_.data = F<ForwardOp>( in_.data );
-            mshadow::Copy( out_.data, in_.data );
-        }
-        virtual void Backprop( bool prop_grad ){
-            in_.data = F<BackOp>( in_.data ) * out_.data;
-        }
-        virtual void InitLayer( void ) {
-            out_.data.shape = in_.data.shape;
-        }
-    private:
-        /*! \brief input node */
-        Node<xpu> &in_;
-        /*! \brief output node */
-        Node<xpu> &out_;
-    };
+
 };
 
 namespace cxxnet {

@@ -3,12 +3,11 @@
 
 namespace cxxnet {
 namespace layer {
-
 template<typename xpu>
 class FullConnectLayer : public CommonLayerBase<xpu> {
  public:
   FullConnectLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : CommonLayerBase<xpu>(p_rnd, p_in, p_out){}
+      : CommonLayerBase<xpu>(p_rnd, p_in, p_out) {}
   virtual ~FullConnectLayer(void) {}
   virtual void SetParam(const char *name, const char* val) {
     param_.SetParam(name, val);

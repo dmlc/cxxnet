@@ -7,17 +7,26 @@
  */
 #include "./layer.h"
 #include "fullc_layer-inl.hpp"
+#include "activation_layer-inl.hpp"
+
 namespace cxxnet {
 namespace layer {
 template<typename xpu>
 ILayer<xpu>* CreateLayer_(LayerType type,
                           mshadow::Random<xpu> *p_rnd,
                           const std::vector< Node<xpu> *> &nodes_in,
-                          const std::vector< Node<xpu> *> &nodes_out){
+                          const std::vector< Node<xpu> *> &nodes_out) {
+  // code for handling multiple connections return before here
   utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                "this layer can only take one input and output ");
+  Node<xpu> *p_in = nodes_in[0];
+  Node<xpu> *p_out = nodes_in[0];
   switch(type) {
-    case kFullConnect: return new FullConnectLayer<xpu>(p_rnd, nodes_in[0], nodes_out[0]);
+    case kFullConnect: return new FullConnectLayer<xpu>(p_rnd, p_in, p_out);
+    case kSigmoid: return new ActivationLayer<xpu, op::sigmoid, op::sigmoid_grad>(p_rnd, p_in, p_out);
+    case kTanh: return new ActivationLayer<xpu, op::tanh, op::tanh_grad>(p_rnd, p_in, p_out);
+    case kRectifiedLinear: return new ActivationLayer<xpu, op::relu, op::relu_grad>(p_rnd, p_in, p_out);
+    case kSoftplus: return new ActivationLayer<xpu, op::softplus, op::softplus_grad>(p_rnd, p_in, p_out);      
     default: utils::Error("unknown layer type");
   }
   return NULL;
