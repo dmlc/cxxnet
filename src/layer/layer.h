@@ -155,6 +155,7 @@ class CommonLayerBase : public ILayer<xpu> {
   CommonLayerBase(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
       : prnd_(p_rnd), pin_(p_in), pout_(p_out) {
   }
+  virtual ~CommonLayerBase(void){}
   virtual void InitLayer(void) {
     this->InitLayer_(*pin_, pout_);
   }

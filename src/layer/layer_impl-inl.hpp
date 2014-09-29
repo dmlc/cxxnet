@@ -8,6 +8,7 @@
 #include "./layer.h"
 #include "fullc_layer-inl.hpp"
 #include "activation_layer-inl.hpp"
+#include "lrn_layer-inl.hpp"
 
 namespace cxxnet {
 namespace layer {
@@ -26,7 +27,8 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSigmoid: return new ActivationLayer<xpu, op::sigmoid, op::sigmoid_grad>(p_rnd, p_in, p_out);
     case kTanh: return new ActivationLayer<xpu, op::tanh, op::tanh_grad>(p_rnd, p_in, p_out);
     case kRectifiedLinear: return new ActivationLayer<xpu, op::relu, op::relu_grad>(p_rnd, p_in, p_out);
-    case kSoftplus: return new ActivationLayer<xpu, op::softplus, op::softplus_grad>(p_rnd, p_in, p_out);      
+    case kSoftplus: return new ActivationLayer<xpu, op::softplus, op::softplus_grad>(p_rnd, p_in, p_out);
+    case kLRN: return new LRNLayer<xpu>(p_rnd, p_in, p_out);
     default: utils::Error("unknown layer type");
   }
   return NULL;
