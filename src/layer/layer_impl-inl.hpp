@@ -9,6 +9,7 @@
 #include "fullc_layer-inl.hpp"
 #include "convolution_layer-inl.hpp"
 #include "activation_layer-inl.hpp"
+#include "dropout_layer-inl.hpp"
 #include "lrn_layer-inl.hpp"
 
 namespace cxxnet {
@@ -26,6 +27,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
   switch(type) {
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd, p_in, p_out);
     case kConv: return new ConvolutionLayer<xpu>(p_rnd, p_in, p_out);
+    case kDropout: return new DropoutLayer<xpu>(p_rnd, p_in, p_out);
     case kSigmoid: return new ActivationLayer<xpu, op::sigmoid, op::sigmoid_grad>(p_rnd, p_in, p_out);
     case kTanh: return new ActivationLayer<xpu, op::tanh, op::tanh_grad>(p_rnd, p_in, p_out);
     case kRectifiedLinear: return new ActivationLayer<xpu, op::relu, op::relu_grad>(p_rnd, p_in, p_out);

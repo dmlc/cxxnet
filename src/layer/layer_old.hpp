@@ -277,42 +277,7 @@ namespace cxxnet {
         mshadow::TensorContainer<xpu, 2> mask_, tmpw_;
     }; // class DropconnLayer
 
-    template<typename xpu>
-    class DropoutLayer : public ILayer {
-    public:
-        DropoutLayer(mshadow::Random<xpu> &rnd, Node<xpu> &in, Node<xpu> &out)
-            :rnd_(rnd), out_(out) {
-            Assert( &in == &out, "dropout layer must self loop e.g layer[1->1] = dropout" );
-        }
-        virtual void SetParam(const char *name, const char* val){
-            param_.SetParam( name, val );
-        }
-        virtual void Forward( bool is_train ) {
-            if (is_train) {
-                const real_t pkeep = 1.0f - param_.dropout_threshold;
-                mask_ = F<op::threshold>( rnd_.uniform( mask_.shape ), pkeep ) * (1.0f/pkeep);
-                out_.data = out_.data * mask_;
-            }
-        }
-        virtual void Backprop( bool prop_grad ) {
-            if (prop_grad) {
-                out_.data *= mask_;
-            }
-        }
-        virtual void InitLayer( void ) {
-            utils::Assert(param_.dropout_threshold >= 0.0f && param_.dropout_threshold < 1.0f, "DropoutLayer: invalid dropout threshold\n");
-            mask_.Resize( out_.data.shape );
-        }
-    private:
-        /*! \brief random number generator */
-        mshadow::Random<xpu> &rnd_;
-        /*! \brief output node */
-        Node<xpu> &out_;
-        /*! \brief dropout mask */
-        mshadow::TensorContainer<xpu, 4> mask_;
-        /*! \brief parameters that potentially be useful */
-        LayerParam param_;
-    }; // class DropoutLayer
+
 }; // namespace cxxnet
 
 namespace cxxnet{
