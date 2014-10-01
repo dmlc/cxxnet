@@ -1,9 +1,11 @@
 #include "./layer.h"
 #include "./param.h"
 #include "mshadow/tensor_container.h"
+#include "../utils/utils.h"
 
 namespace cxxnet {
 namespace layer {
+
 template<typename xpu>
 class FullConnectLayer : public CommonLayerBase<xpu> {
  public:
@@ -36,7 +38,7 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     bias_.SaveBinary(fo);
   }
   virtual void LoadModel(mshadow::utils::IStream &fi){
-    utils::Assert(fi.Read(&param_, sizeof(LayerParam)) != 0,
+    utils::Check(fi.Read(&param_, sizeof(LayerParam)) != 0,
                   "FullConnectLayer:LoadModel invalid model file");
     wmat_.LoadBinary(fi);
     bias_.LoadBinary(fi);
@@ -48,7 +50,7 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
  protected:
   virtual void InitLayer_(const Node<xpu> &node_in,
                           Node<xpu> *pnode_out) {
-    utils::Assert(node_in.is_mat(), "input need to be a matrix");
+    utils::Check(node_in.is_mat(), "input need to be a matrix");
     utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
     // we change matrix convention 
     pnode_out->data.shape = mshadow::Shape4(node_in.data.shape[4], 1, 1, param_.num_hidden);
@@ -91,5 +93,5 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
   /*! \brief accumulates the gradient of bias */
   mshadow::TensorContainer<xpu,1> gbias_;
 };
-}
-}
+}  // namespace layer
+}  // namespace cxxnet

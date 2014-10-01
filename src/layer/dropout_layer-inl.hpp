@@ -4,6 +4,7 @@
 
 namespace cxxnet {
 namespace layer {
+
 template<typename xpu>
 class DropoutLayer : public CommonLayerBase<xpu> {
  public:

@@ -3,6 +3,7 @@
 
 namespace cxxnet {
 namespace layer {
+
 template<typename xpu,typename ForwardOp, typename BackOp>
 class ActivationLayer : public CommonLayerBase<xpu>{
  public:
