@@ -104,9 +104,15 @@ struct LayerParam {
       mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape);
       for (int i = 0; i < init_sparse; ++i) {
         int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
-        while (cpu_map[idx][i] != 0)
+        int rej = 0;
+        int j = i;
+        while (cpu_mat[idx][j] > 0.0f) {
+          rej++;
           idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
-        cpu_mat[idx][i] = init_sigma;
+          if (rej > 10) j = static_cast<int>(out_num * static_cast<double>(rand())/RAND_MAX);
+          if (rej > 20) break;
+        }
+        cpu_mat[idx][j] = init_sigma;
       }
       mshadow::Copy(cpu_mat, mat);
     } else if (init_uniform > 0) {
