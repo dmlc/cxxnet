@@ -1,3 +1,6 @@
+#ifndef LAYER_POOLING_LAYER_INL_HPP_
+#define LAYER_POOLING_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./param.h"
 #include "mshadow/tensor_container.h"
@@ -70,3 +73,5 @@ class PoolingLayer : public CommonLayerBase<xpu> {
 };   // class PoolingLayer
 }  // namespace layer
 }  // namespace cxxnet
+#endif  // LAYER_POOLING_LAYER_INL_HPP_
+

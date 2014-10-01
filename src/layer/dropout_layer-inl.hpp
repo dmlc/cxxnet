@@ -1,3 +1,6 @@
+#ifndef LAYER_DROPOUT_LAYER_INL_HPP_
+#define LAYER_DROPOUT_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./op.h"
 #include "mshadow/tensor_container.h"
@@ -52,3 +55,5 @@ class DropoutLayer : public CommonLayerBase<xpu> {
 };  // class DropoutLayer
 }  // namespace layer
 }  // namespace cxxnet
+#endif  // LAYER_DROPOUT_LAYER_INL_HPP_
+

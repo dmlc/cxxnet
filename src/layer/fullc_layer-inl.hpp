@@ -1,5 +1,9 @@
+#ifndef LAYER_FULLC_LAYER_INL_HPP_
+#define LAYER_FULLC_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./param.h"
+#include "./op.h"
 #include "mshadow/tensor_container.h"
 #include "../utils/utils.h"
 
@@ -55,20 +59,34 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     // we change matrix convention 
     pnode_out->data.shape = mshadow::Shape4(node_in.data.shape[4], 1, 1, param_.num_hidden);
   }
+
   virtual void Forward_(bool is_train,
                         Node<xpu> *pnode_in,
                         Node<xpu> *pnode_out) {
-    mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
-    mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
-    index_t nbatch = m_in.shape[1];
-    m_out = dot(m_in, wmat_.T());
-    if (param_.no_bias == 0) {
-      m_out += repmat(bias_, nbatch);
-    }
+    this->Forward_(is_train, wmat_, pnode_in, pnode_out);
   }
   virtual void Backprop_(bool prop_grad,
                          Node<xpu> *pnode_in,
                          Node<xpu> *pnode_out) {
+    this->Backprop_(prop_grad, wmat_, pnode_in, pnode_out);
+  }
+  // internal implementation
+  inline void Forward_(bool is_train,
+                       mshadow::Tensor<xpu,2> wmat,                        
+                       Node<xpu> *pnode_in,
+                       Node<xpu> *pnode_out) {
+    mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
+    mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
+    index_t nbatch = m_in.shape[1];
+    m_out = dot(m_in, wmat.T());
+    if (param_.no_bias == 0) {
+      m_out += repmat(bias_, nbatch);
+    }
+  }
+  inline void Backprop_(bool prop_grad,
+                        mshadow::Tensor<xpu,2> wmat,
+                        Node<xpu> *pnode_in,
+                        Node<xpu> *pnode_out) {
     mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
     mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
     // accumulate gradient
@@ -78,10 +96,10 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     }
     // backprop
     if (prop_grad) {
-      m_in = dot(m_out, wmat_);
+      m_in = dot(m_out, wmat);
     }
   }
- protected:
+
   /*! \brief parameters that potentially be useful */
   LayerParam param_;
   /*! \brief weight matrix */
@@ -93,5 +111,52 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
   /*! \brief accumulates the gradient of bias */
   mshadow::TensorContainer<xpu,1> gbias_;
 };
+
+// dropconn layer that randomly drops connection in fullc
+template<typename xpu>
+class DropConnLayer : public FullConnectLayer<xpu> {
+ public:
+  DropConnLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
+      : Parent(p_rnd, p_in, p_out) {
+    dropout_threshold = 0.0f;
+  }
+  virtual void SetParam(const char *name, const char* val) {
+    Parent::SetParam(name, val);
+    if (!strcmp("threshold", name)) dropout_threshold = static_cast<real_t>(atof(val));
+  }  
+
+ protected:
+  virtual void InitLayer_(const Node<xpu> &node_in,
+                          Node<xpu> *pnode_out) {
+    Parent::InitLayer_(node_in, pnode_out);
+    this->mask_.Resize(mshadow::Shape2(this->pin_->data.shape[0], this->pin_->data.shape[0]));
+  }
+  
+  virtual void Forward_(bool is_train,
+                        Node<xpu> *pnode_in,
+                        Node<xpu> *pnode_out) {
+    using namespace mshadow::expr;
+    if (is_train) {
+      const real_t pkeep = 1.0f - dropout_threshold;
+      mask_ = F<op::threshold>(this->prnd_->uniform(mask_.shape), pkeep) * (1.0f / pkeep);
+      tmpw_ = this->wmat_ * mask_;
+    } else {
+      mshadow::Copy(tmpw_, this->wmat_);
+    }
+    Parent::Forward_(is_train, tmpw_, pnode_in, pnode_out);
+  }
+  virtual void Backprop_(bool prop_grad,
+                         Node<xpu> *pnode_in,
+                         Node<xpu> *pnode_out) {
+    Parent::Backprop_(prop_grad, tmpw_, pnode_in, pnode_out);
+    Parent::gwmat_ *= mask_;
+  }
+
+ private:
+  mshadow::real_t dropout_threshold;
+  typedef FullConnectLayer<xpu> Parent;
+  mshadow::TensorContainer<xpu, 2> mask_, tmpw_;
+};  // class DropconnLayer
 }  // namespace layer
 }  // namespace cxxnet
+#endif  // LAYER_FULLC_LAYER_INL_HPP_

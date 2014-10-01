@@ -1,3 +1,6 @@
+#ifndef LAYER_BIAS_LAYER_INL_HPP_
+#define LAYER_BIAS_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./param.h"
 #include "mshadow/tensor_container.h"
@@ -68,3 +71,5 @@ class BiasLayer : public CommonLayerBase<xpu> {
 };
 }  // namespace layer
 }  // namespace cxxnet
+#endif // LAYER_BIAS_LAYER_INL_HPP_
+

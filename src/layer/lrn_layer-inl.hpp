@@ -1,3 +1,6 @@
+#ifndef LAYER_LRN_LAYER_INL_HPP_
+#define LAYER_LRN_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./op.h"
 
@@ -68,6 +71,7 @@ class LRNLayer : public CommonLayerBase<xpu> {
   /*! \brief neighbor size */
   index_t nsize_;
 }; // class lrn layer
-
 }  // namespace layer
 }  // namespace cxxnet
+#endif  // LAYER_LRN_LAYER_INL_HPP_
+

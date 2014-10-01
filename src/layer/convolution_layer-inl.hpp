@@ -1,3 +1,6 @@
+#ifndef LAYER_CONVOLUTION_LAYER_INL_HPP_
+#define LAYER_CONVOLUTION_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./param.h"
 #include "mshadow/tensor_container.h"
@@ -184,6 +187,6 @@ class ConvolutionLayer : public CommonLayerBase<xpu> {
   /*! \brief how many number of batches to be unpacked together */
   mshadow::index_t nstep_;
 };
-
 }  // namespace layer
 }  // namespace cxxnet
+#endif  // LAYER_CONVOLUTION_LAYER_INL_HPP_

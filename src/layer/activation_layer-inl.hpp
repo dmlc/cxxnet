@@ -1,3 +1,6 @@
+#ifndef LAYER_ACTIVATION_LAYER_INL_HPP_
+#define LAYER_ACTIVATION_LAYER_INL_HPP_
+
 #include "./layer.h"
 #include "./op.h"
 
@@ -34,3 +37,5 @@ class ActivationLayer : public CommonLayerBase<xpu>{
 };
 }  // namespace layer
 }  // namespace cxxnet
+#endif  // LAYER_ACTIVATION_LAYER_INL_HPP_
+

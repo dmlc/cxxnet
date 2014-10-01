@@ -43,6 +43,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>(p_rnd, p_in, p_out);
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>(p_rnd, p_in, p_out);
     case kSoftmax: return new SoftmaxLayer<xpu>(p_rnd, p_in, p_out);
+    case kDropConn: return new DropConnLayer<xpu>(p_rnd, p_in, p_out);
     default: utils::Error("unknown layer type");
   }
   return NULL;

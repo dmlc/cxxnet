@@ -219,7 +219,6 @@ enum LayerType {
   kMaxPooling = 11,
   kSumPooling = 12,
   kAvgPooling = 13,
-  kPadding = 14,
   kLRN = 15,
   kBias = 17
 };
@@ -242,7 +241,6 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "max_pooling")) return kMaxPooling;
   if (!strcmp(type, "sum_pooling")) return kSumPooling;
   if (!strcmp(type, "avg_pooling")) return kAvgPooling;
-  if (!strcmp(type, "padding")) return kPadding;
   if (!strcmp(type, "lrn")) return kLRN;
   utils::Error("unknown layer type: %s", type);
   return kConv;
