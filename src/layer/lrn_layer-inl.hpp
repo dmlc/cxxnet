@@ -1,4 +1,6 @@
 #include "./layer.h"
+#include "./op.h"
+
 namespace cxxnet {
 namespace layer {
 
