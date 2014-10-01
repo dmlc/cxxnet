@@ -17,17 +17,19 @@ struct LayerParam {
   int num_hidden;
   /*! \brief initialization sd for weight */
   float init_sigma;
+  /*! \brief initialization sparse weight */
+  int init_sparse;
+  /*! \brief initialization uniform for weight */
+  float init_uniform;
   /*! \brief intialization value for bias */
   float init_bias;
-  /*! \brief initialization random type */
-  int random_type;
   /*! \brief number of output channel */
   int num_channel;
   /*! \brief number of parallel group */
   int num_group;
-  /*! \brief kernel height */        
+  /*! \brief kernel height */
   int kernel_height;
-  /*! \brief kernel width */        
+  /*! \brief kernel width */
   int kernel_width;
   /*! \brief stride prameter */
   int stride;
@@ -46,9 +48,10 @@ struct LayerParam {
   /*! \brief construtor */
   LayerParam(void) {
     init_sigma = 0.01f;
+    init_uniform = -1.0f;
+    init_sparse = 0;
     init_bias  = 0.0f;
     num_hidden = 0;
-    random_type = 0;
     num_channel = 0;
     num_group = 1;
     kernel_width = 0;
@@ -68,10 +71,10 @@ struct LayerParam {
    */
   inline void SetParam(const char *name, const char* val) {
     if (!strcmp(name, "init_sigma")) init_sigma = (float)atof(val);
+    if (!strcmp(name, "init_uniform")) init_uniform = (float)atof(val);
     if (!strcmp(name, "init_bias")) init_bias  = (float)atof(val);
+    if (!strcmp(name, "init_sparse")) init_sparse = atoi(val);
     if (!strcmp(name, "nhidden")) num_hidden = atoi(val);
-    if (!strcmp(name, "random_type") && !strcmp(val, "gaussian"))  random_type = 0;
-    if (!strcmp(name, "random_type") && !strcmp(val, "xavier")) random_type = 1;
     if (!strcmp(name, "nchannel")) num_channel = atoi(val);
     if (!strcmp(name, "ngroup")) num_group = atoi(val);
     if (!strcmp(name, "kernel_size")) {
@@ -89,11 +92,30 @@ struct LayerParam {
     if (!strcmp(name, "silent")) silent = atoi(val);
     if (!strcmp(name, "temp_col_max")) temp_col_max = atoi(val) << 18;
   }
-  
+
   template<int dim, typename xpu>
   inline void RandInitWeight(mshadow::Random<xpu> *prng,
                              mshadow::Tensor<xpu, dim> mat,
                              index_t in_num, index_t out_num) {
+    if (dim > 2) init_sparse = -1;
+    if (init_sparse > 0) {
+      // sparse initialization
+      std::vector<real_t> tmp(mat.MSize(), 0.0f);
+      mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape);
+      for (int i = 0; i < init_sparse; ++i) {
+        int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
+        while (cpu_map[idx][i] != 0)
+          idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
+        cpu_mat[idx][i] = init_sigma;
+      }
+      mshadow::Copy(cpu_mat, mat);
+    } else if (init_uniform > 0) {
+      // uniform initialization
+      prng->SampleUniform(mat, -init_uniform, init_uniform);
+    } else {
+      // gaussian initialization
+      prng->SampleGaussian(mat, 0.0f, init_sigma);
+    }
     if (random_type == 0) {
       // gaussian initialization
       prng->SampleGaussian(mat, 0.0f, init_sigma);
@@ -102,7 +124,7 @@ struct LayerParam {
       real_t a = sqrt(3.0f / (in_num + out_num));
       prng->SampleUniform(mat, -a, a);
     }
-  }                             
+  }
 };
 }  // namespace layer
 }  // namespace cxxnet
