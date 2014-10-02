@@ -1,5 +1,5 @@
-#ifndef LAYER_DROPOUT_LAYER_INL_HPP_
-#define LAYER_DROPOUT_LAYER_INL_HPP_
+#ifndef CXXNET_LAYER_DROPOUT_LAYER_INL_HPP_
+#define CXXNET_LAYER_DROPOUT_LAYER_INL_HPP_
 
 #include "./layer.h"
 #include "./op.h"

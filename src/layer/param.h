@@ -25,6 +25,8 @@ struct LayerParam {
   float init_bias;
   /*! \brief number of output channel */
   int num_channel;
+  /*! \brief type of random number generation */
+  int random_type;
   /*! \brief number of parallel group */
   int num_group;
   /*! \brief kernel height */
@@ -74,6 +76,7 @@ struct LayerParam {
     if (!strcmp(name, "init_uniform")) init_uniform = (float)atof(val);
     if (!strcmp(name, "init_bias")) init_bias  = (float)atof(val);
     if (!strcmp(name, "init_sparse")) init_sparse = atoi(val);
+    if (!strcmp(name, "random_type")) random_type = atoi(val);    
     if (!strcmp(name, "nhidden")) num_hidden = atoi(val);
     if (!strcmp(name, "nchannel")) num_channel = atoi(val);
     if (!strcmp(name, "ngroup")) num_group = atoi(val);
@@ -97,10 +100,11 @@ struct LayerParam {
   inline void RandInitWeight(mshadow::Random<xpu> *prng,
                              mshadow::Tensor<xpu, dim> mat,
                              index_t in_num, index_t out_num) {
+    /*
     if (dim > 2) init_sparse = -1;
     if (init_sparse > 0) {
       // sparse initialization
-      std::vector<real_t> tmp(mat.MSize(), 0.0f);
+      std::vector<real_t> tmp(mat.shape.MSize(), 0.0f);
       mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape);
       for (int i = 0; i < init_sparse; ++i) {
         int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
@@ -121,7 +125,7 @@ struct LayerParam {
     } else {
       // gaussian initialization
       prng->SampleGaussian(mat, 0.0f, init_sigma);
-    }
+    }*/
     if (random_type == 0) {
       // gaussian initialization
       prng->SampleGaussian(mat, 0.0f, init_sigma);

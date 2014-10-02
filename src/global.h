@@ -25,6 +25,6 @@ typedef mshadow::cpu cpu;
 typedef mshadow::gpu gpu;
 typedef mshadow::index_t index_t;
 typedef mshadow::real_t real_t;
-};
+} // namespace cxxnet
 
 #endif  // CXXNET_GLOBAL_H_

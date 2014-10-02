@@ -1,5 +1,5 @@
-#ifndef LAYER_POOLING_LAYER_INL_HPP_
-#define LAYER_POOLING_LAYER_INL_HPP_
+#ifndef CXXNET_LAYER_POOLING_LAYER_INL_HPP_
+#define CXXMET_LAYER_POOLING_LAYER_INL_HPP_
 
 #include "./layer.h"
 #include "./param.h"
@@ -29,7 +29,6 @@ class PoolingLayer : public CommonLayerBase<xpu> {
     utils::Check(ksize_x <= node_in.data.shape[0] && ksize_y <= node_in.data.shape[1],
                  "kernel size exceed input" );
     
-    // conform to same shape style as caffe, though maybe not necessary
     mshadow::Shape<4> oshape = mshadow::
         Shape4( node_in.data.shape[3], node_in.data.shape[2],
                 std::min(node_in.data.shape[1] - ksize_y + kstride-1, node_in.data.shape[1] - 1) / kstride + 1,

@@ -67,7 +67,7 @@ template<typename xpu>
 class ILayer {
  public:
   /*!
-   * \brief visitor to the layer structure
+   * \brief visitor to the layer
    *    visits the weight and gradient in the layer
    */
   struct IVisitor {
@@ -255,8 +255,8 @@ inline LayerType GetLayerType(const char *type) {
 template<typename xpu>
 ILayer<xpu>* CreateLayer(LayerType type,
                          mshadow::Random<xpu> *p_rnd,
-                         const std::vector< Node<xpu> *> &nodes_in,
-                         const std::vector< Node<xpu> *> &nodes_out);
+                         const std::vector<Node<xpu>*> &nodes_in,
+                         const std::vector<Node<xpu>*> &nodes_out);
 }  // namespace layer
 }  // namespace cxxnet
 #endif  // CXXNET_LAYER_LAYER_H

@@ -382,12 +382,11 @@ namespace cxxnet{
                                     mshadow::Tensor<xpu,dim> &weight,
                                     mshadow::Tensor<xpu,dim> &wgrad,
                                     const char *tag ){
-        if( !strcmp( type, "sgd" ) ) return new SGDUpdater<xpu,dim>( weight, wgrad, tag );
-        if( !strcmp( type, "sghmc" ) ) return new SGHMCUpdater<xpu,dim>( rnd, weight, wgrad, tag );
-        if( !strcmp( type, "noise_sgd")) return new NoiseSGDUpdater<xpu, dim>(weight, wgrad, tag, rnd);
-        Error("unknown updater type");
-        return NULL;
+      if( !strcmp( type, "sgd" ) ) return new SGDUpdater<xpu,dim>( weight, wgrad, tag );
+      if( !strcmp( type, "sghmc" ) ) return new SGHMCUpdater<xpu,dim>( rnd, weight, wgrad, tag );
+      if( !strcmp( type, "noise_sgd")) return new NoiseSGDUpdater<xpu, dim>(weight, wgrad, tag, rnd);
+      Error("unknown updater type");
+      return NULL;
     }
 }; // namespace cxxnet;
 #endif // CXXNET_UPDATER_INL_HPP
-
