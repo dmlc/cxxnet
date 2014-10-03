@@ -14,7 +14,9 @@ Project Logical Layout
 
 File Naming Convention
 ======= 
-* .h files are data structures and interface, which are needed to use functions in that layer.
+* .h files are data structures and interface
+  - In each folder, there is one .h file that have same name as the folder, this file defines everything needed for other module to use this module
+  - Interface headers: layer/layer.h, updater/updater.h
 * -inl.hpp files are implementations of interface, like cpp file in most project.
   - You only need to understand the interface file to understand the usage of that layer
 * In each folder, there can be a .cpp file, and .cu file that that compiles the module of that layer
