@@ -36,12 +36,12 @@ class ConvolutionLayer : public CommonLayerBase<xpu> {
     gbias_.Resize(bias_.shape);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
-  virtual void SaveModel(mshadow::utils::IStream &fo) const {
+  virtual void SaveModel(utils::IStream &fo) const {
     fo.Write(&param_, sizeof(LayerParam));
     wmat_.SaveBinary(fo);
     bias_.SaveBinary(fo);
   }
-  virtual void LoadModel(mshadow::utils::IStream &fi) {
+  virtual void LoadModel(utils::IStream &fi) {
     utils::Check(fi.Read(&param_, sizeof(LayerParam)) != 0,
                   "CommonLayerBase: LoadModel invalid model file");
     wmat_.LoadBinary(fi);

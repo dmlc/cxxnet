@@ -9,6 +9,7 @@
 #include <mshadow/tensor.h>
 #include "../global.h"
 #include "../utils/utils.h"
+#include "../utils/io.h"
 
 /*! \brief namespace of cxxnet */
 namespace cxxnet {
@@ -132,12 +133,12 @@ class ILayer {
    * \brief Save model into binary file
    * \param fo output stream
    */
-  virtual void SaveModel(mshadow::utils::IStream &fo) const {}
+  virtual void SaveModel(utils::IStream &fo) const {}
   /*!
    * \brief Load model from binary file
    * \param fi input stream
    */
-  virtual void LoadModel(mshadow::utils::IStream &fi) {}
+  virtual void LoadModel(utils::IStream &fi) {}
 };
 
 /*!
