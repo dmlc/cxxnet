@@ -6,7 +6,7 @@
  * \author Tianqi Chen, Bing Xu
  */
 #include <vector>
-#include "mshadow/tensor.h"
+#include <mshadow/tensor.h>
 #include "../global.h"
 #include "../utils/utils.h"
 
@@ -75,7 +75,7 @@ class ILayer {
      * \brief visit content of the layer, this is called by Layer
      *    when ApplyVisitor is called
      *
-     *    Visitor can use to get reference of weight content, copy/set weights, etc. 
+     *    Visitor can use to get weight content, copy/set weights, etc. 
      *   
      * \param field_name the name of field on the layer
      * \param weight the connect weight used in the layer

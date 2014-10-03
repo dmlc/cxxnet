@@ -1,9 +1,9 @@
 #ifndef CXXNET_LAYER_POOLING_LAYER_INL_HPP_
 #define CXXMET_LAYER_POOLING_LAYER_INL_HPP_
 
+#include <mshadow/tensor.h>
 #include "./layer.h"
 #include "./param.h"
-#include "mshadow/tensor_container.h"
 
 namespace cxxnet {
 namespace layer {

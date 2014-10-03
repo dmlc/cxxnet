@@ -1,10 +1,10 @@
 #ifndef CXXNET_LAYER_FULLC_LAYER_INL_HPP_
 #define CXXNET_LAYER_FULLC_LAYER_INL_HPP_
 
+#include <mshadow/tensor.h>
 #include "./layer.h"
 #include "./param.h"
 #include "./op.h"
-#include "mshadow/tensor_container.h"
 #include "../utils/utils.h"
 
 namespace cxxnet {

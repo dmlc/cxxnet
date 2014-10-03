@@ -1,8 +1,8 @@
 #ifndef CXXNET_LAYER_SOFTMAX_LAYER_INL_HPP_
 #define CXXNET_LAYER_SOFTMAX_LAYER_INL_HPP_
 
+#include <mshadow/tensor.h>
 #include "./layer.h"
-#include "mshadow/tensor.h"
 
 namespace cxxnet {
 namespace layer {

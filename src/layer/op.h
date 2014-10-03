@@ -6,7 +6,7 @@
  * \brief extra mshadow operation for cxxnet
  * \author Bing Xu
  */
-#include "mshadow/tensor.h"
+#include <mshadow/tensor.h>
 
 namespace cxxnet {
 /*! \brief operations for ActivationLayer */

@@ -1,9 +1,9 @@
 #ifndef CXXNET_LAYER_DROPOUT_LAYER_INL_HPP_
 #define CXXNET_LAYER_DROPOUT_LAYER_INL_HPP_
 
+#include <mshadow/tensor.h>
 #include "./layer.h"
 #include "./op.h"
-#include "mshadow/tensor_container.h"
 
 namespace cxxnet {
 namespace layer {

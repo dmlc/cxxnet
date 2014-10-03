@@ -1,6 +1,7 @@
 #ifndef CXXNET_LAYER_ACTIVATION_LAYER_INL_HPP_
 #define CXXNET_LAYER_ACTIVATION_LAYER_INL_HPP_
 
+#include <mshadow/tensor.h>
 #include "./layer.h"
 #include "./op.h"
 
