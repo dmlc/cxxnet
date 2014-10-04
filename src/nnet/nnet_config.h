@@ -87,9 +87,6 @@ struct NetConfig {
     // default training parameters
     batch_size = 100;
     updater_type = "sgd";
-    netcfg_mode = 0;
-    cfg_top_node = 0;
-    cfg_layer_index = 0;
   }
   /*!
    * \brief save network structure to output
@@ -123,7 +120,8 @@ struct NetConfig {
                  "NetConfig: invalid model file");                   
       utils::Check(fi.Read(&layers[i].nindex_in), "NetConfig: invalid model file");
       utils::Check(fi.Read(&layers[i].nindex_out), "NetConfig: invalid model file");
-    }    
+    }
+    this->ClearConfig();
   }
   /*! \brief guess parameters, from current setting, this will set init_end in param to be true */
   inline void InitNet(void) {
@@ -141,45 +139,54 @@ struct NetConfig {
     param.init_end = 1;
   }
   /*!
-   * \brief Set param for the layer from string
-   * \param name parameter name
-   * \param val string for configuration
+   * \brief setup configuration, using the config string pass in 
    */
-  inline void SetParam(const char *name, const char *val) {
-    if (param.init_end == 0) { 
-      if (!strcmp( name, "input_shape")) {
-        unsigned x, y, z;
-        utils::Check(sscanf(val, "%u,%u,%u", &z, &y, &x) == 3,
-                     "input_shape must be three consecutive integers without space example: 1,1,200 ");
-        param.input_shape = mshadow::Shape3(z, y, x);
+  inline void Configure(const std::vector< std::pair<std::string, std::string> > &cfg) {
+    this->ClearConfig();
+    // whether in net config mode
+    int netcfg_mode = 0;
+    // remembers what is the last top node
+    int cfg_top_node = 0;
+    // current configuration layer index
+    int cfg_layer_index = 0;   
+    for (size_t i = 0; i < cfg.size(); ++i) {
+      const char *name = cfg[i].first.c_str();
+      const char *val = cfg[i].second.c_str();
+      if (param.init_end == 0) { 
+        if (!strcmp( name, "input_shape")) {
+          unsigned x, y, z;
+          utils::Check(sscanf(val, "%u,%u,%u", &z, &y, &x) == 3,
+                       "input_shape must be three consecutive integers without space example: 1,1,200 ");
+          param.input_shape = mshadow::Shape3(z, y, x);
+        }
       }
-    }
-    if (!strcmp(name, "batch_size")) batch_size = atoi(val);
-    if (!strcmp(name, "updater")) updater_type = val;
-    if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
-    if (!strcmp(name, "netconfig") && !strcmp(val, "end"))   netcfg_mode = 0;    
-    if (!strncmp(name, "layer[", 6)) {
-      LayerInfo info = this->GetLayerInfo(name, val, cfg_top_node);
-      netcfg_mode = 2;
-      if (param.init_end == 0) {
-        utils::Assert(layers.size() == static_cast<size_t>(cfg_layer_index), "NetConfig inconsistent");
-        layers.push_back(info);
-        layercfg.resize(layers.size());
-        param.num_layers = static_cast<int>(layers.size());
-      } else {
-        utils::Check(cfg_layer_index < static_cast<int>(layers.size()) &&
-                     info == layers[cfg_layer_index],
-                     "config setting does not match existing network structure");
-      }
-      if (info.nindex_out.size() != 0) {
+      if (!strcmp(name, "batch_size")) batch_size = atoi(val);
+      if (!strcmp(name, "updater")) updater_type = val;
+      if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
+      if (!strcmp(name, "netconfig") && !strcmp(val, "end"))   netcfg_mode = 0;    
+      if (!strncmp(name, "layer[", 6)) {
+        LayerInfo info = this->GetLayerInfo(name, val, cfg_top_node);
+        netcfg_mode = 2;
+        if (param.init_end == 0) {
+          utils::Assert(layers.size() == static_cast<size_t>(cfg_layer_index), "NetConfig inconsistent");
+          layers.push_back(info);
+          layercfg.resize(layers.size());
+          param.num_layers = static_cast<int>(layers.size());
+        } else {
+          utils::Check(cfg_layer_index < static_cast<int>(layers.size()) &&
+                       info == layers[cfg_layer_index],
+                       "config setting does not match existing network structure");
+        }
+        if (info.nindex_out.size() != 0) {
         cfg_top_node = info.nindex_out[0];
+        }
+        cfg_layer_index += 1;
       }
-      cfg_layer_index += 1;
-    }
-    if (netcfg_mode == 2) {
-      layercfg[cfg_layer_index - 1].push_back(std::make_pair(std::string(name), std::string(val)));
-    } else {
-      defcfg.push_back(std::make_pair(std::string(name), std::string(val)));
+      if (netcfg_mode == 2) {
+        layercfg[cfg_layer_index - 1].push_back(std::make_pair(std::string(name), std::string(val)));
+      } else {
+        defcfg.push_back(std::make_pair(std::string(name), std::string(val)));
+      }
     }
   }
   
@@ -204,13 +211,13 @@ struct NetConfig {
     inf.type = layer::GetLayerType(ltype);    
     return inf;
   }
-  // auxiliary data structure to help read configuration
-  // whether in net config mode
-  int netcfg_mode;
-  // remembers what is the last top node
-  int cfg_top_node;
-  // current configuration layer index
-  int cfg_layer_index;
+  /*! \brief clear the configurations */
+  inline void ClearConfig(void) {
+    defcfg.clear();
+    for (size_t i = 0; i < layercfg.size(); ++i) {
+      layercfg[i].clear();
+    }
+  }
 };
 }  // namespace nnet
 }  // namespace cxxnet
