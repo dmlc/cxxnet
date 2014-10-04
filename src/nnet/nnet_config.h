@@ -1,8 +1,8 @@
 #ifndef CXXNET_NNET_NNET_CONFIG_H_
 #define CXXNET_NNET_NNET_CONFIG_H_
 /*!
- * \file cxxnet_net-inl.hpp
- * \brief implementation of netural nets
+ * \file nnet_config.h
+ * \brief network structure configuration
  * \author Tianqi Chen, Bing Xu
  */
 #include <vector>
