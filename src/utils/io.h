@@ -7,6 +7,9 @@
  */
 #include <zlib.h>
 #include "./utils.h"
+#include <string>
+#include <algorithm>
+#include <cstring>
 
 namespace cxxnet {
 namespace utils {
@@ -91,9 +94,46 @@ class IStream {
 class ISeekStream: public IStream {
  public:
   /*! \brief seek to certain position of the file */
-  virtual void Seek(long pos) = 0;
+  virtual void Seek(size_t pos) = 0;
   /*! \brief tell the position of the stream */
-  virtual long Tell(void) = 0;
+  virtual size_t Tell(void) = 0;
+};
+
+/*! \brief a in memory buffer that can be read and write as stream interface */
+struct MemoryBufferStream : public ISeekStream {
+ public:
+  MemoryBufferStream(std::string *p_buffer) 
+      : p_buffer_(p_buffer) {
+    curr_ptr_ = 0;
+  }
+  virtual ~MemoryBufferStream(void) {}
+  virtual size_t Read(void *ptr, size_t size) {
+    utils::Assert(curr_ptr_ <= p_buffer_->length(),
+                  "read can not have position excceed buffer length");
+    size_t nread = std::min(p_buffer_->length() - curr_ptr_, size);
+    if (nread != 0) memcpy(ptr, &(*p_buffer_)[0] + curr_ptr_, nread);
+    curr_ptr_ += nread;
+    return nread;
+  }
+  virtual void Write(const void *ptr, size_t size) {
+    if (size == 0) return;
+    if (curr_ptr_ + size > p_buffer_->length()) {
+      p_buffer_->resize(curr_ptr_+size);
+    }
+    memcpy(&(*p_buffer_)[0] + curr_ptr_, ptr, size); 
+  }
+  virtual void Seek(size_t pos) {
+    curr_ptr_ = static_cast<size_t>(pos);
+  }
+  virtual size_t Tell(void) {
+    return curr_ptr_;
+  }
+
+ private:
+  /*! \brief in memory buffer */
+  std::string *p_buffer_;
+  /*! \brief current pointer */
+  size_t curr_ptr_;
 };
 
 struct GzFile : public ISeekStream {
@@ -119,8 +159,8 @@ struct GzFile : public ISeekStream {
   virtual void Seek(size_t pos) {
     gzseek(fp_, pos, SEEK_SET);
   }
-  virtual long Tell(void) {
-    return gztell(fp_);
+  virtual size_t Tell(void) {
+    return static_cast<size_t>(gztell(fp_));
   }
 
  private:
@@ -150,8 +190,8 @@ class StdFile: public ISeekStream {
   virtual void Seek(size_t pos) {
     fseek(fp_, pos, SEEK_SET);
   }
-  virtual long Tell(void) {
-    return ftell(fp_);
+  virtual size_t Tell(void) {
+    return static_cast<size_t>(ftell(fp_));
   }
   inline void Close(void) {
     if (fp_ != NULL){
@@ -240,6 +280,6 @@ class BinaryPage {
   //int data_[ kPageSize ];
   int *data_;
 };  // class BinaryPage
-}  // utils
+}  // namespace utils
 }  // namespace cxxnet
 #endif
