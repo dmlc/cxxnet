@@ -12,6 +12,7 @@
 #include "../updater/updater.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
+#include "../utils/thread.h"
 #include "./nnet_config.h"
 
 namespace cxxnet {
@@ -33,6 +34,9 @@ struct NeuralNet {
   mshadow::Random<xpu> rnd;
   // constructor do nothing
   NeuralNet(const NetConfig &cfg) : cfg(cfg), rnd(0) {
+  }
+  ~NeuralNet(void) {
+    this->FreeSpace();
   }
   /*! \brief save model to file */
   inline void SaveModel(utils::IStream &fo) const {
@@ -67,8 +71,10 @@ struct NeuralNet {
   /*!
    * \brief forward prop
    * \param is_train whether is training phase
+   * \param batch the input batch
    */
-  inline void Forward(bool is_train) {
+  inline void Forward(bool is_train, mshadow::Tensor<cpu,4> batch) {
+    mshadow::Copy(nodes[0].data, batch);
     for (size_t i = 0; i < layers.size(); ++ i) {
       layers[i]->Forward(is_train);
     }
@@ -100,19 +106,6 @@ struct NeuralNet {
       updaters[i]->StartRound(round);
     }
   }
-  /*! \brief free all space allocated in this struct*/
-  inline void FreeSpace(void) {
-    for (size_t i = 0; i < nodes.size(); ++i) {
-      nodes[i].FreeSpace();
-    }
-    for (size_t i = 0; i < layers.size(); ++i) {
-      delete layers[i];
-    }
-    for (size_t i = 0; i < updaters.size(); ++i) {
-      delete updaters[i];
-    }
-    nodes.clear(); layers.clear(); updaters.clear();
-  }  
   
  private:
   // intialize the neural net data structure
@@ -120,19 +113,19 @@ struct NeuralNet {
     nodes.resize(cfg.param.num_nodes);
     mshadow::Shape<3> s = cfg.param.input_shape;
     // setup input shape
-    nodes[0].shape = mshadow::Shape4(cfg.batch_size, s[2], s[1], s[0]);
+    nodes[0].data.shape = mshadow::Shape4(cfg.batch_size, s[2], s[1], s[0]);
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       std::vector<layer::Node<xpu>*> nodes_in;
       std::vector<layer::Node<xpu>*> nodes_out;
       const NetConfig::LayerInfo &info =cfg.layers[i];
       for (size_t j = 0; j < info.nindex_in.size(); ++j) {
-        nodes_in.push_back(&info.nindex_in[j]);
+        nodes_in.push_back(&nodes[info.nindex_in[j]]);
       }
       for (size_t j = 0; j < info.nindex_out.size(); ++j) {
-        nodes_out.push_back(&info.nindex_out[j]);
+        nodes_out.push_back(&nodes[info.nindex_out[j]]);
       }
-      layers.push_back(layer::CreateLayer(&rnd, nodes_in, nodes_out, &label_info));
+      layers.push_back(layer::CreateLayer(info.type, &rnd, nodes_in, nodes_out, &label_info));
     }
   }
   // configure the parameters of layer
@@ -156,17 +149,200 @@ struct NeuralNet {
       printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[3], s[2], s[1], s[0]);
     }
   }
+  /*! \brief free all space allocated in this struct*/
+  inline void FreeSpace(void) {
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      nodes[i].FreeSpace();
+    }
+    for (size_t i = 0; i < layers.size(); ++i) {
+      delete layers[i];
+    }
+    for (size_t i = 0; i < updaters.size(); ++i) {
+      delete updaters[i];
+    }
+    nodes.clear(); layers.clear(); updaters.clear();
+  }  
+
 };
 
 /*!
- * \brief neural net that runs with an independent thread
- * backed by NeuralNet
+ * \brief neural net that runs with an independent thread backed by NeuralNet
+ * \tparam
  */
 template<typename xpu>
 class NeuralNetThread {
-  
-};
+ public:
+  /*! \brief create a new neural net thread */
+  NeuralNetThread(const NetConfig &cfg, bool new_thread = true)
+      : cfg(cfg), new_thread(new_thread) {
+    net_ = NULL;
+  }
+  // destructor
+  ~NeuralNetThread(void) {
+    if (net_ != NULL) {
+      if (new_thread) {
+        destroy_signal = true;
+        job_start.Post();
+        worker_thread.Join();
+        job_start.Destroy();
+        job_end.Destroy();
+      } else {
+        delete net_;
+      }
+    }
+  }
+  /*! \brief initialize the thread */
+  inline void Init(void) {
+    if (new_thread) {
+      destroy_signal = false;
+      job_start.Init(0);
+      job_end.Init(0);
+      worker_thread.Start(ThreadEntry, this);
+    } else {
+      net_ = new NeuralNet<xpu>();
+    }
+  }
+  /*! 
+   * \brief wait till the the thread finishes current task 
+   * This function MUST be called every time before running next job
+   */
+  inline void WaitJob(void) {
+    if (new_thread) job_end.Wait();
+  }
+  inline void InitModel(void) {
+    this->task = kInitModel;
+    this->ExecTask();
+  }
+  inline void SaveModel(utils::IStream &fo) {
+    iparam_fp = &fo;
+    this->task = kSaveModel;
+    this->ExecTask();
+  }
+  inline void LoadModel(utils::IStream &fi) {
+    iparam_fp = &fi;
+    this->task = kLoadModel;
+    this->ExecTask();
+  }
+  inline void Update(size_t epoch) {
+    iparam_epoch = epoch;
+    this->task = kUpdate;
+    this->ExecTask();
+  }
+  /*! \brief run a training forward backprop pass */
+  inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
+                                   const layer::LabelInfo &label_info,
+                                   bool prop_to_input = false) {
+    utils::Assert(net_ != NULL, "thread must be initialized before use");
+    net_->label_info = label_info;
+    iparam_batch = batch;
+    iparam_flag = prop_to_input;
+    this->task = kTrainProp;
+    this->ExecTask();
+  }
+  /*! \brief run a predicting forward pass, copy final layer  */
+  inline void PredictForward(mshadow::Tensor<cpu,4> batch) {
+    iparam_batch = batch;
+    this->task = kPredForward;
+    this->ExecTask();
+  }
+  // copy node data out
+  inline void CopyNodeData(int nid, mshadow::Tensor<cpu,4> out_data) {
+    iparam_nid = nid;
+    oparam_node = out_data;
+    this->Task = kCopyNode;
+    this->ExecTask();
+  }
+  // return reference of node
+  inline const NeuralNet<xpu> &net(void) const{
+    return *net_;
+  }
 
+ private:
+  // type of task that can be executed
+  enum TaskType {
+    kInitModel,
+    kLoadModel,
+    kSaveModel,
+    kUpdate,
+    kTrainProp,
+    kPredForward,
+    kCopyNode
+  };
+  // thread related code
+  inline static CXXNET_THREAD_PREFIX ThreadEntry(void *pthread) {
+    static_cast<NeuralNetThread<xpu>*>(pthread)->RunThread();
+    utils::ThreadExit(NULL);
+    return NULL;
+  }
+  inline void RunThread(void) {
+    // allocate net
+    net_ = new NeuralNet<xpu>();
+    while (!destroy_signal) {
+      job_start.Wait();
+      if (destroy_signal) break;
+      this->TaskDispatch();
+      job_end.Post();
+    }
+    delete net_;
+  }
+  inline void ExecTask(void) {
+    if (new_thread) {
+      job_start.Post();
+    } else {
+      this->TaskDispatch();
+    }
+  }
+  inline void TaskDispatch(void) {
+    utils::Assert(net_ != NULL, "thread must be initialized before use");
+    switch (task) {
+      case kInitModel: net_->InitModel(); return;
+      case kLoadModel: net_->LoadModel(*iparam_fp); return;
+      case kSaveModel: net_->SaveModel(*iparam_fp); return;
+      case kUpdate: net_->Update(iparam_epoch); return;
+      case kTrainProp: {
+        net_->Forward(true, iparam_batch);
+        net_->Backprop(iparam_flag);
+        return;
+      }
+      case kPredForward: {
+        net_->Forward(false, iparam_batch);
+        return;
+      }
+      case kCopyNode: {
+        utils::Assert(iparam_nid < static_cast<int>(net_->nodes.size()), "nid out of range");
+        mshadow::Copy(oparam_node, net_->nodes[iparam_nid].data);
+        return;
+      }
+    }
+  }
+  // the following are fields that are used to pass parameters in or out
+  // used to copy out fields in the last layer
+  mshadow::Tensor<cpu,4> oparam_node;
+  // input flag
+  bool iparam_flag;  
+  // input epochs
+  size_t iparam_epoch;
+  // input node id
+  int iparam_nid;
+  // input parameters of file pointers
+  utils::IStream *iparam_fp;
+  // input batch
+  mshadow::Tensor<cpu,4> iparam_batch;
+  // current task
+  TaskType task;
+  // intenal net implementation
+  NeuralNet<xpu> *net_;
+  // configuration
+  const NetConfig &cfg;
+  // signal the destruction of object
+  bool destroy_signal;
+  // signal of jobs
+  utils::Semaphore job_end, job_start;
+  // thread object
+  utils::Thread worker_thread;
+  // whether the implementation is backed by a new thread
+  const bool new_thread;
+};
 }  // namespace nnet
 }  // namespace cxxnet
 #endif

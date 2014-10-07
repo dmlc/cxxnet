@@ -50,14 +50,14 @@ class Thread {
 inline void ThreadExit(void *status) {
   _endthreadex(0);
 }
-#define XGBOOST_THREAD_PREFIX unsigned int __stdcall
+#define CXXNET_THREAD_PREFIX unsigned int __stdcall
 }  // namespace utils
-}  // namespace xgboost
+}  // namespace cxxnet
 #else
 // thread interface using g++     
 #include <semaphore.h>
 #include <pthread.h>
-namespace xgboost {
+namespace cxxnet {
 namespace utils {
 /*!\brief semaphore class */
 class Semaphore {
