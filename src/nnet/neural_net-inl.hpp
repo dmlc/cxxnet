@@ -24,11 +24,11 @@ struct NeuralNet {
   /*! \brief label information */
   layer::LabelInfo label_info;
   /*! \brief nodes in the neural net */
-  std::vector< Node<xpu> > nodes;
+  std::vector<layer::Node<xpu> > nodes;
   /*! \brief layers in the neural net */
-  std::vector<ILayer<xpu>*> layers;
+  std::vector<layer::ILayer<xpu>*> layers;
   /*! \brief updaters in the neural net */
-  std::vector<IUpdater<xpu>*> updaters;
+  std::vector<updater::IUpdater<xpu>*> updaters;
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
   // constructor do nothing
@@ -118,18 +118,18 @@ struct NeuralNet {
   // intialize the neural net data structure
   inline void InitNet(void) {
     nodes.resize(cfg.param.num_nodes);
-    Shape<3> s = cfg.param.input_shape;
+    mshadow::Shape<3> s = cfg.param.input_shape;
     // setup input shape
     nodes[0].shape = mshadow::Shape4(cfg.batch_size, s[2], s[1], s[0]);
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
-      std::vector<Node<xpu>*> nodes_in;
-      std::vector<Node<xpu>*> nodes_out;
+      std::vector<layer::Node<xpu>*> nodes_in;
+      std::vector<layer::Node<xpu>*> nodes_out;
       const NetConfig::LayerInfo &info =cfg.layers[i];
-      for (size_t j = 0; j < info.nindex_in.size() ++j) {
+      for (size_t j = 0; j < info.nindex_in.size(); ++j) {
         nodes_in.push_back(&info.nindex_in[j]);
       }
-      for (size_t j = 0; j < info.nindex_out.size() ++j) {
+      for (size_t j = 0; j < info.nindex_out.size(); ++j) {
         nodes_out.push_back(&info.nindex_out[j]);
       }
       layers.push_back(layer::CreateLayer(&rnd, nodes_in, nodes_out, &label_info));
@@ -139,12 +139,12 @@ struct NeuralNet {
   inline void ConfigLayers(void) {
     for (int i = 0; i < cfg.param.num_layers; ++ i) {
       for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
-        layers[i]->SetParam(cfg.defcfg[j].first.c_ptr(),
-                            cfg.defcfg[j].second.c_ptr());      
+        layers[i]->SetParam(cfg.defcfg[j].first.c_str(),
+                            cfg.defcfg[j].second.c_str());      
       }
       for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
-        layers[i]->SetParam(cfg.layercfg[i][j].first.c_ptr(),
-                            cfg.layercfg[i][j].second.c_ptr());
+        layers[i]->SetParam(cfg.layercfg[i][j].first.c_str(),
+                            cfg.layercfg[i][j].second.c_str());
       }
     }
   }

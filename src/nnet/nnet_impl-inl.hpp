@@ -1,4 +1,5 @@
 #include "./nnet.h"
+#include "./neural_net-inl.hpp"
 
 namespace cxxnet {
 namespace nnet {
