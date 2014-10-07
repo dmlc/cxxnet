@@ -28,7 +28,10 @@ struct Node {
    *     images (batch_size, nchannel, height, width)
    *     matrix (batch_size, 1, 1, length-of-vector)
    */
-  mshadow::Tensor<xpu,4> data;  
+  mshadow::Tensor<xpu,4> data;
+  Node(void) {
+    data.shape = mshadow::Shape4(0,0,0,0);
+  }
   /*! \brief matrix view of the node */
   inline mshadow::Tensor<xpu,2> mat(void) {
     mshadow::Shape<4> shape = data.shape;
