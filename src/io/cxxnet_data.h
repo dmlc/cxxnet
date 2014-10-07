@@ -9,8 +9,8 @@
 
 #include <vector>
 #include <string>
-#include "mshadow/tensor.h"
-#include "../utils/cxxnet_utils.h"
+#include <mshadow/tensor.h>
+#include "../utils/utils.h"
 
 namespace cxxnet {
 /*!
@@ -125,7 +125,7 @@ public:
   }
   /*! \brief copy dense content from existing data, dense only */
   inline void CopyFromDense(const DataBatch &src) {
-    utils::Assert(batch_size == src.batch_size);
+    utils::Assert(batch_size == src.batch_size, "the batch size is not set correctly");
     memcpy(labels, src.labels, batch_size * sizeof(float));
     memcpy(inst_index, src.inst_index, batch_size * sizeof(unsigned));
     mshadow::Copy(data, src.data);

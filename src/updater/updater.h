@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <mshadow/tensor.h>
+#include "../global.h"
 #include "../layer/layer.h"
 
 namespace cxxnet {

@@ -31,9 +31,8 @@ struct NeuralNet {
   std::vector<IUpdater<xpu>*> updaters;
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
-
   // constructor do nothing
-  NeuralNet(void) : rnd(0) {
+  NeuralNet(const NetConfig &cfg) : cfg(cfg), rnd(0) {
   }
   /*! \brief save model to file */
   inline void SaveModel(utils::IStream &fo) const {
@@ -71,20 +70,57 @@ struct NeuralNet {
    */
   inline void Forward(bool is_train) {
     for (size_t i = 0; i < layers.size(); ++ i) {
-      layers[i]->Forward( is_train );
+      layers[i]->Forward(is_train);
     }
   }
-
+  /*! 
+   * \brief backprop 
+   * \param prop_to_input whether prop gradient to input node
+   */
+  inline void Backprop(bool prop_to_input = false) {
+    for (size_t i = layers.size(); i > 0; -- i) {
+      layers[i-1]->Backprop(i != 1 || prop_to_input);
+    }
+  }
+  /*!
+   * \brief update model parameters 
+   * \param epoch number of epoches
+   */
+  inline void Update(size_t epoch) {
+    for (size_t i = 0; i < updaters.size(); ++ i) {
+      updaters[i]->Update(epoch);          
+    }
+  }
+  /*!
+   * \brief notify round start
+   * \param round round counter
+   */
+  inline void StartRound(int round) {
+    for (size_t i = 0; i < updaters.size(); ++ i) {
+      updaters[i]->StartRound(round);
+    }
+  }
+  /*! \brief free all space allocated in this struct*/
+  inline void FreeSpace(void) {
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      nodes[i].FreeSpace();
+    }
+    for (size_t i = 0; i < layers.size(); ++i) {
+      delete layers[i];
+    }
+    for (size_t i = 0; i < updaters.size(); ++i) {
+      delete updaters[i];
+    }
+    nodes.clear(); layers.clear(); updaters.clear();
+  }  
+  
  private:
+  // intialize the neural net data structure
   inline void InitNet(void) {
     nodes.resize(cfg.param.num_nodes);
+    Shape<3> s = cfg.param.input_shape;
     // setup input shape
-    Shape<4> ishape;
-    ishape[0] = cfg.param.input_shape[0];
-    ishape[1] = cfg.param.input_shape[1];
-    ishape[2] = cfg.param.input_shape[2];
-    ishape[3] = cfg.batch_size;
-    nodes[0].shape = ishape;
+    nodes[0].shape = mshadow::Shape4(cfg.batch_size, s[2], s[1], s[0]);
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       std::vector<Node<xpu>*> nodes_in;
@@ -99,6 +135,7 @@ struct NeuralNet {
       layers.push_back(layer::CreateLayer(&rnd, nodes_in, nodes_out, &label_info));
     }
   }
+  // configure the parameters of layer
   inline void ConfigLayers(void) {
     for (int i = 0; i < cfg.param.num_layers; ++ i) {
       for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
@@ -109,31 +146,19 @@ struct NeuralNet {
         layers[i]->SetParam(cfg.layercfg[i][j].first.c_ptr(),
                             cfg.layercfg[i][j].second.c_ptr());
       }
-    }    
+    }
   }
+  // intialize the space of nodes
   inline void InitNodes(void) {
     for (size_t i = 0; i < nodes.size(); ++ i) {
       mshadow::Shape<4> s = nodes[i].data.shape;
       mshadow::AllocSpace(nodes[i].data);
-      printf("node[%d].shape: %u,%u,%u,%u\n",(int)i, s[3],s[2],s[1],s[0] );
-    }    
-  }
-  /*! \brief free the space */
-  inline void FreeSpace(void) {
-    for (size_t i = 0; i < nodes.size(); ++i) {
-      nodes[i].FreeSpace();
+      printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[3], s[2], s[1], s[0]);
     }
-    for (size_t i = 0; i < layers.size(); ++i) {
-      delete layers[i];
-    }
-    for (size_t i = 0; i < updaters.size(); ++i) {
-      delete updaters[i];
-    }
-    nodes.clear(); layers.clear(); updaters.clear();
   }
 };
 
-/*! 
+/*!
  * \brief neural net that runs with an independent thread
  * backed by NeuralNet
  */
