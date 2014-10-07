@@ -9,8 +9,9 @@ template<>
 ILayer<gpu>* CreateLayer<gpu>(LayerType type,
                               mshadow::Random<gpu> *p_rnd,
                               const std::vector<Node<gpu>*> &nodes_in,
-                              const std::vector<Node<gpu>*> &nodes_out) {
-  return CreateLayer_<gpu>(type, p_rnd, nodes_in, nodes_out); 
+                              const std::vector<Node<gpu>*> &nodes_out,
+                              const LabelInfo *label_info) {
+  return CreateLayer_<gpu>(type, p_rnd, nodes_in, nodes_out, label_info); 
 }
 }  // namespace layer
 }  // namespace cxxnet

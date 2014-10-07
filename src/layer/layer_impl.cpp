@@ -10,8 +10,9 @@ template<>
 ILayer<cpu>* CreateLayer<cpu>(LayerType type,
                               mshadow::Random<cpu> *p_rnd,
                               const std::vector<Node<cpu>*> &nodes_in,
-                              const std::vector<Node<cpu>*> &nodes_out) {
-  return CreateLayer_<cpu>(type, p_rnd, nodes_in, nodes_out); 
+                              const std::vector<Node<cpu>*> &nodes_out,
+                              const LabelInfo *label_info) {
+  return CreateLayer_<cpu>(type, p_rnd, nodes_in, nodes_out, label_info); 
 }
 }  // namespace layer
 }  // namespace cxxnet

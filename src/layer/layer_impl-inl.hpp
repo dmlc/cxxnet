@@ -22,7 +22,12 @@ template<typename xpu>
 ILayer<xpu>* CreateLayer_(LayerType type,
                           mshadow::Random<xpu> *p_rnd,
                           const std::vector< Node<xpu> *> &nodes_in,
-                          const std::vector< Node<xpu> *> &nodes_out) {
+                          const std::vector< Node<xpu> *> &nodes_out,
+                          const LabelInfo *label_info) {
+  switch(type) {
+    case kSoftmax: return new SoftmaxLayer<xpu>(nodes_in, nodes_out, label_info);
+    default: break;
+  }
   // code for handling multiple connections return before here
   utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                "this layer can only take one input and output ");
@@ -42,7 +47,6 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>(p_rnd, p_in, p_out);
     case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>(p_rnd, p_in, p_out);
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>(p_rnd, p_in, p_out);
-    case kSoftmax: return new SoftmaxLayer<xpu>(p_rnd, p_in, p_out);
     case kDropConn: return new DropConnLayer<xpu>(p_rnd, p_in, p_out);
     default: utils::Error("unknown layer type");
   }

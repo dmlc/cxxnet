@@ -37,8 +37,37 @@ struct Node {
   /*! \brief check whether it holds a matrix data */
   inline bool is_mat( void ) const {
     return data.shape[2] == 1 && data.shape[1] == 1;
-  }  
+  }
+  inline void FreeSpace(void) {
+    mshadow::FreeSpace(data);
+  }
 }; // struct Node
+
+/*! 
+ * \brief data structure to hold additional information about label of instances
+ * this information is used by layers that computes the gradient over objectibe functions,
+ * this data structure  will be evolving, to meet needs of different kinds of supervision signals
+ */
+struct LabelInfo {
+  /*! \brief pointer to the label fields */
+  const float *labels;
+  /*! \brief the size of the batch */
+  mshadow::index_t batch_size;
+  // constructor
+  LabelInfo(void) : labels(NULL), batch_size(0) {
+  }
+  /*! 
+   * \brief slice the label information to take [begin, end)
+   * \param begin beginning of index
+   * \param end end of index
+   */
+  inline LabelInfo Slice(mshadow::index_t begin, mshadow::index_t end) const {
+    LabelInfo ret;
+    ret.labels = labels + begin;
+    ret.batch_size = end - begin;
+    return ret;
+  }
+};
 
 /*! 
  * \brief Interface of layer
@@ -252,12 +281,16 @@ inline LayerType GetLayerType(const char *type) {
  * \param p_rnd random number generator
  * \param nodes_in list of input nodes of the layer
  * \param nodes_out list of output nodes of the layer
+ * \param label_info pointer to the label information field, that will be contain,
+ *                   this is similar to node, but contains label information that can be used
+ *                   to compute gradient over objetives
  */
 template<typename xpu>
 ILayer<xpu>* CreateLayer(LayerType type,
                          mshadow::Random<xpu> *p_rnd,
                          const std::vector<Node<xpu>*> &nodes_in,
-                         const std::vector<Node<xpu>*> &nodes_out);
+                         const std::vector<Node<xpu>*> &nodes_out,
+                         const LabelInfo *label_info);
 }  // namespace layer
 }  // namespace cxxnet
 #endif  // CXXNET_LAYER_LAYER_H
