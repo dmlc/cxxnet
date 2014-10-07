@@ -5,7 +5,6 @@
  * \brief definition of abstract stream interface for IO
  * \author Bing Xu Tianqi Chen
  */
-#include <zlib.h>
 #include "./utils.h"
 #include <string>
 #include <algorithm>
@@ -88,7 +87,7 @@ class IStream {
     }
     return true;
   }
-};
+}; // class IStream
 
 /*! \brief interface of i/o stream that support seek */
 class ISeekStream: public IStream {
@@ -134,38 +133,7 @@ struct MemoryBufferStream : public ISeekStream {
   std::string *p_buffer_;
   /*! \brief current pointer */
   size_t curr_ptr_;
-};
-
-struct GzFile : public ISeekStream {
- public:
-  GzFile(const char *path, const char *mode) {
-    fp_ = gzopen(path, mode);
-    utils::Check(fp_ != NULL, "cannot open %s", path);
-  }
-  virtual ~GzFile(void) {
-    this->Close();
-  }
-  virtual void Close(void) {
-    if (fp_ != NULL) {
-      gzclose(fp_); fp_ = NULL;
-    }
-  }
-  virtual size_t Read(void *ptr, size_t size) {
-    return gzread(fp_, ptr, size);
-  }
-  virtual void Write(const void *ptr, size_t size) {
-    gzwrite(fp_, ptr, size);
-  }
-  virtual void Seek(size_t pos) {
-    gzseek(fp_, pos, SEEK_SET);
-  }
-  virtual size_t Tell(void) {
-    return static_cast<size_t>(gztell(fp_));
-  }
-
- private:
-  gzFile fp_;
-};
+}; // class MemoryBufferStream
 
 /*! \brief implementation of file i/o stream */
 class StdFile: public ISeekStream {
@@ -204,7 +172,7 @@ class StdFile: public ISeekStream {
  private:
   FILE *fp_;
   size_t sz_;
-};
+}; // class StdFile
 
 /*! \brief Basic page class */
 class BinaryPage {
