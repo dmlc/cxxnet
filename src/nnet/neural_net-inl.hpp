@@ -22,6 +22,8 @@ template<typename xpu>
 struct NeuralNet {
   /*! \brief network configuration configure */
   const NetConfig &cfg;
+  /*! \brief maximum batch_size */
+  mshadow::index_t max_batch;
   /*! \brief label information */
   layer::LabelInfo label_info;
   /*! \brief nodes in the neural net */
@@ -33,7 +35,10 @@ struct NeuralNet {
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
   // constructor do nothing
-  NeuralNet(const NetConfig &cfg) : cfg(cfg), rnd(0) {
+  NeuralNet(const NetConfig &cfg, mshadow::index_t batch_size)       
+      : cfg(cfg), rnd(0) {
+    // set maximum batch
+    this->max_batch = batch_size;
   }
   ~NeuralNet(void) {
     this->FreeSpace();
@@ -55,6 +60,7 @@ struct NeuralNet {
       layers[i]->InitModel();
     }
     this->InitNodes();
+    this->InitUpdaters();
   }
   /*! \brief load model from stream */
   inline void LoadModel(utils::IStream &fi) {
@@ -67,6 +73,7 @@ struct NeuralNet {
       layers[i]->InitLayer();
     }
     this->InitNodes();
+    this->InitUpdaters();
   }
   /*!
    * \brief forward prop
@@ -74,6 +81,9 @@ struct NeuralNet {
    * \param batch the input batch
    */
   inline void Forward(bool is_train, mshadow::Tensor<cpu,4> batch) {
+    // check if we need to adjust batch size according to the input
+    this->AdjustBatchSize(batch.shape[3]);
+    // copy data into node
     mshadow::Copy(nodes[0].data, batch);
     for (size_t i = 0; i < layers.size(); ++ i) {
       layers[i]->Forward(is_train);
@@ -113,12 +123,12 @@ struct NeuralNet {
     nodes.resize(cfg.param.num_nodes);
     mshadow::Shape<3> s = cfg.param.input_shape;
     // setup input shape
-    nodes[0].data.shape = mshadow::Shape4(cfg.batch_size, s[2], s[1], s[0]);
+    nodes[0].data.shape = mshadow::Shape4(max_batch, s[2], s[1], s[0]);
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       std::vector<layer::Node<xpu>*> nodes_in;
       std::vector<layer::Node<xpu>*> nodes_out;
-      const NetConfig::LayerInfo &info =cfg.layers[i];
+      const NetConfig::LayerInfo &info = cfg.layers[i];
       for (size_t j = 0; j < info.nindex_in.size(); ++j) {
         nodes_in.push_back(&nodes[info.nindex_in[j]]);
       }
@@ -141,12 +151,40 @@ struct NeuralNet {
       }
     }
   }
+  // create the updaters
+  inline void InitUpdaters(void) {
+    for (int i = 0; i < cfg.param.num_layers; ++ i) {
+      std::vector<updater::IUpdater<xpu>*> out;
+      updater::CreateUpdaters(cfg.updater_type.c_str(),
+                              &rnd, layers[i], &out);
+      for (size_t k = 0; k < out.size(); ++k) {
+        for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
+          out[k]->SetParam(cfg.defcfg[j].first.c_str(),
+                           cfg.defcfg[j].second.c_str());      
+        }
+        for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
+          out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
+                           cfg.layercfg[i][j].second.c_str());
+        }
+        updaters.push_back(out[k]);
+      }      
+    }
+  }
   // intialize the space of nodes
   inline void InitNodes(void) {
     for (size_t i = 0; i < nodes.size(); ++ i) {
       mshadow::Shape<4> s = nodes[i].data.shape;
       mshadow::AllocSpace(nodes[i].data);
       printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[3], s[2], s[1], s[0]);
+    }
+  }
+  // adjust batch size to a new value, the batch_size must be smaller than max_batch
+  inline void AdjustBatchSize(mshadow::index_t batch_size) {
+    utils::Assert(max_batch >= batch_size, "cannot set batch size larger than max batch");
+    if (batch_size != nodes[0].data.shape[3]) {
+      for (size_t i = 0; i < nodes.size(); ++i) {
+        nodes[i].data.shape[3] = batch_size;
+      }
     }
   }
   /*! \brief free all space allocated in this struct*/
@@ -161,8 +199,7 @@ struct NeuralNet {
       delete updaters[i];
     }
     nodes.clear(); layers.clear(); updaters.clear();
-  }  
-
+  }
 };
 
 /*!
@@ -172,10 +209,23 @@ struct NeuralNet {
 template<typename xpu>
 class NeuralNetThread {
  public:
-  /*! \brief create a new neural net thread */
-  NeuralNetThread(const NetConfig &cfg, bool new_thread = true)
-      : cfg(cfg), new_thread(new_thread) {
+  /*! \brief create a new neural net thread on specific device */
+  NeuralNetThread(const NetConfig &cfg, 
+                  int device_id,
+                  mshadow::index_t batch_size,
+                  bool new_thread = true)
+      : cfg(cfg), device_id(device_id),
+        batch_size(batch_size), new_thread(new_thread) {
     net_ = NULL;
+    if (new_thread) {
+      destroy_signal = false;
+      job_start.Init(0);
+      job_end.Init(0);
+      worker_thread.Start(ThreadEntry, this);
+    } else {
+      mshadow::InitTensorEngine(device_id);
+      net_ = new NeuralNet<xpu>(cfg, batch_size);
+    }
   }
   // destructor
   ~NeuralNetThread(void) {
@@ -188,20 +238,11 @@ class NeuralNetThread {
         job_end.Destroy();
       } else {
         delete net_;
+        mshadow::ShutdownTensorEngine();
       }
     }
   }
-  /*! \brief initialize the thread */
-  inline void Init(void) {
-    if (new_thread) {
-      destroy_signal = false;
-      job_start.Init(0);
-      job_end.Init(0);
-      worker_thread.Start(ThreadEntry, this);
-    } else {
-      net_ = new NeuralNet<xpu>();
-    }
-  }
+
   /*! 
    * \brief wait till the the thread finishes current task 
    * This function MUST be called every time before running next job
@@ -228,14 +269,21 @@ class NeuralNetThread {
     this->task = kUpdate;
     this->ExecTask();
   }
+  inline void StartRound(int round) {
+    iparam_epoch = static_cast<size_t>(round);
+    this->task = kStartRound;
+    this->ExecTask();
+  }
   /*! \brief run a training forward backprop pass */
   inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
                                    const layer::LabelInfo &label_info,
+                                   mshadow::Tensor<cpu,4> out_data,
                                    bool prop_to_input = false) {
     utils::Assert(net_ != NULL, "thread must be initialized before use");
     net_->label_info = label_info;
     iparam_batch = batch;
     iparam_flag = prop_to_input;
+    oparam_node = out_data;
     this->task = kTrainProp;
     this->ExecTask();
   }
@@ -249,7 +297,7 @@ class NeuralNetThread {
   inline void CopyNodeData(int nid, mshadow::Tensor<cpu,4> out_data) {
     iparam_nid = nid;
     oparam_node = out_data;
-    this->Task = kCopyNode;
+    this->task = kCopyNode;
     this->ExecTask();
   }
   // return reference of node
@@ -264,6 +312,7 @@ class NeuralNetThread {
     kLoadModel,
     kSaveModel,
     kUpdate,
+    kStartRound,
     kTrainProp,
     kPredForward,
     kCopyNode
@@ -275,8 +324,9 @@ class NeuralNetThread {
     return NULL;
   }
   inline void RunThread(void) {
+    mshadow::InitTensorEngine(device_id);
     // allocate net
-    net_ = new NeuralNet<xpu>();
+    net_ = new NeuralNet<xpu>(cfg, batch_size);
     while (!destroy_signal) {
       job_start.Wait();
       if (destroy_signal) break;
@@ -284,6 +334,7 @@ class NeuralNetThread {
       job_end.Post();
     }
     delete net_;
+    mshadow::ShutdownTensorEngine();
   }
   inline void ExecTask(void) {
     if (new_thread) {
@@ -299,8 +350,13 @@ class NeuralNetThread {
       case kLoadModel: net_->LoadModel(*iparam_fp); return;
       case kSaveModel: net_->SaveModel(*iparam_fp); return;
       case kUpdate: net_->Update(iparam_epoch); return;
+      case kStartRound: net_->StartRound(static_cast<int>(iparam_epoch)); return;
       case kTrainProp: {
+        if (iparam_batch.shape[3] == 0) return;
         net_->Forward(true, iparam_batch);
+        if (oparam_node.dptr != NULL) {
+          mshadow::Copy(oparam_node, net_->nodes.back().data);
+        }
         net_->Backprop(iparam_flag);
         return;
       }
@@ -309,6 +365,7 @@ class NeuralNetThread {
         return;
       }
       case kCopyNode: {
+        if (iparam_nid < 0) iparam_nid += static_cast<int>(net_->nodes.size());
         utils::Assert(iparam_nid < static_cast<int>(net_->nodes.size()), "nid out of range");
         mshadow::Copy(oparam_node, net_->nodes[iparam_nid].data);
         return;
@@ -340,6 +397,10 @@ class NeuralNetThread {
   utils::Semaphore job_end, job_start;
   // thread object
   utils::Thread worker_thread;
+  // device id used to intialize tensor engine
+  int device_id;
+  // local batch size of this thread
+  mshadow::index_t batch_size;
   // whether the implementation is backed by a new thread
   const bool new_thread;
 };

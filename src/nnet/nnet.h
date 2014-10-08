@@ -27,7 +27,7 @@ class INetTrainer{
   /*! \brief random initalize model */
   virtual void InitModel(void) = 0;
   /*! \brief save model to stream */
-  virtual void SaveModel(utils::IStream &fo) const = 0;
+  virtual void SaveModel(utils::IStream &fo) = 0;
   /*! \brief load model from stream */
   virtual void LoadModel(utils::IStream &fi) = 0;
   /*!

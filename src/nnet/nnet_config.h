@@ -74,8 +74,6 @@ struct NetConfig {
   // Training parameters that can be changed each time, even when network is fixed
   // the training parameters will not be saved during LoadNet SaveNet
   //
-  /*! \brief batch size used for training */
-  int batch_size;
   /*! \brief type of updater function */
   std::string updater_type;
   /*! \brief default global configuration */
@@ -84,8 +82,6 @@ struct NetConfig {
   std::vector< std::vector< std::pair<std::string, std::string> > > layercfg;
   // constructor
   NetConfig(void) {
-    // default training parameters
-    batch_size = 100;
     updater_type = "sgd";
   }
   /*!
@@ -160,7 +156,6 @@ struct NetConfig {
           param.input_shape = mshadow::Shape3(z, y, x);
         }
       }
-      if (!strcmp(name, "batch_size")) batch_size = atoi(val);
       if (!strcmp(name, "updater")) updater_type = val;
       if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
       if (!strcmp(name, "netconfig") && !strcmp(val, "end"))   netcfg_mode = 0;    

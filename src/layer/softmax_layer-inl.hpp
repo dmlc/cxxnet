@@ -19,6 +19,9 @@ class SoftmaxLayer: public ILayer<xpu> {
     this->plabelinfo = label_info;    
   }
   virtual ~SoftmaxLayer(void) {}
+  virtual void SetParam(const char *name, const char *val) {
+    if (!strcmp(name, "batch_size")) batch_size = atoi(val);
+  }
   virtual void InitLayer(void) {
     tnode.Resize(pin->mat().shape);
   }
@@ -33,10 +36,17 @@ class SoftmaxLayer: public ILayer<xpu> {
       tnode[i][k] -= 1.0f;
     }
     mshadow::Copy(pin->mat(), tnode);
+    // scale gradient by dividing global batch size
+    pin->mat() *= (1.0f / batch_size);
   }
   
  protected:
-    
+  /*!
+   * \brief global batch_size set by user, this 
+   *        is not necessarily the batch_size in plabelinfo, since a batch can be divided 
+   *        into subbatch to layers in different devices
+   */
+  int batch_size;
   /*! \brief temp space for notde*/
   mshadow::TensorContainer<cpu,2> tnode;
   /*! \brief reference to label information */
