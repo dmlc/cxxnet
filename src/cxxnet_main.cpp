@@ -6,11 +6,13 @@
 #include <cstring>
 #include <vector>
 #include <climits>
-#include "nnet/cxxnet_nnet.h"
+#include "nnet/nnet.h"
 #include "io/cxxnet_data.h"
-#include "utils/cxxnet_config.h"
+#include "utils/config.h"
 
 namespace cxxnet{
+    using namespace nnet;
+
     class CXXNetLearnTask{
     public:
         CXXNetLearnTask( void ){
@@ -119,7 +121,7 @@ namespace cxxnet{
             if( last != NULL ){
                 utils::Assert( fread( &net_type, sizeof(int), 1, last ) > 0, "loading model" );
                 net_trainer = this->CreateNet();
-                mshadow::utils::FileStream fs( last );
+                utils::FileStream fs( last );
                 net_trainer->LoadModel( fs );
                 start_counter = s_counter - 1;
                 fclose( last );
@@ -133,7 +135,7 @@ namespace cxxnet{
             FILE *fi = utils::FopenCheck( name_model_in.c_str(), "rb" );
             utils::Assert( fread( &net_type, sizeof(int), 1, fi ) > 0, "loading model" );
             net_trainer = this->CreateNet();
-            mshadow::utils::FileStream fs( fi );
+            utils::FileStream fs( fi );
             net_trainer->LoadModel( fs );
             fclose( fi );
         }
@@ -144,7 +146,7 @@ namespace cxxnet{
             if( save_period == 0 || start_counter % save_period != 0 ) return;
             FILE *fo  = utils::FopenCheck( name, "wb" );
             fwrite( &net_type, sizeof(int), 1, fo );
-            mshadow::utils::FileStream fs( fo );
+            utils::FileStream fs( fo );
             net_trainer->SaveModel( fs );
             fclose( fo );
         }
@@ -161,8 +163,13 @@ namespace cxxnet{
             }
             if( reset_net_type != -1 ){
                 net_type = reset_net_type;
+            }            
+            INetTrainer *net;            
+            if (device == "gpu") {
+              net = cxxnet::CreateNet<mshadow::gpu>( net_type );
+            } else {
+              net = cxxnet::CreateNet<mshadow::cpu>( net_type );
             }
-            INetTrainer *net = cxxnet::CreateNet( net_type, device.c_str() );
 
             for( size_t i = 0; i < cfg.size(); ++ i ){
                 net->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );

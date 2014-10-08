@@ -223,7 +223,9 @@ class NeuralNetThread {
       job_end.Init(0);
       worker_thread.Start(ThreadEntry, this);
     } else {
-      mshadow::InitTensorEngine(device_id);
+      if (!xpu::kDevCPU) {
+        mshadow::InitTensorEngine(device_id);
+      }
       net_ = new NeuralNet<xpu>(cfg, batch_size);
     }
   }
@@ -238,7 +240,9 @@ class NeuralNetThread {
         job_end.Destroy();
       } else {
         delete net_;
-        mshadow::ShutdownTensorEngine();
+        if (!xpu::kDevCPU) {
+          mshadow::ShutdownTensorEngine();
+        }
       }
     }
   }
@@ -324,7 +328,9 @@ class NeuralNetThread {
     return NULL;
   }
   inline void RunThread(void) {
-    mshadow::InitTensorEngine(device_id);
+    if (!xpu::kDevCPU) {
+      mshadow::InitTensorEngine(device_id);
+    }
     // allocate net
     net_ = new NeuralNet<xpu>(cfg, batch_size);
     while (!destroy_signal) {
@@ -334,7 +340,9 @@ class NeuralNetThread {
       job_end.Post();
     }
     delete net_;
-    mshadow::ShutdownTensorEngine();
+    if (!xpu::kDevCPU) {
+      mshadow::ShutdownTensorEngine();
+    }
   }
   inline void ExecTask(void) {
     if (new_thread) {

@@ -12,23 +12,23 @@ typedef mshadow::real_t  real_t;
 };
 
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_utils.h"
-#include "../utils/cxxnet_io_utils.h"
+#include "../utils/utils.h"
+#include "../utils/io.h"
 #include "cxxnet_iter_mnist-inl.hpp"
-#include "cxxnet_iter_mshadow-inl.hpp"
-#include "cxxnet_iter_spfeat-inl.hpp"
+//#include "cxxnet_iter_mshadow-inl.hpp"
+//#include "cxxnet_iter_spfeat-inl.hpp"
 
-#include "cxxnet_iter_proc-inl.hpp"
-#include "cxxnet_iter_sparse-inl.hpp"
-#include "cxxnet_iter_thread_npybin-inl.hpp"
+//#include "cxxnet_iter_proc-inl.hpp"
+//#include "cxxnet_iter_sparse-inl.hpp"
+//#include "cxxnet_iter_thread_npybin-inl.hpp"
 
 #if CXXNET_USE_OPENCV
-#include "cxxnet_iter_img-inl.hpp"
-#include "cxxnet_iter_thread_imbin-inl.hpp"
+//#include "cxxnet_iter_img-inl.hpp"
+//#include "cxxnet_iter_thread_imbin-inl.hpp"
 #endif
 
 #if CXXNET_ADAPT_XGBOOST
-#include "../plugin/cxxnet_xgboost_iter-inl.hpp"
+//#include "../plugin/cxxnet_xgboost_iter-inl.hpp"
 #endif
 
 namespace cxxnet {
@@ -39,6 +39,11 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
     const char *name = cfg[i].first.c_str();
     const char *val  = cfg[i].second.c_str();
     if (!strcmp(name, "iter")) {
+      if (!strcmp(val, "mnist")) {
+        utils::Check(it == NULL, "mnist can not chain over other iterator");
+        it = new MNISTIterator();
+      }      
+      /*
       if (!strcmp(val, "spfeat")) {
         utils::Assert(it == NULL);
         it = new SpFeatIterator(); continue;
@@ -88,7 +93,7 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
         utils::Assert(it != NULL, "must specify input of threadbuffer");
         it = new Dense2SparseAdapter(it);
         continue;
-      }
+        }*/
       utils::Error("unknown iterator type");
     }
 

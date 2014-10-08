@@ -6,6 +6,7 @@
  * \author Bing Xu Tianqi Chen
  */
 #include "./utils.h"
+#include <zlib.h>
 #include <string>
 #include <algorithm>
 #include <cstring>
@@ -87,6 +88,18 @@ class IStream {
     }
     return true;
   }
+  /*!
+   * \brief read a simple type and return it
+   *        for example fs.ReadType<int>() will read int from the stream
+   * \return the data readed
+   * \tparam TRet the type of data to be readed 
+   */
+  template<typename TRet>
+  inline TRet ReadType(void) {
+    TRet ret;
+    this->Read(&ret, sizeof(ret));
+    return ret;
+  }
 }; // class IStream
 
 /*! \brief interface of i/o stream that support seek */
@@ -134,6 +147,65 @@ struct MemoryBufferStream : public ISeekStream {
   /*! \brief current pointer */
   size_t curr_ptr_;
 }; // class MemoryBufferStream
+
+struct GzFile : public ISeekStream {
+ public:
+  GzFile(const char *path, const char *mode) {
+    fp_ = gzopen(path, mode);
+    utils::Check(fp_ != NULL, "Failed to open file %s\n", path);
+  }
+  virtual ~GzFile(void) {
+    this->Close();
+  }
+  virtual void Close(void) {
+    if (fp_ != NULL){
+      gzclose(fp_); fp_ = NULL;
+    }
+  }
+  virtual size_t Read(void *ptr, size_t size) {
+    return gzread(fp_, ptr, size);
+  }
+  virtual void Write(const void *ptr, size_t size) {
+    gzwrite(fp_, ptr, size);
+  }
+  virtual void Seek(size_t pos) {
+    gzseek(fp_, pos, SEEK_SET);
+  }
+  virtual size_t Tell(void) {
+    return static_cast<size_t>(gztell(fp_));
+  }
+ private:
+  gzFile fp_;
+};
+
+/*! \brief implementation of file i/o stream */
+class FileStream : public ISeekStream {
+ public:
+  explicit FileStream(FILE *fp) : fp(fp) {}
+  explicit FileStream(void) {
+    this->fp = NULL;
+  }
+  virtual size_t Read(void *ptr, size_t size) {
+    return std::fread(ptr, size, 1, fp);
+  }
+  virtual void Write(const void *ptr, size_t size) {
+    std::fwrite(ptr, size, 1, fp);
+  }
+  virtual void Seek(size_t pos) {
+    std::fseek(fp, pos, SEEK_SET);
+  }
+  virtual size_t Tell(void) {
+    return std::ftell(fp);
+  }
+  inline void Close(void) {
+    if (fp != NULL){
+      std::fclose(fp); fp = NULL;
+    }
+  }
+
+ protected:
+  FILE *fp;
+};
 
 /*! \brief implementation of file i/o stream */
 class StdFile: public ISeekStream {
