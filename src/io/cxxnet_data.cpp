@@ -41,7 +41,7 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
     if (!strcmp(name, "iter")) {
       if (!strcmp(val, "mnist")) {
         utils::Check(it == NULL, "mnist can not chain over other iterator");
-        it = new MNISTIterator();
+        it = new MNISTIterator(); continue;
       }      
       /*
       if (!strcmp(val, "spfeat")) {

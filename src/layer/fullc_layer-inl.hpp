@@ -57,9 +57,9 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     utils::Check(node_in.is_mat(), "input need to be a matrix");
     utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
     // we change matrix convention 
-    pnode_out->data.shape = mshadow::Shape4(node_in.data.shape[4], 1, 1, param_.num_hidden);
+    pnode_out->data.shape = mshadow::Shape4(node_in.data.shape[3], 1, 1, param_.num_hidden);
   }
-
+  
   virtual void Forward_(bool is_train,
                         Node<xpu> *pnode_in,
                         Node<xpu> *pnode_out) {

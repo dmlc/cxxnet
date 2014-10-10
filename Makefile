@@ -36,7 +36,7 @@ all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu src/layer/*.h src/layer/*.hpp src/utils/*.h
 updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_impl.cu src/layer/layer.h src/updater/*.hpp src/updater/*.h src/utils/*.h
 nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h
-cxxnet_data.o: src/io/cxxnet_data.cpp
+cxxnet_data.o: src/io/cxxnet_data.cpp src/io/*.hpp
 
 bin/cxxnet: src/cxxnet_main.cpp $(OBJ) $(CUOBJ)
 

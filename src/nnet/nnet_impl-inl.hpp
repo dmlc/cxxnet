@@ -37,7 +37,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
   virtual void InitModel(void) {
-    this->InitNet();
+    this->InitNet();    
     nets_[0]->InitModel();
     nets_[0]->WaitJob();
     this->Save2ModelBlob();
@@ -46,6 +46,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       nets_[i]->LoadModel(fs);
       nets_[i]->WaitJob();
     }
+    this->InitTemp();
   }
   virtual void SaveModel(utils::IStream &fo) {
     this->Save2ModelBlob();
@@ -64,15 +65,17 @@ class CXXNetThreadTrainer : public INetTrainer {
       nets_[i]->LoadModel(fs);
     }
     this->WaitAllJobs();
+    this->InitTemp();
   }
   virtual void StartRound(int round) {
-    for (size_t i = 0; i < nets_.size(); ++i) {
+    for (size_t i = 0; i < nets_.size(); ++i) {  
       nets_[i]->StartRound(round);
     }
     this->WaitAllJobs();
   }
   virtual void Update(const DataBatch& data) {
-    mshadow::Shape<4> oshape = out_temp.shape; oshape[3] = data.batch_size;
+    mshadow::Shape<4> oshape = out_temp.shape;
+    oshape[3] = data.batch_size;
     out_temp.Resize(oshape);
 
     const size_t ndevice = devices_.size();
@@ -84,7 +87,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       layer::LabelInfo info;
       info.labels = data.labels + begin;
       info.batch_size = end - begin;
-      nets_[i]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end));
+      nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end));
     }
     this->WaitAllJobs();
     // evlauate training loss
@@ -93,7 +96,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     if (++ sample_counter >= update_period) {
       for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-        nets_[i]->Update(epoch_counter);
+        nets_[i - 1]->Update(epoch_counter);
       }
       epoch_counter += 1;
       this->WaitAllJobs();
@@ -148,21 +151,21 @@ class CXXNetThreadTrainer : public INetTrainer {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
       mshadow::index_t end = std::min(i * step, data.batch_size);
       mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
-      nets_[i]->PredictForward(mbatch);
+      nets_[i - 1]->PredictForward(mbatch);
     }    
     this->WaitAllJobs();
     // copy results out
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
       mshadow::index_t end = std::min(i * step, data.batch_size);
-      nets_[i]->CopyNodeData(-1, out_temp.Slice(begin, end));
+      nets_[i - 1]->CopyNodeData(-1, out_temp.Slice(begin, end));
     }
     this->WaitAllJobs();
   }
   
   inline void WaitAllJobs(void) {
     for (size_t i = nets_.size(); i != 0; --i) {
-      nets_[i-1]->WaitJob();
+      nets_[i - 1]->WaitJob();
     }
   }
   inline void Save2ModelBlob(void){
@@ -184,6 +187,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (silent == 0) {
       printf("finish initialization with %lu devices\n", devices_.size());
     }
+  }
+  inline void InitTemp(void) {
     mshadow::Shape<4> oshape = nets_[0]->net().nodes.back().data.shape;    
     oshape[3] = batch_size;
     out_temp.Resize(oshape);

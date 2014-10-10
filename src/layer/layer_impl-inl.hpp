@@ -32,7 +32,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
   utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                "this layer can only take one input and output ");
   Node<xpu> *p_in = nodes_in[0];
-  Node<xpu> *p_out = nodes_in[0];
+  Node<xpu> *p_out = nodes_out[0];
   switch(type) {
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd, p_in, p_out);
     case kBias: return new BiasLayer<xpu>(p_rnd, p_in, p_out);

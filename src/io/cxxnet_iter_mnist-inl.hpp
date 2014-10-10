@@ -34,7 +34,7 @@ namespace cxxnet {
             this->LoadImage();
             this->LoadLabel();
             if( mode_ == 1 ){
-                out_.data.shape = mshadow::Shape4(1,1,batch_size_,img_.shape[1] * img_.shape[0] );
+                out_.data.shape = mshadow::Shape4(batch_size_, 1, 1,img_.shape[1] * img_.shape[0] );
             }else{
                 out_.data.shape = mshadow::Shape4( batch_size_, 1, img_.shape[1], img_.shape[0] );
             }
@@ -68,11 +68,11 @@ namespace cxxnet {
     private:
         inline void LoadImage( void ) {
             utils::GzFile gzimg( path_img.c_str(), "rb" );
-            gzimg.ReadType<int>();
-            int image_count = gzimg.ReadType<int>();
-            int image_rows  = gzimg.ReadType<int>();
-            int image_cols  = gzimg.ReadType<int>();
-
+            ReadInt(gzimg);
+            int image_count = ReadInt(gzimg);
+            int image_rows  = ReadInt(gzimg);
+            int image_cols  = ReadInt(gzimg);
+            
             img_.shape = mshadow::Shape3( image_count, image_rows, image_cols );
             img_.shape.stride_ = img_.shape[0];
             
@@ -90,8 +90,8 @@ namespace cxxnet {
         }        
         inline void LoadLabel( void ) {
             utils::GzFile gzlabel( path_label.c_str(), "rb" );
-            gzlabel.ReadType<int>();
-            int labels_count = gzlabel.ReadType<int>();
+            ReadInt(gzlabel);
+            int labels_count =ReadInt(gzlabel);
 
             labels_.resize( labels_count );
             for( int i = 0; i < labels_count; ++i ) {
@@ -111,6 +111,12 @@ namespace cxxnet {
             // copy back
             mshadow::Copy( img_, tmpimg );
             labels_ = tmplabel;
+        }
+     private:
+        inline static int ReadInt(utils::IStream &fi) {
+          unsigned char buf[4];
+          utils::Assert( fi.Read( buf, sizeof(buf) ) == sizeof(buf), "Failed to read an int\n");
+          return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
         }
     private:
         // silent

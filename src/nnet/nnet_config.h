@@ -119,21 +119,6 @@ struct NetConfig {
     }
     this->ClearConfig();
   }
-  /*! \brief guess parameters, from current setting, this will set init_end in param to be true */
-  inline void InitNet(void) {
-    param.num_nodes = 0;
-    param.num_layers = static_cast<int>(layers.size());
-    for (size_t i = 0; i < layers.size(); ++ i) {
-      const LayerInfo &info = layers[i];
-      for (size_t j = 0; j < info.nindex_in.size(); ++j) {
-        param.num_nodes = std::max(info.nindex_in[j] + 1, param.num_nodes);
-      }
-      for (size_t j = 0; j < info.nindex_out.size(); ++j) {
-        param.num_nodes = std::max(info.nindex_out[j] + 1, param.num_nodes);
-      }
-    }
-    param.init_end = 1;
-  }
   /*!
    * \brief setup configuration, using the config string pass in 
    */
@@ -183,6 +168,7 @@ struct NetConfig {
         defcfg.push_back(std::make_pair(std::string(name), std::string(val)));
       }
     }
+    if (param.init_end == 0) this->InitNet();
   }
   
  private:
@@ -192,7 +178,7 @@ struct NetConfig {
     LayerInfo inf;
     int a, b;
     char ltype[256], tag[256];
-    if (sscanf(name, "layer[%d->%d]", &a, &b) != 2) {
+    if (sscanf(name, "layer[%d->%d]", &a, &b) == 2) {
       inf.nindex_in.push_back(a);
       inf.nindex_out.push_back(b);
     } else if (sscanf(name, "layer[+%d]", &b) == 1) {
@@ -200,11 +186,26 @@ struct NetConfig {
       inf.nindex_in.push_back(a);
       inf.nindex_out.push_back(b);      
     } else {
-      utils::Error("invalid config format");
+      utils::Error("invalid layer format %s", name);
     }
-    utils::Check(sscanf(val , "%[^:]:%s", ltype, tag) >= 1, "invalid config format");
+    utils::Check(sscanf(val , "%[^:]:%s", ltype, tag) >= 1, "invalid config format %s", val);
     inf.type = layer::GetLayerType(ltype);    
     return inf;
+  }
+  /*! \brief guess parameters, from current setting, this will set init_end in param to be true */
+  inline void InitNet(void) {
+    param.num_nodes = 0;
+    param.num_layers = static_cast<int>(layers.size());
+    for (size_t i = 0; i < layers.size(); ++ i) {
+      const LayerInfo &info = layers[i];
+      for (size_t j = 0; j < info.nindex_in.size(); ++j) {
+        param.num_nodes = std::max(info.nindex_in[j] + 1, param.num_nodes);
+      }
+      for (size_t j = 0; j < info.nindex_out.size(); ++j) {
+        param.num_nodes = std::max(info.nindex_out[j] + 1, param.num_nodes);
+      }
+    }
+    param.init_end = 1;
   }
   /*! \brief clear the configurations */
   inline void ClearConfig(void) {

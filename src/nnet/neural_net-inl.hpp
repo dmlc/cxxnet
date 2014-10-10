@@ -84,7 +84,7 @@ struct NeuralNet {
     // check if we need to adjust batch size according to the input
     this->AdjustBatchSize(batch.shape[3]);
     // copy data into node
-    mshadow::Copy(nodes[0].data, batch);
+    mshadow::Copy(nodes[0].data, batch);    
     for (size_t i = 0; i < layers.size(); ++ i) {
       layers[i]->Forward(is_train);
     }
@@ -222,6 +222,8 @@ class NeuralNetThread {
       job_start.Init(0);
       job_end.Init(0);
       worker_thread.Start(ThreadEntry, this);
+      // wait until net is created
+      job_end.Wait();
     } else {
       if (!xpu::kDevCPU) {
         mshadow::InitTensorEngine(device_id);
@@ -333,6 +335,8 @@ class NeuralNetThread {
     }
     // allocate net
     net_ = new NeuralNet<xpu>(cfg, batch_size);
+    // tell the master that net is created
+    job_end.Post();
     while (!destroy_signal) {
       job_start.Wait();
       if (destroy_signal) break;
