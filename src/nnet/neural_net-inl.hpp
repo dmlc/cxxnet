@@ -166,6 +166,7 @@ struct NeuralNet {
           out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
                            cfg.layercfg[i][j].second.c_str());
         }
+        out[k]->Init();
         updaters.push_back(out[k]);
       }      
     }

@@ -34,8 +34,7 @@ struct Node {
   }
   /*! \brief matrix view of the node */
   inline mshadow::Tensor<xpu,2> mat(void) {
-    mshadow::Shape<4> shape = data.shape;
-    return mshadow::Tensor<xpu,2>(data.dptr, mshadow::Shape2(shape[3], shape[0]));
+    return data.FlatTo2D();
   }
   /*! \brief check whether it holds a matrix data */
   inline bool is_mat( void ) const {
@@ -135,6 +134,14 @@ class ILayer {
    */
   virtual void InitLayer(void) {}
   /*!
+   * \brief notify the layer that batch size has been changed
+   *        the new batch size will not be larger than the initial batch size each layer see during InitLayer
+   *        the batch size is the shape[3] of node, most layer do not implement this
+   *        however, for layers that have auxiliary data structure related to batch size
+   *        this function can be used to notify adjustment of batchsize
+   */
+  virtual void BatchSizeChanged(void) {}
+  /*!
    * \brief Forward propagation from input nodes to output nodes
    * \param is_train the propagation is during training phase
    */
@@ -192,6 +199,9 @@ class CommonLayerBase : public ILayer<xpu> {
   virtual void InitLayer(void) {
     this->InitLayer_(*pin_, pout_);
   }
+  virtual void BatchSizeChanged(void) {
+    this->BatchSizeChanged_(*pin_, *pout_);
+  }  
   virtual void Forward(bool is_train) {
     this->Forward_(is_train, pin_, pout_);
   }
@@ -201,13 +211,20 @@ class CommonLayerBase : public ILayer<xpu> {
 
  protected:
   /*!
-   * \brief initialized 
+   * \brief initialize the layer
    * \param node_in input node, with the shape already being setted correctly
    * \param pnode_out output node, whose shape should be set by InitLayer function,
    *                  based on the input node shape and the layer configuration
    */  
   virtual void InitLayer_(const Node<xpu> &node_in,
                           Node<xpu> *pnode_out) = 0;
+  /*!
+   * \brief notify the layer that batch size has been changed
+   *        the new batch size will not be larger than the initial batch size each layer see during InitLayer
+   *        the batch size is the shape[3] of node, most layer do not implement this
+   */  
+  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
+                                 const Node<xpu> &node_out) {}
   /*!
    * \brief Forward propagation from input nodes to output nodes
    * \param is_train the propagation is during training phase

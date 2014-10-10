@@ -25,6 +25,9 @@ class SoftmaxLayer: public ILayer<xpu> {
   virtual void InitLayer(void) {
     tnode.Resize(pin->mat().shape);
   }
+  virtual void BatchSizeChanged(void) {
+    tnode.Resize(pin->mat().shape);  
+  }
   virtual void Forward(bool is_train) {
     mshadow::Softmax(pin->mat(), pin->mat());
   }

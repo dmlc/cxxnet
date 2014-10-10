@@ -26,8 +26,13 @@ class DropoutLayer : public CommonLayerBase<xpu> {
                           Node<xpu> *pnode_out) {
     utils::Check(dropout_threshold >= 0.0f && dropout_threshold < 1.0f,
                  "DropoutLayer: invalid dropout_threshold\n");
+    this->BatchSizeChanged_(node_in, *pnode_out);
+  }
+  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
+                                 const Node<xpu> &node_out) {
     mask_.Resize(node_in.data.shape);
   }
+
   virtual void Forward_(bool is_train,
                         Node<xpu> *pnode_in,
                         Node<xpu> *pnode_out) {

@@ -33,7 +33,12 @@ class PoolingLayer : public CommonLayerBase<xpu> {
         Shape4( node_in.data.shape[3], node_in.data.shape[2],
                 std::min(node_in.data.shape[1] - ksize_y + kstride-1, node_in.data.shape[1] - 1) / kstride + 1,
                 std::min(node_in.data.shape[0] - ksize_x + kstride-1, node_in.data.shape[0] - 1) / kstride + 1);
-    tmp_.Resize(oshape); pnode_out->data.shape = oshape;
+    pnode_out->data.shape = oshape;
+    this->BatchSizeChanged_(node_in, *pnode_out);
+  }
+  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
+                                 const Node<xpu> &node_out) {
+    tmp_.Resize(node_out.data.shape); 
   }
   virtual void Forward_(bool is_train,
                         Node<xpu> *pnode_in,

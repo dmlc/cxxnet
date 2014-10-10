@@ -29,8 +29,12 @@ class LRNLayer : public CommonLayerBase<xpu> {
   virtual void InitLayer_(const Node<xpu> &node_in,
                           Node<xpu> *pnode_out) {
     pnode_out->data.shape = node_in.data.shape;
+    this->BatchSizeChanged_(node_in, *pnode_out);
+  }
+  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
+                                 const Node<xpu> &node_out) {
     tmp_in.Resize(node_in.data.shape);
-    tmp_norm.Resize(node_in.data.shape);
+    tmp_norm.Resize(node_in.data.shape);    
   }
   virtual void Forward_(bool is_train,
                         Node<xpu> *pnode_in,

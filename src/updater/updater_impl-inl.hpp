@@ -41,17 +41,17 @@ struct CreateUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,1> weight,
                      mshadow::Tensor<xpu,1> grad) {
-    CreateUpdater_(type, p_rnd, weight, grad, field_name);
+    out_updaters->push_back(CreateUpdater_(type, p_rnd, weight, grad, field_name));
   }
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,2> weight,
                      mshadow::Tensor<xpu,2> grad) {
-    CreateUpdater_(type, p_rnd, weight, grad, field_name);
+    out_updaters->push_back(CreateUpdater_(type, p_rnd, weight, grad, field_name));
   }
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,3> weight,
                      mshadow::Tensor<xpu,3> grad) {
-    CreateUpdater_(type, p_rnd, weight, grad, field_name);
+    out_updaters->push_back(CreateUpdater_(type, p_rnd, weight, grad, field_name));
   }
 };
 
