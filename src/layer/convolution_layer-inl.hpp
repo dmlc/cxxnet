@@ -179,8 +179,7 @@ class ConvolutionLayer : public ILayer<xpu> {
   }
 
   /*! \brief random number generator */
-  mshadow::Random<xpu> *prnd_;
-  
+  mshadow::Random<xpu> *prnd_;  
   /*! \brief parameters that potentially be useful */
   LayerParam param_;
   /*! \brief weight matrix */

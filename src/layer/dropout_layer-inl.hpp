@@ -9,52 +9,58 @@ namespace cxxnet {
 namespace layer {
 
 template<typename xpu>
-class DropoutLayer : public CommonLayerBase<xpu> {
+class DropoutLayer : public ILayer<xpu> {
  public:
-  DropoutLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : CommonLayerBase<xpu>(p_rnd, p_in, p_out) {
-    utils::Check(p_in == p_out, "dropout layer must self loop e.g layer[1->1] = dropout");
+  DropoutLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {
     // setup default value
     dropout_threshold = 0.0f;
   }
   virtual void SetParam(const char *name, const char* val) {
     if (!strcmp("threshold", name)) dropout_threshold = static_cast<real_t>(atof(val));
   }
-
- protected:
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) {
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) {
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "ActivationLayer Layer only support 1-1 connection");
+    utils::Check(nodes_in[0] == nodes_out[0], "DropoutLayer is an self-loop Layer");
     utils::Check(dropout_threshold >= 0.0f && dropout_threshold < 1.0f,
                  "DropoutLayer: invalid dropout_threshold\n");
-    this->BatchSizeChanged_(node_in, *pnode_out);
+    // use 1 temp state for mask
+    p_cstate->states.resize(1);
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape);
   }
-  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
-                                 const Node<xpu> &node_out) {
-    mask_.Resize(node_in.data.shape);
+  virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
+                                  const std::vector<Node<xpu>*> &nodes_out,
+                                  ConnectState<xpu> *p_cstate) {
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape);  
   }
-
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
+    mshadow::TensorContainer<xpu,4> &mask = p_cstate->states[0];
     if (is_train) {
       const real_t pkeep = 1.0f - dropout_threshold;
-      mask_ = F<op::threshold>(this->prnd_->uniform(mask_.shape), pkeep) * (1.0f / pkeep);
-      pnode_out->data = pnode_out->data * mask_;
+      mask = F<op::threshold>(prnd_->uniform(mask.shape), pkeep) * (1.0f / pkeep);
+      nodes_out[0]->data = nodes_out[0]->data * mask;
     }
   }
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) {
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
+    mshadow::TensorContainer<xpu,4> &mask = p_cstate->states[0];
     if (prop_grad) {
-      pnode_out->data *= mask_;
-    }
+      nodes_out[0]->data *= mask;
+    }    
   }
 
  private:
-  /*! \brief dropout mask */
-  mshadow::TensorContainer<xpu, 4> mask_;
+  /*! \brief random number generator */
+  mshadow::Random<xpu> *prnd_;  
   /*! \brief dropout  */
   real_t dropout_threshold;
 };  // class DropoutLayer

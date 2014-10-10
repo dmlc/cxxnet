@@ -9,9 +9,9 @@
 #include "./activation_layer-inl.hpp"
 #include "./convolution_layer-inl.hpp"
 #include "./bias_layer-inl.hpp"
+#include "./dropout_layer-inl.hpp"
 /*
 
-#include "./dropout_layer-inl.hpp"
 #include "./lrn_layer-inl.hpp"
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
@@ -31,6 +31,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSoftplus: return new ActivationLayer<xpu, op::softplus, op::softplus_grad>();
     case kConv: return new ConvolutionLayer<xpu>(p_rnd);
     case kBias: return new BiasLayer<xpu>();
+    case kDropout: return new DropoutLayer<xpu>(p_rnd);
     default: utils::Error("unknown layer type");
   }
   /*
@@ -45,7 +46,6 @@ ILayer<xpu>* CreateLayer_(LayerType type,
   Node<xpu> *p_out = nodes_out[0];
   switch(type) {
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd, p_in, p_out);
-    case kDropout: return new DropoutLayer<xpu>(p_rnd, p_in, p_out);
     case kFlatten: return new FlattenLayer<xpu>(p_rnd, p_in, p_out);
 
     case kLRN: return new LRNLayer<xpu>(p_rnd, p_in, p_out);
