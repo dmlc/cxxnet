@@ -10,13 +10,13 @@
 #include "./convolution_layer-inl.hpp"
 #include "./bias_layer-inl.hpp"
 #include "./dropout_layer-inl.hpp"
+#include "./fullc_layer-inl.hpp"
 /*
 
 #include "./lrn_layer-inl.hpp"
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
 #include "./softmax_layer-inl.hpp"
-#include "./fullc_layer-inl.hpp"
 */
 namespace cxxnet {
 namespace layer {
@@ -32,6 +32,8 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kConv: return new ConvolutionLayer<xpu>(p_rnd);
     case kBias: return new BiasLayer<xpu>();
     case kDropout: return new DropoutLayer<xpu>(p_rnd);
+    case kFullConnect: return new FullConnectLayer<xpu>(p_rnd);
+    case kDropConn: return new DropConnLayer<xpu>(p_rnd);
     default: utils::Error("unknown layer type");
   }
   /*
@@ -45,14 +47,12 @@ ILayer<xpu>* CreateLayer_(LayerType type,
   Node<xpu> *p_in = nodes_in[0];
   Node<xpu> *p_out = nodes_out[0];
   switch(type) {
-    case kFullConnect: return new FullConnectLayer<xpu>(p_rnd, p_in, p_out);
     case kFlatten: return new FlattenLayer<xpu>(p_rnd, p_in, p_out);
 
     case kLRN: return new LRNLayer<xpu>(p_rnd, p_in, p_out);
     case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>(p_rnd, p_in, p_out);
     case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>(p_rnd, p_in, p_out);
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>(p_rnd, p_in, p_out);
-    case kDropConn: return new DropConnLayer<xpu>(p_rnd, p_in, p_out);
     default: utils::Error("unknown layer type");
   }
   */

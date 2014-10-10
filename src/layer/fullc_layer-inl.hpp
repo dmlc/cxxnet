@@ -11,10 +11,9 @@ namespace cxxnet {
 namespace layer {
 
 template<typename xpu>
-class FullConnectLayer : public CommonLayerBase<xpu> {
+class FullConnectLayer : public ILayer<xpu> {
  public:
-  FullConnectLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : CommonLayerBase<xpu>(p_rnd, p_in, p_out) {}
+  FullConnectLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {}
   virtual ~FullConnectLayer(void) {}
   virtual void SetParam(const char *name, const char* val) {
     param_.SetParam(name, val);
@@ -27,8 +26,8 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
   }
   virtual void InitModel(void) {
     // rexsize to correct shape
-    wmat_.Resize(mshadow::Shape2(this->pout_->data.shape[0], this->pin_->data.shape[0]));
-    bias_.Resize(mshadow::Shape1(this->pout_->data.shape[0]));
+    wmat_.Resize(mshadow::Shape2(param_.num_hidden, param_.num_input_node));
+    bias_.Resize(mshadow::Shape1(param_.num_hidden));
     param_.RandInitWeight(this->prnd_, wmat_, wmat_.shape[0], wmat_.shape[1]);
     bias_ = param_.init_bias;
     // setup gradient weight
@@ -51,25 +50,39 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     gbias_.Resize(bias_.shape);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
- protected:
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) {
-    utils::Check(node_in.is_mat(), "input need to be a matrix");
+
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) {
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "DropoutLayer Layer only support 1-1 connection");
+    utils::Check(nodes_in[0]->is_mat(), "input need to be a matrix");
     utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
     // we change matrix convention 
-    pnode_out->data.shape = mshadow::Shape4(node_in.data.shape[3], 1, 1, param_.num_hidden);
+    nodes_out[0]->data.shape = 
+        mshadow::Shape4(nodes_in[0]->data.shape[3], 1, 1, param_.num_hidden);
+    if (param_.num_input_node == 0) {
+      param_.num_input_node = static_cast<int>(nodes_in[0]->data.shape[0]);
+    } else {
+      utils::Check(param_.num_input_node == static_cast<int>(nodes_in[0]->data.shape[0]),
+                   "FullcLayer: input hidden nodes is not consistent");
+    }
   }
-  
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
-    this->Forward_(is_train, wmat_, pnode_in, pnode_out);
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) {
+    this->Forward_(is_train, wmat_, nodes_in[0], nodes_out[0]);
   }
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) {
-    this->Backprop_(prop_grad, wmat_, pnode_in, pnode_out);
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) {
+    using namespace mshadow::expr;
+    this->Backprop_(prop_grad, wmat_, nodes_in[0], nodes_out[0]);
   }
+
+ protected:
   // internal implementation
   inline void Forward_(bool is_train,
                        mshadow::Tensor<xpu,2> wmat,                        
@@ -100,6 +113,8 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
     }
   }
 
+  /*! \brief random number generator */
+  mshadow::Random<xpu> *prnd_;
   /*! \brief parameters that potentially be useful */
   LayerParam param_;
   /*! \brief weight matrix */
@@ -116,46 +131,54 @@ class FullConnectLayer : public CommonLayerBase<xpu> {
 template<typename xpu>
 class DropConnLayer : public FullConnectLayer<xpu> {
  public:
-  DropConnLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : Parent(p_rnd, p_in, p_out) {
+  DropConnLayer(mshadow::Random<xpu> *p_rnd) : Parent(p_rnd) {
     dropout_threshold = 0.0f;
   }
   virtual void SetParam(const char *name, const char* val) {
     Parent::SetParam(name, val);
     if (!strcmp("threshold", name)) dropout_threshold = static_cast<real_t>(atof(val));
   }  
-
- protected:
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) {
-    Parent::InitLayer_(node_in, pnode_out);
-    this->mask_.Resize(mshadow::Shape2(this->pin_->data.shape[0], this->pin_->data.shape[0]));
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) {
+    Parent::InitConnection(nodes_in, nodes_out, p_cstate);
+    p_cstate->states.resize(2);
+    mshadow::Shape<4> wshape =
+        mshadow::Shape4(1, 1, this->param_.num_hidden, this->param_.num_input_node);
+    p_cstate->states[0].Resize(wshape);
+    p_cstate->states[1].Resize(wshape);
   }
-  
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
+    mshadow::Tensor<xpu, 2> mask = p_cstate->states[0][0][0];
+    mshadow::Tensor<xpu, 2> tmpw = p_cstate->states[1][0][0];
     if (is_train) {
       const real_t pkeep = 1.0f - dropout_threshold;
-      mask_ = F<op::threshold>(this->prnd_->uniform(mask_.shape), pkeep) * (1.0f / pkeep);
-      tmpw_ = this->wmat_ * mask_;
+      mask = F<op::threshold>(this->prnd_->uniform(mask.shape), pkeep) * (1.0f / pkeep);
+      tmpw = this->wmat_ * mask;
     } else {
-      mshadow::Copy(tmpw_, this->wmat_);
+      mshadow::Copy(tmpw, this->wmat_);
     }
-    Parent::Forward_(is_train, tmpw_, pnode_in, pnode_out);
+    Parent::Forward_(is_train, tmpw, nodes_in[0], nodes_out[0]);
   }
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) {
-    Parent::Backprop_(prop_grad, tmpw_, pnode_in, pnode_out);
-    Parent::gwmat_ *= mask_;
-  }
+
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) {
+    using namespace mshadow::expr;
+    mshadow::Tensor<xpu, 2> mask = p_cstate->states[0][0][0];
+    mshadow::Tensor<xpu, 2> tmpw = p_cstate->states[1][0][0];    
+    Parent::Backprop_(prop_grad, tmpw, nodes_in[0], nodes_out[0]);
+    Parent::gwmat_ *= mask;
+  }  
 
  private:
   mshadow::real_t dropout_threshold;
   typedef FullConnectLayer<xpu> Parent;
-  mshadow::TensorContainer<xpu, 2> mask_, tmpw_;
 };  // class DropconnLayer
 }  // namespace layer
 }  // namespace cxxnet
