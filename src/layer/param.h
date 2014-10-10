@@ -45,6 +45,10 @@ struct LayerParam {
   int temp_col_max;
   /*! \brief shut up */
   int silent;
+  /*! \brief number of input channels */
+  int num_input_channel;
+  /*! \brief number of input hidden nodes, used by fullc */
+  int num_input_node;  
   /*! \brief reserved fields, for future compatibility */
   int reserved[64];
   /*! \brief construtor */
@@ -62,6 +66,8 @@ struct LayerParam {
     pad_x = pad_y = 0;
     no_bias = 0;
     silent = 0;
+    num_input_channel = 0;
+    num_input_node = 0;
     // 64 MB
     temp_col_max = 64<<18;
     memset(reserved, 0, sizeof(reserved));
