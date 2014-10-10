@@ -37,12 +37,12 @@ struct Node {
     return data.FlatTo2D();
   }
   /*! \brief check whether it holds a matrix data */
-  inline bool is_mat( void ) const {
+  inline bool is_mat(void) const {
     return data.shape[2] == 1 && data.shape[1] == 1;
   }
   inline void FreeSpace(void) {
     mshadow::FreeSpace(data);
-  }
+  }  
 }; // struct Node
 
 /*! 
@@ -72,18 +72,33 @@ struct LabelInfo {
 };
 
 /*! 
+ * \brief connection states 
+ *   temporal state space that can be used to share information between forward and backprop
+ *   not every layer needs this, this is used 
+ */
+template<typename xpu>
+struct ConnectState {
+  /*! \brief the contents of states */
+  std::vector< mshadow::TensorContainer<xpu, 4> > states;
+};
+
+/*! 
  * \brief Interface of layer
  *    this is a pure interface and there is not data memember 
  *    in ILayer. However, there can be common pattern of memembers in a layer,
  *    see the following notes
  *
- *  Input and output node: 
- *     Each layer can be associated with set of input or output nodes, 
- *     the layer implementation must hold reference to the input output nodes,
- *     and they are not part of this interface. 
- *     For a common one to one connection layer, see CommonLayerBase
+ *  Connection and Layer:
+ *     In the current design of cxxnet, there is concept of Connection, and Layer
+ *     A Layer is defines set of of functions Forward and Backprop, given input/output nodes
+ *     A Layer is not attached to specific pair of nodes, while Connection is.
+ *     Connection is the connection between nodes, whose function is backed by Layers. 
+ *     Different connection can share a same Layer
+ *
+ *     This means Layer can not contain any node specific state(for example, dropout mask) in the class. 
+ *     The Connection specific states are maintained by Connection, and passed to Layer during Forward/Backprop
  *      
- *  Connection weights and gradient:
+ *  Weights and gradient:
  *     Some layers can have connection weight parameters, and gradient of weights.
  *     These weights are hold in the specific implementation. 
  *     They can be accesed by using a vistor, see also IVisitor
@@ -93,7 +108,7 @@ struct LabelInfo {
  *     Parameters related to each layer (e.g. number of hidden nodes), can be set by calling SetParam
  *
  * \tparam xpu the device name it lies in, can be cpu/gpu
- * \sa CommonLayerBase, ILayer::IVisitor
+ * \sa CommonLayerBase, ILayer::IVisitor, ConnectState
  */
 template<typename xpu>
 class ILayer {
@@ -128,30 +143,51 @@ class ILayer {
   /*! \brief virtual destructor */
   virtual ~ILayer(void) {}
   /*!
-   * \brief (1) intialize the temp parameters
-   *        (2) adjust output nodes' shape based on input nodes' shape
-   *  this function will be called before using a layer
+   * \brief initialize the connection, this function takes charge of two shings
+   *   (1) setup the shape of output nodes in nodes_out, given the 
+   *   (2) allocate necessary temporal state space in p_cstate
+   * \param nodes_in vector of input nodes
+   * \param nodes_out vector of output nodes
+   * \param p_cstate
    */
-  virtual void InitLayer(void) {}
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) = 0;
   /*!
-   * \brief notify the layer that batch size has been changed
-   *        the new batch size will not be larger than the initial batch size each layer see during InitLayer
-   *        the batch size is the shape[3] of node, most layer do not implement this
-   *        however, for layers that have auxiliary data structure related to batch size
-   *        this function can be used to notify adjustment of batchsize
+   * \brief update the p_cstate when batch size(shape[3] of input output nodes) changed
+   *        This function is called whenever the batch_size changed, and the Layer can make use
+   *        of this to update the p_cstate
+   * \param nodes_in vector of input nodes
+   * \param nodes_out vector of output nodes
+   * \param p_cstate temporal state space that can be used to share information between forward and backprop
    */
-  virtual void BatchSizeChanged(void) {}
+  virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
+                                  const std::vector<Node<xpu>*> &nodes_out,
+                                  ConnectState<xpu> *p_cstate) {}
   /*!
    * \brief Forward propagation from input nodes to output nodes
    * \param is_train the propagation is during training phase
+   * \param nodes_in vector of input nodes
+   * \param nodes_out vector of output nodes
+   * \param p_cstate temporal state space that can be used to share information between forward and backprop
    */
-  virtual void Forward(bool is_train) = 0;
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) = 0;
   /*!
    * \brief Back propagation from output nodes to input nodes
    *    in the beginning of function call, the output nodes is ensured to contain the gradient value
    * \param prop_grad if true, then the layer will propagate gradient back to its input node
+   * \param nodes_in vector of input nodes
+   * \param nodes_out vector of output nodes
+   * \param p_cstate temporal state space that can be used to share information between forward and backprop
    */
-  virtual void Backprop(bool prop_grad) = 0;
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) = 0;
+  
  public:
   /*! 
    * \brief apply visitor to the layer,
@@ -178,80 +214,6 @@ class ILayer {
    * \param fi input stream
    */
   virtual void LoadModel(utils::IStream &fi) {}
-};
-
-/*!
- * \brief this is a common layer base that most implementation of layer inheritates
- *    specifically, this implements a common framework one node to one node connection.
- *   
- *    The difference between ILayer, is that Forward, Backprop, InitLayer takes
- *    explicit argument of input/output nodes. This makes the logical explicit and clear,
- *    though less flexible than ILayer
- * \tparam xpu the device name it lies in, can be cpu/gpu
- */
-template<typename xpu>
-class CommonLayerBase : public ILayer<xpu> {
- public:
-  CommonLayerBase(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : prnd_(p_rnd), pin_(p_in), pout_(p_out) {
-  }
-  virtual ~CommonLayerBase(void){}
-  virtual void InitLayer(void) {
-    this->InitLayer_(*pin_, pout_);
-  }
-  virtual void BatchSizeChanged(void) {
-    this->BatchSizeChanged_(*pin_, *pout_);
-  }  
-  virtual void Forward(bool is_train) {
-    this->Forward_(is_train, pin_, pout_);
-  }
-  virtual void Backprop(bool prop_grad) {
-    this->Backprop_(prop_grad, pin_, pout_);
-  }
-
- protected:
-  /*!
-   * \brief initialize the layer
-   * \param node_in input node, with the shape already being setted correctly
-   * \param pnode_out output node, whose shape should be set by InitLayer function,
-   *                  based on the input node shape and the layer configuration
-   */  
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) = 0;
-  /*!
-   * \brief notify the layer that batch size has been changed
-   *        the new batch size will not be larger than the initial batch size each layer see during InitLayer
-   *        the batch size is the shape[3] of node, most layer do not implement this
-   */  
-  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
-                                 const Node<xpu> &node_out) {}
-  /*!
-   * \brief Forward propagation from input nodes to output nodes
-   * \param is_train the propagation is during training phase
-   * \param pnode_in pointer to input node, the content is set to be the activation 
-   *                 of input node before call of Forward
-   * \param pnode_out pointer to output node, the content should be set to
-   *                  be activation value of output node
-   */
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) = 0;
-  /*!
-   * \brief Backward propagation from input nodes to output nodes,
-   *        and accumulate gradient to the internal gradient variable
-   * \param prop_grad if true, then the layer will propagate gradient back to its input node
-   * \param pnode_in pointer to input node, the content is set to be the activation 
-   *                 of input node before call of Forward
-   * \param pnode_out pointer to output node, the content should be set to
-   *                  be activation value of output node
-   */
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) = 0;
-  /*! \brief random number generator, that can be used in child class */
-  mshadow::Random<xpu> *prnd_;
-  /*! \brief input and output node type */
-  Node<xpu> *pin_, *pout_;
 };
 
 /*! \brief these are enumeration */
@@ -299,8 +261,6 @@ inline LayerType GetLayerType(const char *type) {
  * \brief factory: create an upadater algorithm of given type
  * \param type indicate the type of a layer
  * \param p_rnd random number generator
- * \param nodes_in list of input nodes of the layer
- * \param nodes_out list of output nodes of the layer
  * \param label_info pointer to the label information field, that will be contain,
  *                   this is similar to node, but contains label information that can be used
  *                   to compute gradient over objetives
@@ -308,8 +268,6 @@ inline LayerType GetLayerType(const char *type) {
 template<typename xpu>
 ILayer<xpu>* CreateLayer(LayerType type,
                          mshadow::Random<xpu> *p_rnd,
-                         const std::vector<Node<xpu>*> &nodes_in,
-                         const std::vector<Node<xpu>*> &nodes_out,
                          const LabelInfo *label_info);
 }  // namespace layer
 }  // namespace cxxnet

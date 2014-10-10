@@ -9,30 +9,36 @@ namespace cxxnet {
 namespace layer {
 
 template<typename xpu,typename ForwardOp, typename BackOp>
-class ActivationLayer : public CommonLayerBase<xpu>{
+class ActivationLayer : public ILayer<xpu>{
  public:
-  ActivationLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : CommonLayerBase<xpu>(p_rnd, p_in, p_out) {}
   virtual ~ActivationLayer(void) {}
 
- protected:
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) {
-    pnode_out->data.shape = node_in.data.shape;
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) {
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "ActivationLayer Layer only support 1-1 connection");
+    nodes_out[0]->data.shape = nodes_in[0]->data.shape;    
   }
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
-    pnode_in->data = F<ForwardOp>(pnode_in->data);
-    mshadow::Copy(pnode_out->data, pnode_in->data);
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "ActivationLayer Layer only support 1-1 connection");
+    nodes_in[0]->data = F<ForwardOp>(nodes_in[0]->data);
+    mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data);
   }
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) {
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "ActivationLayer Layer only support 1-1 connection");
     if (prop_grad) {
-      pnode_in->data = F<BackOp>(pnode_in->data) * pnode_out->data;
+      nodes_in[0]->data = F<BackOp>(nodes_in[0]->data) * nodes_out[0]->data;
     }
   }
 };

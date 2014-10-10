@@ -67,7 +67,9 @@ struct NeuralNet {
     this->InitNet();
     this->ConfigLayers();
     for (int i = 0; i < cfg.param.num_layers; ++ i) {
+      printf("load model\n");
       layers[i]->LoadModel(fi);
+      printf("load model end\n");
     }
     for (int i = 0; i < cfg.param.num_layers; ++ i) {
       layers[i]->InitLayer();
