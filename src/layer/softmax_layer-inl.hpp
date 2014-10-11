@@ -36,7 +36,6 @@ class SoftmaxLayer: public ILayer<xpu> {
                         const std::vector<Node<xpu>*> &nodes_out,
                         ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
-    if (!prop_grad) return;
     // do computation in CPU for simplicity, since this is not bottle neck
     tnode.Resize(nodes_in[0]->mat().shape);
     mshadow::Copy(tnode, nodes_in[0]->mat());

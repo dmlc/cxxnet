@@ -25,9 +25,9 @@ endif
 export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
 
 # specify tensor path
-BIN = #bin/cxxnet
-OBJ = layer_cpu.o #updater_cpu.o nnet_cpu.o cxxnet_data.o
-CUOBJ = layer_gpu.o # updater_gpu.o nnet_gpu.o
+BIN = bin/cxxnet
+OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o cxxnet_data.o
+CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 .PHONY: clean all
 

@@ -217,7 +217,10 @@ class ILayer {
 };
 
 /*! \brief these are enumeration */
-enum LayerType { 
+enum LayerType {
+  // shared layer is a special type indicating that this connection
+  // is sharing Layer with an existing connection
+  kSharedLayer = 0,
   kFullConnect = 1,
   kSoftmax = 2,
   kRectifiedLinear = 3,
@@ -239,6 +242,7 @@ enum LayerType {
  * \param type indicate the type of a layer
  */
 inline LayerType GetLayerType(const char *type) {
+  if (!strcmp(type, "share")) return kSharedLayer;
   if (!strcmp(type, "fullc")) return kFullConnect;
   if (!strcmp(type, "bias")) return kBias;
   if (!strcmp(type, "softmax")) return kSoftmax;
@@ -254,7 +258,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "sum_pooling")) return kSumPooling;
   if (!strcmp(type, "avg_pooling")) return kAvgPooling;
   if (!strcmp(type, "lrn")) return kLRN;
-  utils::Error("unknown layer type: %s", type);
+  utils::Error("unknown layer type: \"%s\"", type);
   return kConv;
 }
 /*!
@@ -269,6 +273,25 @@ template<typename xpu>
 ILayer<xpu>* CreateLayer(LayerType type,
                          mshadow::Random<xpu> *p_rnd,
                          const LabelInfo *label_info);
+
+/*! 
+ * \brief this data structure specifies a connection
+ * this is a node specific data structure, that defines connection between nodes
+ * \tparam xpu the device the connection lies in
+ */
+template<typename xpu>
+struct Connection {
+  /*! \brief the backend layer of the connection */
+  ILayer<xpu> *layer;
+  /*! \brief the type of the backend layer */
+  LayerType type;
+  /*! \brief shared states of the connection */
+  ConnectState<xpu> state;
+  /*! \brief list of input nodes */
+  std::vector<Node<xpu>*> nodes_in;
+  /*! \brief list of output nodes */
+  std::vector<Node<xpu>*> nodes_out;
+};
 }  // namespace layer
 }  // namespace cxxnet
 #endif  // CXXNET_LAYER_LAYER_H

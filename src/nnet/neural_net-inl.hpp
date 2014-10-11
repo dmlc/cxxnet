@@ -29,7 +29,7 @@ struct NeuralNet {
   /*! \brief nodes in the neural net */
   std::vector<layer::Node<xpu> > nodes;
   /*! \brief layers in the neural net */
-  std::vector<layer::ILayer<xpu>*> layers;
+  std::vector<layer::Connection<xpu> > connections;
   /*! \brief updaters in the neural net */
   std::vector<updater::IUpdater<xpu>*> updaters;
   /*! \brief random number generator */
@@ -45,19 +45,24 @@ struct NeuralNet {
   }
   /*! \brief save model to file */
   inline void SaveModel(utils::IStream &fo) const {
-    for (int i = 0; i < layers.size(); ++ i) {
-      layers[i]->SaveModel(fo);
+    for (int i = 0; i < connections.size(); ++ i) {
+      if (connections[i].type != layer::kSharedLayer) {
+        connections[i].layer->SaveModel(fo);
+      }
     }
   }
   /*! \brief initial model parameters in the beginning */
   inline void InitModel(void) {
     this->InitNet();
-    this->ConfigLayers();
-    for (int i = 0; i < cfg.param.num_layers; ++ i) {
-      layers[i]->InitLayer();
+    this->ConfigConntions();
+    for (size_t i = 0; i < connections.size(); ++ i) {
+      layer::Connection<xpu> &c = connections[i];
+      c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
     }
-    for (int i = 0; i < cfg.param.num_layers; ++ i) {
-      layers[i]->InitModel();
+    for (size_t i = 0; i < connections.size(); ++ i) {
+      if (connections[i].type != layer::kSharedLayer) {        
+        connections[i].layer->InitModel();
+      }
     }
     this->InitNodes();
     this->InitUpdaters();
@@ -65,14 +70,15 @@ struct NeuralNet {
   /*! \brief load model from stream */
   inline void LoadModel(utils::IStream &fi) {
     this->InitNet();
-    this->ConfigLayers();
-    for (int i = 0; i < cfg.param.num_layers; ++ i) {
-      printf("load model\n");
-      layers[i]->LoadModel(fi);
-      printf("load model end\n");
-    }
-    for (int i = 0; i < cfg.param.num_layers; ++ i) {
-      layers[i]->InitLayer();
+    this->ConfigConntions();
+    for (size_t i = 0; i < connections.size(); ++ i) {
+      if (connections[i].type != layer::kSharedLayer) {
+        connections[i].layer->LoadModel(fi);
+      }
+    }    
+    for (size_t i = 0; i < connections.size(); ++ i) {
+      layer::Connection<xpu> &c = connections[i];
+      c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
     }
     this->InitNodes();
     this->InitUpdaters();
@@ -86,9 +92,10 @@ struct NeuralNet {
     // check if we need to adjust batch size according to the input
     this->AdjustBatchSize(batch.shape[3]);
     // copy data into node
-    mshadow::Copy(nodes[0].data, batch);    
-    for (size_t i = 0; i < layers.size(); ++ i) {
-      layers[i]->Forward(is_train);
+    mshadow::Copy(nodes[0].data, batch);
+    for (size_t i = 0; i < connections.size(); ++ i) {
+      layer::Connection<xpu> &c = connections[i];
+      c.layer->Forward(is_train, c.nodes_in, c.nodes_out, &c.state);
     }
   }
   /*! 
@@ -96,8 +103,10 @@ struct NeuralNet {
    * \param prop_to_input whether prop gradient to input node
    */
   inline void Backprop(bool prop_to_input = false) {
-    for (size_t i = layers.size(); i > 0; -- i) {
-      layers[i-1]->Backprop(i != 1 || prop_to_input);
+    for (size_t i = 0; i < connections.size(); ++ i) {
+      layer::Connection<xpu> &c = connections[i];
+      c.layer->Backprop(i != 1 || prop_to_input,
+                        c.nodes_in, c.nodes_out, &c.state);
     }
   }
   /*!
@@ -128,37 +137,47 @@ struct NeuralNet {
     nodes[0].data.shape = mshadow::Shape4(max_batch, s[2], s[1], s[0]);
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
-      std::vector<layer::Node<xpu>*> nodes_in;
-      std::vector<layer::Node<xpu>*> nodes_out;
       const NetConfig::LayerInfo &info = cfg.layers[i];
+      layer::Connection<xpu> c;
+      c.type = info.type;
       for (size_t j = 0; j < info.nindex_in.size(); ++j) {
-        nodes_in.push_back(&nodes[info.nindex_in[j]]);
+        c.nodes_in.push_back(&nodes[info.nindex_in[j]]);
       }
       for (size_t j = 0; j < info.nindex_out.size(); ++j) {
-        nodes_out.push_back(&nodes[info.nindex_out[j]]);
+        c.nodes_out.push_back(&nodes[info.nindex_out[j]]);
       }
-      layers.push_back(layer::CreateLayer(info.type, &rnd, nodes_in, nodes_out, &label_info));
+      if (c.type == layer::kSharedLayer) {
+        utils::Assert(info.primary_layer_index >=0, "primary_layer_index problem");
+        utils::Check(info.primary_layer_index < static_cast<int>(connections.size()), 
+                     "shared layer primary_layer_index exceed bound");
+        c.layer = connections[info.primary_layer_index].layer;
+      } else {
+        c.layer = layer::CreateLayer(c.type, &rnd, &label_info);
+      }
+      connections.push_back(c);
     }
   }
   // configure the parameters of layer
-  inline void ConfigLayers(void) {
+  inline void ConfigConntions(void) {
     for (int i = 0; i < cfg.param.num_layers; ++ i) {
+      if (connections[i].type == layer::kSharedLayer) continue;
       for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
-        layers[i]->SetParam(cfg.defcfg[j].first.c_str(),
-                            cfg.defcfg[j].second.c_str());      
+        connections[i].layer->SetParam(cfg.defcfg[j].first.c_str(),
+                                       cfg.defcfg[j].second.c_str());      
       }
       for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
-        layers[i]->SetParam(cfg.layercfg[i][j].first.c_str(),
-                            cfg.layercfg[i][j].second.c_str());
+        connections[i].layer->SetParam(cfg.layercfg[i][j].first.c_str(),
+                                       cfg.layercfg[i][j].second.c_str());
       }
     }
   }
   // create the updaters
   inline void InitUpdaters(void) {
     for (int i = 0; i < cfg.param.num_layers; ++ i) {
+      if (connections[i].type == layer::kSharedLayer) continue;
       std::vector<updater::IUpdater<xpu>*> out;
       updater::CreateUpdaters(cfg.updater_type.c_str(),
-                              &rnd, layers[i], &out);
+                              &rnd, connections[i].layer, &out);
       for (size_t k = 0; k < out.size(); ++k) {
         for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
           out[k]->SetParam(cfg.defcfg[j].first.c_str(),
@@ -170,7 +189,7 @@ struct NeuralNet {
         }
         out[k]->Init();
         updaters.push_back(out[k]);
-      }      
+      }
     }
   }
   // intialize the space of nodes
@@ -188,6 +207,10 @@ struct NeuralNet {
       for (size_t i = 0; i < nodes.size(); ++i) {
         nodes[i].data.shape[3] = batch_size;
       }
+      for (size_t i = 0; i < connections.size(); ++ i) {
+        layer::Connection<xpu> &c = connections[i];
+        c.layer->OnBatchSizeChanged(c.nodes_in, c.nodes_out, &c.state);  
+      }
     }
   }
   /*! \brief free all space allocated in this struct*/
@@ -195,13 +218,15 @@ struct NeuralNet {
     for (size_t i = 0; i < nodes.size(); ++i) {
       nodes[i].FreeSpace();
     }
-    for (size_t i = 0; i < layers.size(); ++i) {
-      delete layers[i];
+    for (size_t i = 0; i < connections.size(); ++i) {
+      if (connections[i].type != layer::kSharedLayer) {        
+        delete connections[i].layer;
+      }
     }
     for (size_t i = 0; i < updaters.size(); ++i) {
       delete updaters[i];
     }
-    nodes.clear(); layers.clear(); updaters.clear();
+    nodes.clear(); connections.clear(); updaters.clear();
   }
 };
 
