@@ -56,8 +56,10 @@ class SimpleSynch : public ISynchronizer<xpu> {
   virtual void SyncBeforeUpdate(void) {
     if (weights.size() == 1) return;
     // sync gradient
-    wsum = 0.0f;
-    for (size_t i = 0; i < grads.size(); ++i) {
+    Copy(wsum.dptr, host_device, 
+         grads[0].dptr, devices[0],
+         sizeof(mshadow::real_t) * wsum.shape[0]);
+    for (size_t i = 1; i < grads.size(); ++i) {
       Copy(wtmp.dptr, host_device, 
            grads[i].dptr, devices[i],
            sizeof(mshadow::real_t) * wtmp.shape[0]);
