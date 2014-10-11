@@ -133,6 +133,7 @@ struct MemoryBufferStream : public ISeekStream {
       p_buffer_->resize(curr_ptr_+size);
     }
     memcpy(&(*p_buffer_)[0] + curr_ptr_, ptr, size); 
+    curr_ptr_ += size;
   }
   virtual void Seek(size_t pos) {
     curr_ptr_ = static_cast<size_t>(pos);

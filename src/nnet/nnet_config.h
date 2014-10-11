@@ -217,9 +217,11 @@ struct NetConfig {
                    "shared layer tag %s is not defined before", s_tag.c_str());
       inf.primary_layer_index = layer_name_map[s_tag];
     } else {
-      utils::Check(layer_name_map.count(s_tag) == 0, 
-                   "layer tag %s is already defined", s_tag.c_str());
-      layer_name_map[s_tag] = cfg_layer_index;
+      if (s_tag.length() != 0) {
+        utils::Check(layer_name_map.count(s_tag) == 0, 
+                     "layer tag %s is already defined", s_tag.c_str());
+        layer_name_map[s_tag] = cfg_layer_index;
+      }
     }
     return inf;
   }
