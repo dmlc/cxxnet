@@ -39,7 +39,7 @@ namespace cxxnet{
             if( net_trainer != NULL ){
                 delete net_trainer;
                 // shut down tensor engine if it is GPU based
-                if( device == "gpu" ) mshadow::ShutdownTensorEngine();
+                //if( device == "gpu" ) mshadow::ShutdownTensorEngine();
             }
 
             if( itr_train != NULL )   delete itr_train;
@@ -153,19 +153,19 @@ namespace cxxnet{
         // create a neural net
         inline INetTrainer* CreateNet( void ){
             if( !strncmp( device.c_str(), "gpu", 3 ) ){
-                int devid;
-                if( sscanf( device.c_str(), "gpu:%d", &devid ) == 1 ) {
-                    mshadow::InitTensorEngine( devid );
-                    this->device = "gpu";
-                }else{
-                    mshadow::InitTensorEngine( 0 );
-                }
+                //int devid;
+                //if( sscanf( device.c_str(), "gpu:%d", &devid ) == 1 ) {
+                //this->device = "gpu";
+                    //mshadow::InitTensorEngine( devid );
+                //}else{
+                ////mshadow::InitTensorEngine( 0 );
+                //bin/}
             }
             if( reset_net_type != -1 ){
                 net_type = reset_net_type;
             }            
             INetTrainer *net;            
-            if (device == "gpu") {
+            if (!strncmp(device.c_str(), "gpu", 3)) {
               net = cxxnet::CreateNet<mshadow::gpu>( net_type );
             } else {
               net = cxxnet::CreateNet<mshadow::cpu>( net_type );

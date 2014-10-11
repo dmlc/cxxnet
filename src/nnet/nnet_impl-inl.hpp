@@ -25,13 +25,29 @@ class CXXNetThreadTrainer : public INetTrainer {
     this->FreeNet();
   }
   virtual void SetParam(const char *name, const char *val) {
-    if (!strcmp(name, "add_device")) {
-      devices_.push_back(atoi(val));
+    if (!strcmp(name, "dev")) {
+      const char *devs = strchr(val, ':');
+      if (devs != NULL) {
+        int a, b;
+        if (sscanf(devs+1, "%d-%d", &a, &b) == 2){
+          for (int i = a; i < b; ++i) {
+            devices_.push_back(i);
+          }
+        } else {
+          std::string s_dev = devs + 1;
+          char *ptr = strtok(&s_dev[0], ",");
+          while (ptr != NULL) {
+            utils::Check(sscanf(ptr, "%d", &a) == 1, "invalid device format");
+            devices_.push_back(a);
+            ptr = strtok(NULL, ",");
+          }
+        }
+      }
     }
     if (!strcmp(name, "batch_size")) batch_size = static_cast<mshadow::index_t>(atoi(val));
     if (!strcmp(name, "update_period")) update_period = atoi(val);
-    if (!strcmp( name, "eval_train")) eval_train = atoi(val);
-    if( !strcmp( name, "metric") ) {
+    if (!strcmp(name, "eval_train")) eval_train = atoi(val);
+    if( !strcmp(name, "metric")) {
       metric.AddMetric(val); train_metric.AddMetric(val);
     }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
