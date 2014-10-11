@@ -12,7 +12,8 @@ namespace layer {
 template<typename xpu>
 class ConvolutionLayer : public ILayer<xpu> {
  public:
-  ConvolutionLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {}
+  ConvolutionLayer(mshadow::Random<xpu> *p_rnd) 
+      : prnd_(p_rnd), wmat_(false), bias_(false), gwmat_(false), gbias_(false) {}
   virtual ~ConvolutionLayer(void) {}
   virtual void SetParam(const char *name, const char* val) {
     param_.SetParam(name, val);

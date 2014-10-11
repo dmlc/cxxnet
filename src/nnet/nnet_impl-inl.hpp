@@ -311,7 +311,7 @@ class CXXNetThreadTrainer : public INetTrainer {
           nets_[k]->net().updaters[i][j]->ApplyVisitor(&v);
         }
         sync::ISynchronizer<xpu> *s = 
-            sync::CreateSynch(sync_type.c_str(), v.weights, v.grads, v.tag.c_str());
+            sync::CreateSynch(sync_type.c_str(), v.weights, v.grads, devices_, v.tag.c_str());
         if (s == NULL) continue;
         for (size_t k = 0; k < net_cfg.defcfg.size(); ++k) {
           s->SetParam(net_cfg.defcfg[k].first.c_str(), net_cfg.defcfg[k].second.c_str());
