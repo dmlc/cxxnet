@@ -11,13 +11,11 @@
 #include "./bias_layer-inl.hpp"
 #include "./dropout_layer-inl.hpp"
 #include "./fullc_layer-inl.hpp"
-/*
-
 #include "./lrn_layer-inl.hpp"
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
 #include "./softmax_layer-inl.hpp"
-*/
+
 namespace cxxnet {
 namespace layer {
 template<typename xpu>
@@ -34,29 +32,14 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kDropout: return new DropoutLayer<xpu>(p_rnd);
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd);
     case kDropConn: return new DropConnLayer<xpu>(p_rnd);
-    default: utils::Error("unknown layer type");
+    case kLRN: return new LRNLayer<xpu>();
+    case kFlatten: return new FlattenLayer<xpu>();
+    case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>();
+    case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>();
+    case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>();
+    case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
+    default: utils::Error("unknown layer type"); return NULL;
   }
-  /*
-  switch(type) {
-    case kSoftmax: return new SoftmaxLayer<xpu>(nodes_in, nodes_out, label_info);
-    default: break;
-  }
-  // code for handling multiple connections return before here
-  utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
-               "this layer can only take one input and output ");
-  Node<xpu> *p_in = nodes_in[0];
-  Node<xpu> *p_out = nodes_out[0];
-  switch(type) {
-    case kFlatten: return new FlattenLayer<xpu>(p_rnd, p_in, p_out);
-
-    case kLRN: return new LRNLayer<xpu>(p_rnd, p_in, p_out);
-    case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>(p_rnd, p_in, p_out);
-    case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>(p_rnd, p_in, p_out);
-    case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>(p_rnd, p_in, p_out);
-    default: utils::Error("unknown layer type");
-  }
-  */
-  return NULL;
 }
 
 }  // namespace layer

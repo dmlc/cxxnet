@@ -9,10 +9,9 @@ namespace cxxnet {
 namespace layer {
 
 template<typename xpu>
-class LRNLayer : public CommonLayerBase<xpu> {
+class LRNLayer : public ILayer<xpu> {
  public:
-  LRNLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : CommonLayerBase<xpu>(p_rnd, p_in, p_out) {
+  LRNLayer(void) {
     // default values
     this->knorm_ = 1.0f;
     this->nsize_ = 3;
@@ -24,49 +23,58 @@ class LRNLayer : public CommonLayerBase<xpu> {
     if (!strcmp(name, "beta")) beta_ = static_cast<real_t>(atof(val));
     if (!strcmp(name, "knorm")) knorm_ = static_cast<real_t>(atof(val));
   }
-
- protected:
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) {
-    pnode_out->data.shape = node_in.data.shape;
-    this->BatchSizeChanged_(node_in, *pnode_out);
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) {
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "LRNLayer: only support 1-1 connection");
+    nodes_out[0]->data.shape = nodes_in[0]->data.shape;
+    // use 1 temp state for mask
+    p_cstate->states.resize(1);
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape);
+    // temp in is kepted in layer, since it does not go across forward/backprop
+    tmp_in.Resize(nodes_in[0]->data.shape);
   }
-  virtual void BatchSizeChanged_(const Node<xpu> &node_in,
-                                 const Node<xpu> &node_out) {
-    tmp_in.Resize(node_in.data.shape);
-    tmp_norm.Resize(node_in.data.shape);    
+  virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
+                                  const std::vector<Node<xpu>*> &nodes_out,
+                                  ConnectState<xpu> *p_cstate) {
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape);
   }
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) {
     using namespace mshadow;
     using namespace mshadow::expr;
+    mshadow::Tensor<xpu,4> &tmp_norm = p_cstate->states[0];
     const real_t salpha = alpha_ / nsize_;
     // stores normalizer without power
-    tmp_norm = chpool<red::sum>(F<op::square>(pnode_in->data) , nsize_) * salpha + knorm_;
-    pnode_out->data = pnode_in->data * F<op::power>(tmp_norm, -beta_);
+    tmp_norm = chpool<red::sum>(F<op::square>(nodes_in[0]->data) , nsize_) * salpha + knorm_;
+    nodes_out[0]->data = nodes_in[0]->data * F<op::power>(tmp_norm, -beta_);
   }
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) {
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow;
     using namespace mshadow::expr;
+    tmp_in.Resize(nodes_in[0]->data.shape);   
+    mshadow::Tensor<xpu,4> &tmp_norm = p_cstate->states[0];
     const real_t salpha = alpha_ / nsize_;
-    if(prop_grad) {
+    if (prop_grad) {
       // backup input data
-      mshadow::Copy(tmp_in, pnode_in->data);
+      mshadow::Copy(tmp_in, nodes_in[0]->data);
       // first gradient to a[i], will be 1 / normalizer
-      pnode_in->data = pnode_out->data * F<op::power>(tmp_norm, -beta_);
+      nodes_in[0]->data = nodes_out[0]->data * F<op::power>(tmp_norm, -beta_);
       // gradient to normalizer
-      pnode_in->data += (- 2.0f * beta_ * salpha) * 
-          chpool<red::sum>(pnode_out->data * tmp_in * F<op::power>(tmp_norm, -beta_-1.0f), nsize_)  * tmp_in;
+      nodes_in[0]->data += (- 2.0f * beta_ * salpha) * 
+          chpool<red::sum>(nodes_out[0]->data * tmp_in * F<op::power>(tmp_norm, -beta_-1.0f), nsize_)  * tmp_in;      
     }
   }
+  
  private:
   /*! \brief input temp data */
   mshadow::TensorContainer<xpu,4> tmp_in;
-  /*! \brief temp normalizer */
-  mshadow::TensorContainer<xpu,4> tmp_norm;
   /*! \brief alpha */
   real_t alpha_;
   /*! \brief beta */

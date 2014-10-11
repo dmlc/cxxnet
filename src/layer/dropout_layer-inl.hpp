@@ -22,7 +22,7 @@ class DropoutLayer : public ILayer<xpu> {
                               const std::vector<Node<xpu>*> &nodes_out,
                               ConnectState<xpu> *p_cstate) {
     utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
-                 "DropoutLayer Layer only support 1-1 connection");
+                 "DropoutLayer: only support 1-1 connection");
     utils::Check(nodes_in[0] == nodes_out[0], "DropoutLayer is an self-loop Layer");
     utils::Check(dropout_threshold >= 0.0f && dropout_threshold < 1.0f,
                  "DropoutLayer: invalid dropout_threshold\n");

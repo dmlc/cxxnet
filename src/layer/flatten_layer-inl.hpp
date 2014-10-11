@@ -8,31 +8,33 @@ namespace cxxnet {
 namespace layer {
 
 template<typename xpu>
-class FlattenLayer : public CommonLayerBase<xpu> {
+class FlattenLayer : public ILayer<xpu> {
  public:
-  FlattenLayer(mshadow::Random<xpu> *p_rnd, Node<xpu> *p_in, Node<xpu> *p_out)
-      : CommonLayerBase<xpu>(p_rnd, p_in, p_out) {}
   virtual ~FlattenLayer(void) {}
-
- protected:
-  virtual void InitLayer_(const Node<xpu> &node_in,
-                          Node<xpu> *pnode_out) {
-    mshadow::Shape<4> ishape = node_in.data.shape;
-    pnode_out->data.shape = mshadow::Shape4(ishape[3], 1, 1, ishape[2] * ishape[1] * ishape[0]);
+  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
+                              const std::vector<Node<xpu>*> &nodes_out,
+                              ConnectState<xpu> *p_cstate) {
+    utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
+                 "FlattenLayer: only support 1-1 connection");
+    mshadow::Shape<4> ishape = nodes_in[0]->data.shape;
+    nodes_out[0]->data.shape = 
+        mshadow::Shape4(ishape[3], 1, 1, ishape[2] * ishape[1] * ishape[0]);
   }
-  virtual void Forward_(bool is_train,
-                        Node<xpu> *pnode_in,
-                        Node<xpu> *pnode_out) {
+  virtual void Forward(bool is_train,
+                       const std::vector<Node<xpu>*> &nodes_in,
+                       const std::vector<Node<xpu>*> &nodes_out,
+                       ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;    
-    pnode_out->data = reshape(pnode_in->data, pnode_out->data.shape);
+    nodes_out[0]->data = reshape(nodes_in[0]->data, nodes_out[0]->data.shape);    
   }
-  virtual void Backprop_(bool prop_grad,
-                         Node<xpu> *pnode_in,
-                         Node<xpu> *pnode_out) {
+  virtual void Backprop(bool prop_grad,
+                        const std::vector<Node<xpu>*> &nodes_in,
+                        const std::vector<Node<xpu>*> &nodes_out,
+                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
     if (prop_grad) {
-      pnode_in->data = reshape(pnode_out->data, pnode_in->data.shape);
-    }
+      nodes_in[0]->data = reshape(nodes_out[0]->data, nodes_in[0]->data.shape);
+    }    
   }
 };
 }  // namespace layer
