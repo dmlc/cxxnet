@@ -87,6 +87,8 @@ struct NetConfig {
   std::map<std::string, int> layer_name_map;
   /*! \brief type of updater function */
   std::string updater_type;
+  /*! \brief type of synchronization function */
+  std::string sync_type;
   /*! \brief default global configuration */
   std::vector< std::pair< std::string, std::string > > defcfg;
   /*! \brief extra parameter configuration specific to this layer */
@@ -94,6 +96,7 @@ struct NetConfig {
   // constructor
   NetConfig(void) {
     updater_type = "sgd";
+    sync_type = "simple";
   }
   /*!
    * \brief save network structure to output
@@ -155,9 +158,12 @@ struct NetConfig {
           param.input_shape = mshadow::Shape3(z, y, x);
         }
       }
-      if (!strcmp(name, "updater")) updater_type = val;
+      if (netcfg_mode != 2) {
+        if (!strcmp(name, "updater")) updater_type = val;
+        if (!strcmp(name, "sync")) sync_type = val;
+      }      
       if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
-      if (!strcmp(name, "netconfig") && !strcmp(val, "end")) netcfg_mode = 2;
+      if (!strcmp(name, "netconfig") && !strcmp(val, "end")) netcfg_mode = 0;
       if (!strncmp(name, "layer[", 6)) {
         LayerInfo info = this->GetLayerInfo(name, val, cfg_top_node, cfg_layer_index);
         netcfg_mode = 2;

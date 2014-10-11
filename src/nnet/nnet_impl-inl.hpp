@@ -7,6 +7,7 @@
 #include "../utils/io.h"
 #include "../utils/metric.h"
 #include "./neural_net-inl.hpp"
+#include "../sync/sync.h"
 
 namespace cxxnet {
 namespace nnet {
@@ -26,6 +27,7 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "dev")) {
+      devices_.clear();
       const char *devs = strchr(val, ':');
       if (devs != NULL) {
         int a, b;
@@ -63,6 +65,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       nets_[i]->WaitJob();
     }
     this->InitTemp();
+    this->InitSynchs();
   }
   virtual void SaveModel(utils::IStream &fo) {
     this->Save2ModelBlob();
@@ -82,6 +85,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     this->WaitAllJobs();
     this->InitTemp();
+    this->InitSynchs();
   }
   virtual void StartRound(int round) {
     for (size_t i = 0; i < nets_.size(); ++i) {  
@@ -111,11 +115,17 @@ class CXXNetThreadTrainer : public INetTrainer {
       train_metric.AddEval(out_temp.FlatTo2D(), data.labels);
     }
     if (++ sample_counter >= update_period) {
+      for (size_t i = 0; i < syncs_.size(); ++i) {
+        syncs_[i]->SyncBeforeUpdate();
+      }
       for (mshadow::index_t i = nets_.size(); i != 0; --i) {
         nets_[i - 1]->Update(epoch_counter);
       }
       epoch_counter += 1;
       this->WaitAllJobs();
+      for (size_t i = 0; i < syncs_.size(); ++i) {
+        syncs_[i]->SyncAfterUpdate();
+      }
       sample_counter = 0;
     }
   }
@@ -213,6 +223,9 @@ class CXXNetThreadTrainer : public INetTrainer {
     for (size_t i = 0; i < devices_.size(); ++i) {
       delete nets_[i];
     }
+    for (size_t i = 0; i < syncs_.size(); ++i) {
+      delete syncs_[i];
+    }
     nets_.clear();
   }
   
@@ -239,12 +252,79 @@ class CXXNetThreadTrainer : public INetTrainer {
   std::vector<int> devices_;
   /*! \brief serialized model in CPU */
   std::string model_blob_;
-  /*! \brief threads of */
-  std::vector<NeuralNetThread<xpu>*> nets_;
+  /*! \brief threads of neural nets */
+  std::vector<NeuralNetThread<xpu>*> nets_;  
   /*! \brief network configuration type */
   NetConfig net_cfg;
   /*! \brief history of configurations */
   std::vector< std::pair<std::string, std::string> > cfg;
+  // --------------------------------
+  // code for synchronization
+  // 
+  struct GetWeightVisitor : public layer::ILayer<xpu>::IVisitor {
+    std::string tag;
+    std::vector< mshadow::Tensor<xpu,2> > weights, grads;
+    template<int dim>
+    inline void Visit_(const char *field_name,
+                        mshadow::Tensor<xpu,dim> weight,
+                        mshadow::Tensor<xpu,dim> grad) {
+      tag = field_name;
+      this->weights.push_back(weight.FlatTo2D());
+      this->grads.push_back(grad.FlatTo2D());
+    }
+    virtual void Visit(const char *field_name,
+                       mshadow::Tensor<xpu,1> weight,
+                       mshadow::Tensor<xpu,1> grad) {
+      this->Visit_(field_name, weight, grad);
+    }
+    virtual void Visit(const char *field_name,
+                       mshadow::Tensor<xpu,2> weight,
+                       mshadow::Tensor<xpu,2> grad) {
+      this->Visit_(field_name, weight, grad);
+    }
+    virtual void Visit(const char *field_name,
+                       mshadow::Tensor<xpu,3> weight,
+                       mshadow::Tensor<xpu,3> grad) {
+      this->Visit_(field_name, weight, grad);
+    }
+  };
+  
+  inline void InitSynchs(void) {
+    for (size_t i = 0; i < nets_.size(); ++i) {
+      utils::Assert(nets_[i]->net().updaters.size() == net_cfg.layercfg.size(),
+                    "net struct inconsistent");
+      for (size_t j = 0; j < nets_[0]->net().updaters.size(); ++j) {
+        utils::Assert(nets_[i]->net().updaters[j].size() == nets_[0]->net().updaters[j].size(),
+                      "net struct inconsistent");
+      }
+    }
+    for (size_t i = 0; i < nets_[0]->net().updaters.size(); ++i) {
+      const std::vector<std::pair<std::string, std::string> > &conf = net_cfg.layercfg[i];
+      std::string sync_type = net_cfg.sync_type;
+      for (size_t k = 0; k < conf.size(); ++k) {
+        if (conf[k].first == "sync") sync_type = conf[k].second;
+      }
+      for (size_t j = 0;  j < nets_[0]->net().updaters[i].size(); ++j) {
+        GetWeightVisitor v;
+        nets_[0]->net().updaters[i][j]->ApplyVisitor(&v);
+        for (size_t k = 1; k < nets_.size(); ++k) {
+          nets_[k]->net().updaters[i][j]->ApplyVisitor(&v);
+        }
+        sync::ISynchronizer<xpu> *s = 
+            sync::CreateSynch(sync_type.c_str(), v.weights, v.grads, v.tag.c_str());
+        if (s == NULL) continue;
+        for (size_t k = 0; k < net_cfg.defcfg.size(); ++k) {
+          s->SetParam(net_cfg.defcfg[k].first.c_str(), net_cfg.defcfg[k].second.c_str());
+        }
+        for (size_t k = 0; k < conf.size(); ++k) {
+          s->SetParam(conf[k].first.c_str(), conf[k].second.c_str());
+        }
+        syncs_.push_back(s);
+      }
+    }
+  }
+  /*! \brief synchronizers */
+  std::vector<sync::ISynchronizer<xpu>*> syncs_;
 };
 
 template<typename xpu>

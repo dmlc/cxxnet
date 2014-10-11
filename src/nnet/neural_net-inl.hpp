@@ -31,7 +31,7 @@ struct NeuralNet {
   /*! \brief layers in the neural net */
   std::vector<layer::Connection<xpu> > connections;
   /*! \brief updaters in the neural net */
-  std::vector<updater::IUpdater<xpu>*> updaters;
+  std::vector< std::vector<updater::IUpdater<xpu>*> > updaters;
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
   // constructor do nothing
@@ -115,7 +115,9 @@ struct NeuralNet {
    */
   inline void Update(size_t epoch) {
     for (size_t i = 0; i < updaters.size(); ++ i) {
-      updaters[i]->Update(epoch);          
+      for (size_t j = 0; j < updaters[i].size(); ++ j) {
+        updaters[i][j]->Update(epoch);
+      }
     }
   }
   /*!
@@ -124,7 +126,9 @@ struct NeuralNet {
    */
   inline void StartRound(int round) {
     for (size_t i = 0; i < updaters.size(); ++ i) {
-      updaters[i]->StartRound(round);
+      for (size_t j = 0; j < updaters[i].size(); ++ j) {
+        updaters[i][j]->StartRound(round);
+      }
     }
   }
   
@@ -188,8 +192,8 @@ struct NeuralNet {
                            cfg.layercfg[i][j].second.c_str());
         }
         out[k]->Init();
-        updaters.push_back(out[k]);
       }
+      updaters.push_back(out);
     }
   }
   // intialize the space of nodes
@@ -224,7 +228,9 @@ struct NeuralNet {
       }
     }
     for (size_t i = 0; i < updaters.size(); ++i) {
-      delete updaters[i];
+      for (size_t j = 0; j < updaters[i].size(); ++j) {
+        delete updaters[i][j];
+      }
     }
     nodes.clear(); connections.clear(); updaters.clear();
   }
