@@ -93,7 +93,7 @@ struct NeuralNet {
     this->AdjustBatchSize(batch.shape[3]);
     // copy data into node
     mshadow::Copy(nodes[0].data, batch);
-    for (size_t i = 0; i < connections.size(); ++ i) {
+    for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
       c.layer->Forward(is_train, c.nodes_in, c.nodes_out, &c.state);
     }
@@ -102,9 +102,9 @@ struct NeuralNet {
    * \brief backprop 
    * \param prop_to_input whether prop gradient to input node
    */
-  inline void Backprop(bool prop_to_input = false) {
-    for (size_t i = 0; i < connections.size(); ++ i) {
-      layer::Connection<xpu> &c = connections[i];
+  inline void Backprop(bool prop_to_input = false) {    
+    for (size_t i = connections.size(); i > 0; --i) {
+      layer::Connection<xpu> &c = connections[i-1];
       c.layer->Backprop(i != 1 || prop_to_input,
                         c.nodes_in, c.nodes_out, &c.state);
     }

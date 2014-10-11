@@ -157,7 +157,7 @@ struct NetConfig {
       }
       if (!strcmp(name, "updater")) updater_type = val;
       if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
-      if (!strcmp(name, "netconfig") && !strcmp(val, "end"))   netcfg_mode = 0;    
+      if (!strcmp(name, "netconfig") && !strcmp(val, "end")) netcfg_mode = 2;
       if (!strncmp(name, "layer[", 6)) {
         LayerInfo info = this->GetLayerInfo(name, val, cfg_top_node, cfg_layer_index);
         netcfg_mode = 2;
@@ -174,6 +174,7 @@ struct NetConfig {
           cfg_top_node = info.nindex_out[0];
         }
         cfg_layer_index += 1;
+        continue;
       }
       if (netcfg_mode == 2) {
         utils::Check(layers[cfg_layer_index - 1].type != layer::kSharedLayer,
