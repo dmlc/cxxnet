@@ -213,14 +213,17 @@ class StdFile: public ISeekStream {
  public:
   /*! \brief constructor */
   StdFile(const char *fname, const char *mode) {
-    fp_ = utils::FopenCheck(fname, mode);
-    fseek(fp_, 0L, SEEK_END);
-    sz_ = ftell(fp_);
-    fseek(fp_, 0L, SEEK_SET);
+    Open(fname, mode);
   }
   StdFile() {}
   virtual ~StdFile(void) {
     this->Close();
+  }
+  virtual void Open(const char *fname, const char *mode) {
+    fp_ = utils::FopenCheck(fname, mode);
+    fseek(fp_, 0L, SEEK_END);
+    sz_ = ftell(fp_);
+    fseek(fp_, 0L, SEEK_SET);
   }
   virtual size_t Read(void *ptr, size_t size) {
     return fread(ptr, size, 1, fp_);

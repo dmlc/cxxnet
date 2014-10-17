@@ -2,10 +2,12 @@
 #define CXXNET_MSHADOW_ITER_INL_HPP
 #pragma once
 
+
 #include "mshadow/tensor_container.h"
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_io_utils.h"
-#include "../utils/cxxnet_global_random.h"
+#include "../utils/utils.h"
+#include "../utils/io.h"
+#include "../utils/global_random.h"
 
 namespace cxxnet {
 // load from mshadow binary data
@@ -103,15 +105,15 @@ private:
     int step = img_rows * img_cols;
     t_data.resize(img_count * step);
     fi.Read(&t_data[0], img_count * step);
-    fi.close();
+    fi.Close();
 
-    img_.shape = mshadow::Shape4(1, image_count, image_rows, image_cols);
+    img_.shape = mshadow::Shape4(1, img_count, img_rows, img_cols);
     img_.shape.stride_ = img_.shape[0];
     img_.dptr = new float[ img_.shape.MSize() ];
     int loc = 0;
-    for (int i = 0; i < image_count; ++i) {
-      for (int j = 0; j < image_rows; ++j) {
-        for (int k = 0; k < image_cols; ++k) {
+    for (int i = 0; i < img_count; ++i) {
+      for (int j = 0; j < img_rows; ++j) {
+        for (int k = 0; k < img_cols; ++k) {
           img_[1][i][j][k] = static_cast<float>(t_data[loc++]);
         }
       }
@@ -120,15 +122,15 @@ private:
     img_ *= 1.0f / 256.0f;
   }
   inline void LoadLabelMNIST(void) {
-    utils::StdFile fi = utils::StdFile(path_label_, "rb");
+    utils::StdFile fi = utils::StdFile(path_label_.c_str(), "rb");
     unsigned char buf[4];
     int img_count = 0;
     fi.Read(buf, 4);
     fi.Read(buf, 4);
     img_count = Pack(buf);
-    vector<unsigned> t_data(img_count);
+    std::vector<unsigned> t_data(img_count);
     fi.Read(&t_data[0], img_count);
-    fi.close();
+    fi.Close();
 
     labels_.shape = mshadow::Shape1(img_count);
     labels_.shape.stride_ = 1;

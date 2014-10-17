@@ -4,7 +4,9 @@
 
 #include "mshadow/tensor_container.h"
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_io_utils.h"
+#include "../utils/utils.h"
+#include "../utils/io.h"
+
 
 namespace cxxnet {
 class SpFeatIterator: public IIterator<DataBatch> {

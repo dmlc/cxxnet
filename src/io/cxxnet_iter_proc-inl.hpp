@@ -9,8 +9,10 @@
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_container.h"
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_global_random.h"
-#include "../utils/cxxnet_thread_buffer.h"
+#include "../utils/utils.h"
+#include "../utils/io.h"
+#include "../utils/global_random.h"
+#include "../utils/thread_buffer.h"
 
 namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
@@ -241,7 +243,7 @@ public :
     itr.SetParam(name, val);
   }
   virtual void Init(void) {
-    utils::Assert(itr.Init()) ;
+    utils::Assert(itr.Init(), "iterator init fail") ;
     if (silent_ == 0) {
       printf("ThreadBufferIterator: buffer_size=%d\n", itr.buf_size);
     }

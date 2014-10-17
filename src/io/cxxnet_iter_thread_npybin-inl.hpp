@@ -8,8 +8,10 @@
  */
 #include <string>
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_thread_buffer.h"
-#include "../utils/cxxnet_io_utils.h"
+#include "../utils/thread_buffer.h"
+#include "../utils/io.h"
+#include "../utils/utils.h"
+
 
 namespace cxxnet {
 /*! \brief thread buffer iterator */
@@ -72,7 +74,7 @@ protected:
     index_t word_size = 0;
     fread(buffer, sizeof(char), 11, fp);
     std::string header = fgets(buffer, 256, fp);
-    utils::Assert(header[header.size() - 1] == '\n');
+    utils::Assert(header[header.size() - 1] == '\n', "npy file format error");
     loc1 = header.find("(");
     loc2 = header.find(")");
     std::string str_shape = header.substr(loc1 + 1, loc2 - loc1 - 1);

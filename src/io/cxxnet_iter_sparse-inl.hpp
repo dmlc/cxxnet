@@ -7,8 +7,9 @@
  * \author Tianqi Chen
  */
 #include "cxxnet_data.h"
-#include "../utils/cxxnet_io_utils.h"
-#include "../utils/cxxnet_thread_buffer.h"
+#include "../utils/thread_buffer.h"
+#include "../utils/io.h"
+#include "../utils/utils.h"
 
 namespace cxxnet {
 /*! \brief a simple adapter */
@@ -176,7 +177,7 @@ private:
   unsigned length;
 public:
   SparseInstObj(const SparseInst &line) {
-    utils::Assert(sizeof(SparseInst::Entry) % sizeof(unsigned) == 0);
+    utils::Assert(sizeof(SparseInst::Entry) % sizeof(unsigned) == 0, "TODO");
     dptr = new unsigned[(line.length * sizeof(SparseInst::Entry) + 2 * sizeof(unsigned)) / sizeof(unsigned) ];
     this->label() = line.label;
     this->index() = line.index;
