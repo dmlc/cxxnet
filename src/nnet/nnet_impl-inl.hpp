@@ -21,6 +21,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     sample_counter = 0;
     eval_train = 1; 
     epoch_counter = 0;
+    debug_sync = 0;
   }
   virtual ~CXXNetThreadTrainer(void) {
     this->FreeNet();
@@ -49,6 +50,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (!strcmp(name, "batch_size")) batch_size = static_cast<mshadow::index_t>(atoi(val));
     if (!strcmp(name, "update_period")) update_period = atoi(val);
     if (!strcmp(name, "eval_train")) eval_train = atoi(val);
+    if (!strcmp(name, "debug_sync")) debug_sync = atoi(val);
     if( !strcmp(name, "metric")) {
       metric.AddMetric(val); train_metric.AddMetric(val);
     }
@@ -94,37 +96,41 @@ class CXXNetThreadTrainer : public INetTrainer {
     this->WaitAllJobs();
   }
   virtual void Update(const DataBatch& data) {
-    mshadow::Shape<4> oshape = out_temp.shape;
-    oshape[3] = data.batch_size;
-    out_temp.Resize(oshape);
-
-    const size_t ndevice = devices_.size();
-    mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
-    for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-      mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
-      mshadow::index_t end = std::min(i * step, data.batch_size);
-      mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
-      layer::LabelInfo info;
-      info.labels = data.labels + begin;
-      info.batch_size = end - begin;
+    if (debug_sync == 0) {
+      mshadow::Shape<4> oshape = out_temp.shape;
+      oshape[3] = data.batch_size;
+      out_temp.Resize(oshape);
+      
+      const size_t ndevice = devices_.size();
+      mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
+      for (mshadow::index_t i = nets_.size(); i != 0; --i) {
+        mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
+        mshadow::index_t end = std::min(i * step, data.batch_size);
+        mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
+        layer::LabelInfo info;
+        info.labels = data.labels + begin;
+        info.batch_size = end - begin;
       nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end));
-    }
-    this->WaitAllJobs();
-    // evlauate training loss
-    if (eval_train != 0) {
-      train_metric.AddEval(out_temp.FlatTo2D(), data.labels);
+      }
+      this->WaitAllJobs();
+      // evlauate training loss
+      if (eval_train != 0) {
+        train_metric.AddEval(out_temp.FlatTo2D(), data.labels);
+      }
     }
     if (++ sample_counter >= update_period) {
-      for (size_t i = 0; i < syncs_.size(); ++i) {
-        syncs_[i]->SyncBeforeUpdate();
+      for (size_t i = syncs_.size(); i != 0; --i) {
+        syncs_[i - 1]->SyncBeforeUpdate();
       }
-      for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-        nets_[i - 1]->Update(epoch_counter);
+      if (debug_sync == 0){
+        for (mshadow::index_t i = nets_.size(); i != 0; --i) {
+          nets_[i - 1]->Update(epoch_counter);
+        }
+        epoch_counter += 1;
+        this->WaitAllJobs();
       }
-      epoch_counter += 1;
-      this->WaitAllJobs();
-      for (size_t i = 0; i < syncs_.size(); ++i) {
-        syncs_[i]->SyncAfterUpdate();
+      for (size_t i = syncs_.size(); i != 0; --i) {
+        syncs_[i - 1]->SyncAfterUpdate();
       }
       sample_counter = 0;
     }
@@ -231,6 +237,8 @@ class CXXNetThreadTrainer : public INetTrainer {
   
   /*! \brief epoch counter */
   long epoch_counter;
+  /*! \brief debug cost for sync */
+  int debug_sync;
   /*! \brief silent*/  
   int silent;
   /*! \brief update period */
