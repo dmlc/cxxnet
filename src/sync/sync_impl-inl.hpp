@@ -34,6 +34,11 @@ class SimpleSynch : public ISynchronizer<xpu> {
     if (!xpu::kDevCPU){
       utils::Check(cudaGetDevice(&host_device) == cudaSuccess, "cannot get device");
     }
+    for (size_t i = 0; i < grads.size(); ++i) {
+      if (devices[i] != host_device) {
+        cudaDeviceEnablePeerAccess(devices[i], 0);
+      }
+    }
 #endif
     // no synchronization is needed for 1 weight
     if (weights.size() > 1) {
@@ -54,16 +59,17 @@ class SimpleSynch : public ISynchronizer<xpu> {
   }  
   /*! \brief synchronization actions to be performs before the updater */
   virtual void SyncBeforeUpdate(void) {
-    if (weights.size() == 1) return;
+    //if (weights.size() == 1) return;
     // sync gradient
     Copy(wsum.dptr, host_device, 
          grads[0].dptr, devices[0],
          sizeof(mshadow::real_t) * wsum.shape[0]);
+    
     for (size_t i = 1; i < grads.size(); ++i) {
       Copy(wtmp.dptr, host_device, 
            grads[i].dptr, devices[i],
            sizeof(mshadow::real_t) * wtmp.shape[0]);
-      wsum += wtmp;      
+      wsum += wtmp;
     }
     for (size_t i = 0; i < grads.size(); ++i) {
       Copy(grads[i].dptr, devices[i],
@@ -83,9 +89,13 @@ class SimpleSynch : public ISynchronizer<xpu> {
   inline static void Copy(real_t *dst, int dst_dev,
                           real_t *src, int src_dev,
                           size_t size) {
-    #ifdef __CUDACC__
+#ifdef __CUDACC__
     if (!xpu::kDevCPU){
-      cudaMemcpyPeer(dst, dst_dev, src, src_dev, size);
+      if (dst_dev == src_dev) {
+        cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice);
+      } else {
+        cudaMemcpyPeer(dst, dst_dev, src, src_dev, size);
+      }
     } else {
       memcpy(dst, src, size);
     }
