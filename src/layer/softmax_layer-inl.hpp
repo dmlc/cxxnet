@@ -16,6 +16,7 @@ class SoftmaxLayer: public ILayer<xpu> {
   virtual ~SoftmaxLayer(void) {}
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "batch_size")) batch_size = atoi(val);
+    if (!strcmp(name, "update_period")) update_period = atoi(val);    
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
@@ -45,7 +46,7 @@ class SoftmaxLayer: public ILayer<xpu> {
     }
     mshadow::Copy(nodes_in[0]->mat(), tnode);
     // scale gradient by dividing global batch size
-    nodes_in[0]->mat() *= (1.0f / batch_size);
+    nodes_in[0]->mat() *= (1.0f / (batch_size * update_period));
   }
   
  protected:
@@ -55,6 +56,8 @@ class SoftmaxLayer: public ILayer<xpu> {
    *        into subbatch to layers in different devices
    */
   int batch_size;
+  // update period, used to do scaling
+  int update_period;
   /*! \brief temp space for notde*/
   mshadow::TensorContainer<cpu,2> tnode;
   /*! \brief reference to label information */
