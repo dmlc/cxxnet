@@ -35,8 +35,8 @@ struct NeuralNet {
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
   // constructor do nothing
-  NeuralNet(const NetConfig &cfg, mshadow::index_t batch_size)       
-      : cfg(cfg), rnd(0) {
+  NeuralNet(const NetConfig &cfg, mshadow::index_t batch_size, int seed)       
+      : cfg(cfg), rnd(seed) {
     // set maximum batch
     this->max_batch = batch_size;
   }
@@ -247,9 +247,10 @@ class NeuralNetThread {
   NeuralNetThread(const NetConfig &cfg, 
                   int device_id,
                   mshadow::index_t batch_size,
+                  int seed,
                   bool new_thread = true)
-      : cfg(cfg), device_id(device_id),
-        batch_size(batch_size), new_thread(new_thread) {
+      : cfg(cfg), device_id(device_id), batch_size(batch_size),
+        seed(seed), new_thread(new_thread) {
     net_ = NULL;
     if (new_thread) {
       destroy_signal = false;
@@ -262,7 +263,7 @@ class NeuralNetThread {
       if (!xpu::kDevCPU) {
         mshadow::InitTensorEngine(device_id);
       }
-      net_ = new NeuralNet<xpu>(cfg, batch_size);
+      net_ = new NeuralNet<xpu>(cfg, batch_size, seed);
     }
   }
   // destructor
@@ -368,7 +369,7 @@ class NeuralNetThread {
       mshadow::InitTensorEngine(device_id);
     }
     // allocate net
-    net_ = new NeuralNet<xpu>(cfg, batch_size);
+    net_ = new NeuralNet<xpu>(cfg, batch_size, seed);
     // tell the master that net is created
     job_end.Post();
     while (!destroy_signal) {
@@ -447,6 +448,8 @@ class NeuralNetThread {
   int device_id;
   // local batch size of this thread
   mshadow::index_t batch_size;
+  // seed used to intialize this thread
+  int seed;
   // whether the implementation is backed by a new thread
   const bool new_thread;
 };

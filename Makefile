@@ -3,7 +3,7 @@ export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
 export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp 
-export blas=1
+export blas=0
 ifeq ($(blas),1)
  LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1

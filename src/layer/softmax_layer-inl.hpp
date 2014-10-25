@@ -12,6 +12,7 @@ class SoftmaxLayer: public ILayer<xpu> {
  public:
   SoftmaxLayer(const LabelInfo *label_info) {
     this->plabelinfo = label_info;
+    update_period = 1;
   }
   virtual ~SoftmaxLayer(void) {}
   virtual void SetParam(const char *name, const char *val) {

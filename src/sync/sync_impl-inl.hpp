@@ -59,7 +59,7 @@ class SimpleSynch : public ISynchronizer<xpu> {
   }  
   /*! \brief synchronization actions to be performs before the updater */
   virtual void SyncBeforeUpdate(void) {
-    //if (weights.size() == 1) return;
+    if (weights.size() == 1) return;
     // sync gradient
     Copy(wsum.dptr, host_device, 
          grads[0].dptr, devices[0],

@@ -22,6 +22,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     eval_train = 1; 
     epoch_counter = 0;
     debug_sync = 0;
+    seed = 0;
   }
   virtual ~CXXNetThreadTrainer(void) {
     this->FreeNet();
@@ -50,6 +51,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (!strcmp(name, "batch_size")) batch_size = static_cast<mshadow::index_t>(atoi(val));
     if (!strcmp(name, "update_period")) update_period = atoi(val);
     if (!strcmp(name, "eval_train")) eval_train = atoi(val);
+    if (!strcmp(name, "seed")) seed = atoi(val);
     if (!strcmp(name, "debug_sync")) debug_sync = atoi(val);
     if( !strcmp(name, "metric")) {
       metric.AddMetric(val); train_metric.AddMetric(val);
@@ -214,7 +216,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     const size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
     for (size_t i = 0; i < ndevice; ++i) {
-      nets_.push_back(new NeuralNetThread<xpu>(net_cfg, devices_[i], step));
+      nets_.push_back(new NeuralNetThread<xpu>(net_cfg, devices_[i], step, i + seed * 100));
     }
     if (silent == 0) {
       printf("finish initialization with %lu devices\n", devices_.size());
@@ -239,6 +241,8 @@ class CXXNetThreadTrainer : public INetTrainer {
   long epoch_counter;
   /*! \brief debug cost for sync */
   int debug_sync;
+  /*! \brief seed to the layers */
+  int seed;
   /*! \brief silent*/  
   int silent;
   /*! \brief update period */
