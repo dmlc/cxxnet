@@ -86,8 +86,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     for (size_t i = 0; i < nets_.size(); ++i) {
       utils::MemoryBufferStream fs(&model_blob_);
       nets_[i]->LoadModel(fs);
+      nets_[i]->WaitJob();
     }
-    this->WaitAllJobs();
     this->InitTemp();
     this->InitSynchs();
   }
