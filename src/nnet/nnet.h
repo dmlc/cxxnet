@@ -10,7 +10,7 @@
 #include <mshadow/tensor.h>
 #include "../global.h"
 #include "../utils/io.h"
-#include "../io/cxxnet_data.h"
+#include "../io/data.h"
 
 namespace cxxnet {
 namespace nnet {

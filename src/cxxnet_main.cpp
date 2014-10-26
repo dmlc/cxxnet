@@ -7,7 +7,7 @@
 #include <vector>
 #include <climits>
 #include "nnet/nnet.h"
-#include "io/cxxnet_data.h"
+#include "io/data.h"
 #include "utils/config.h"
 
 namespace cxxnet{
@@ -163,8 +163,8 @@ namespace cxxnet{
             }
             if( reset_net_type != -1 ){
                 net_type = reset_net_type;
-            }            
-            INetTrainer *net;            
+            }
+            INetTrainer *net;
             if (!strncmp(device.c_str(), "gpu", 3)) {
               net = cxxnet::CreateNet<mshadow::gpu>( net_type );
             } else {

@@ -11,20 +11,18 @@ typedef mshadow::index_t index_t;
 typedef mshadow::real_t  real_t;
 };
 
-#include "cxxnet_data.h"
+#include "data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
-#include "cxxnet_iter_mnist-inl.hpp"
-#include "cxxnet_iter_mshadow-inl.hpp"
-// #include "cxxnet_iter_spfeat-inl.hpp"
-
-#include "cxxnet_iter_proc-inl.hpp"
-#include "cxxnet_iter_sparse-inl.hpp"
-#include "cxxnet_iter_thread_npybin-inl.hpp"
+#include "iter_mnist-inl.hpp"
+#include "iter_mshadow-inl.hpp"
+#include "iter_proc-inl.hpp"
+#include "iter_sparse-inl.hpp"
+#include "iter_thread_npybin-inl.hpp"
 
 #if CXXNET_USE_OPENCV
-#include "cxxnet_iter_img-inl.hpp"
-#include "cxxnet_iter_thread_imbin-inl.hpp"
+#include "iter_img-inl.hpp"
+#include "iter_thread_imbin-inl.hpp"
 #endif
 
 #if CXXNET_ADAPT_XGBOOST
@@ -43,20 +41,11 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
         utils::Check(it == NULL, "mnist can not chain over other iterator");
         it = new MNISTIterator(); continue;
       }      
-      
-      /*if (!strcmp(val, "spfeat")) {
-        utils::Assert(it == NULL);
-        it = new SpFeatIterator(); continue;
-        }*/
       if (!strcmp(val, "mshadow")) {
         utils::Assert(it == NULL, "mshadow can not chain over other iterator");
         it = new BatchAdaptIterator(new MShadowIterator()); continue;
       }
       #if CXXNET_USE_OPENCV
-      if (!strcmp(val, "image")) {
-        utils::Assert(it == NULL, "image can not chain over other iterator");
-        it = new BatchAdaptIterator(new ImageIterator()); continue;
-      }
       if (!strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
         it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;

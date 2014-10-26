@@ -1,8 +1,8 @@
-#ifndef CXXNET_DATA_H
-#define CXXNET_DATA_H
+#ifndef DATA_H
+#define DATA_H
 #pragma once
 /*!
- * \file cxxnet_data.h
+ * \file data.h
  * \brief data type and iterator abstraction
  * \author Bing Xu, Tianqi Chen
  */

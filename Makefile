@@ -2,13 +2,14 @@
 export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
-export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp 
+export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp
 export blas=0
+export noopencv=0
 ifeq ($(blas),1)
  LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
 else
- LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz 
+ LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz
 endif
 
 ifeq ($(xgboost),1)
@@ -25,7 +26,7 @@ export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
 
 # specify tensor path
 BIN = bin/cxxnet
-OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o cxxnet_data.o
+OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 .PHONY: clean all
@@ -35,7 +36,7 @@ all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu src/layer/*.h src/layer/*.hpp src/utils/*.h
 updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_impl.cu src/layer/layer.h src/updater/*.hpp src/updater/*.h src/utils/*.h
 nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h src/sync/*.hpp src/sync/*.h
-cxxnet_data.o: src/io/cxxnet_data.cpp src/io/*.hpp
+data.o: src/io/data.cpp src/io/*.hpp
 
 bin/cxxnet: src/cxxnet_main.cpp $(OBJ) $(CUOBJ)
 

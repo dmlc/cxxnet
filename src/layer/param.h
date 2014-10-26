@@ -48,15 +48,16 @@ struct LayerParam {
   /*! \brief number of input channels */
   int num_input_channel;
   /*! \brief number of input hidden nodes, used by fullc */
-  int num_input_node;  
+  int num_input_node;
   /*! \brief reserved fields, for future compatibility */
   int reserved[64];
   /*! \brief construtor */
   LayerParam(void) {
     init_sigma = 0.01f;
     init_uniform = -1.0f;
-    init_sparse = 0;
+    init_sparse = 10;
     init_bias  = 0.0f;
+    random_type = 0;
     num_hidden = 0;
     num_channel = 0;
     num_group = 1;
@@ -82,7 +83,12 @@ struct LayerParam {
     if (!strcmp(name, "init_uniform")) init_uniform = (float)atof(val);
     if (!strcmp(name, "init_bias")) init_bias  = (float)atof(val);
     if (!strcmp(name, "init_sparse")) init_sparse = atoi(val);
-    if (!strcmp(name, "random_type")) random_type = atoi(val);    
+    if (!strcmp(name, "random_type")) {
+      if (!strcmp(val, "gaussian")) random_type = 0;
+      else if (!strcmp(val, "uniform")) random_type = 1;
+      else if (!strcmp(val, "sparse")) random_type = 2;
+      // 3: mshadow binary file
+    }    
     if (!strcmp(name, "nhidden")) num_hidden = atoi(val);
     if (!strcmp(name, "nchannel")) num_channel = atoi(val);
     if (!strcmp(name, "ngroup")) num_group = atoi(val);
@@ -106,39 +112,38 @@ struct LayerParam {
   inline void RandInitWeight(mshadow::Random<xpu> *prng,
                              mshadow::Tensor<xpu, dim> mat,
                              index_t in_num, index_t out_num) {
-    /*
-    if (dim > 2) init_sparse = -1;
-    if (init_sparse > 0) {
-      // sparse initialization
+    
+    if (random_type == 0) {
+      // gaussian initialization
+      prng->SampleGaussian(mat, 0.0f, init_sigma);
+    } else if (random_type == 1) {
+      // uniform initialization
+      real_t a = sqrt(3.0f / (in_num + out_num));
+      if (init_uniform > 0) a = init_uniform;
+      prng->SampleUniform(mat, -a, a);
+    } else if (random_type == 2) {
+      // sparse initalization
+      real_t a = sqrt(3.0f / (in_num + out_num));
+      utils::Check(dim == 2, "Sparse init only support 2 dim");
       std::vector<real_t> tmp(mat.shape.MSize(), 0.0f);
       mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape);
       for (int i = 0; i < init_sparse; ++i) {
         int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
         int rej = 0;
         int j = i;
-        while (cpu_mat[idx][j] > 0.0f) {
+        int loc = j * mat.shape.stride_ + idx;
+        while (tmp[loc] > 0.0f) {
           rej++;
           idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
           if (rej > 10) j = static_cast<int>(out_num * static_cast<double>(rand())/RAND_MAX);
           if (rej > 20) break;
         }
-        cpu_mat[idx][j] = init_sigma;
+        tmp[loc] = ((static_cast<float>(rand())/RAND_MAX) > 0.5f ? 1.0f : -1.0f) * \
+            a * static_cast<float>(rand())/RAND_MAX;
       }
-      mshadow::Copy(cpu_mat, mat);
-    } else if (init_uniform > 0) {
-      // uniform initialization
-      prng->SampleUniform(mat, -init_uniform, init_uniform);
-    } else {
-      // gaussian initialization
-      prng->SampleGaussian(mat, 0.0f, init_sigma);
-    }*/
-    if (random_type == 0) {
-      // gaussian initialization
-      prng->SampleGaussian(mat, 0.0f, init_sigma);
-    } else {
-      // xavier initialization
-      real_t a = sqrt(3.0f / (in_num + out_num));
-      prng->SampleUniform(mat, -a, a);
+      mshadow::Copy(mat, cpu_mat);
+    } else if (random_type == 3) {
+      // mshadow::utils::LoadBinary(fi, mat, false);
     }
   }
 };

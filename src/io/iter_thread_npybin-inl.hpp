@@ -1,5 +1,5 @@
-#ifndef CXXNET_ITER_THREAD_NPYBIN_INL_HPP
-#define CXXNET_ITER_THREAD_NPYBIN_INL_HPP
+#ifndef ITER_THREAD_NPYBIN_INL_HPP
+#define ITER_THREAD_NPYBIN_INL_HPP
 #pragma once
 /*!
  * \file cxxnet_iter_thread_npybin-inl.hpp
@@ -7,7 +7,7 @@
  * \author Bing Xu, Tianqi Chen
  */
 #include <string>
-#include "cxxnet_data.h"
+#include "data.h"
 #include "../utils/thread_buffer.h"
 #include "../utils/io.h"
 #include "../utils/utils.h"

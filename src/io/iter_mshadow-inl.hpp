@@ -1,10 +1,10 @@
-#ifndef CXXNET_MSHADOW_ITER_INL_HPP
-#define CXXNET_MSHADOW_ITER_INL_HPP
+#ifndef MSHADOW_ITER_INL_HPP
+#define MSHADOW_ITER_INL_HPP
 #pragma once
 
 
 #include "mshadow/tensor_container.h"
-#include "cxxnet_data.h"
+#include "data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "../utils/global_random.h"

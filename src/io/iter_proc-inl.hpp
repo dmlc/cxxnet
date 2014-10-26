@@ -1,5 +1,5 @@
-#ifndef CXXNET_ITER_PROC_INL_HPP
-#define CXXNET_ITER_PROC_INL_HPP
+#ifndef ITER_PROC_INL_HPP
+#define ITER_PROC_INL_HPP
 #pragma once
 /*!
  * \file cxxnet_iter_proc-inl.hpp
@@ -8,7 +8,7 @@
  */
 #include "mshadow/tensor.h"
 #include "mshadow/tensor_container.h"
-#include "cxxnet_data.h"
+#include "data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "../utils/global_random.h"

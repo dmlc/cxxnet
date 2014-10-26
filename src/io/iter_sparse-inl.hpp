@@ -1,12 +1,12 @@
-#ifndef CXXNET_ITER_SPARSE_INL_HPP
-#define CXXNET_ITER_SPARSE_INL_HPP
+#ifndef ITER_SPARSE_INL_HPP
+#define ITER_SPARSE_INL_HPP
 #pragma once
 /*!
  * \file cxxnet_iter_sparse-inl.hpp
  * \brief definition of iterator that relates to sparse data format
  * \author Tianqi Chen
  */
-#include "cxxnet_data.h"
+#include "data.h"
 #include "../utils/thread_buffer.h"
 #include "../utils/io.h"
 #include "../utils/utils.h"

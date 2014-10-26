@@ -1,15 +1,15 @@
-#ifndef CXXNET_ITER_THREAD_IMBIN_INL_HPP
-#define CXXNET_ITER_THREAD_IMBIN_INL_HPP
+#ifndef ITER_THREAD_IMBIN_INL_HPP
+#define ITER_THREAD_IMBIN_INL_HPP
 #pragma once
 /*!
  * \file cxxnet_iter_thread_imbin-inl.hpp
  * \brief threaded version of page iterator
  * \author Tianqi Chen
  */
-#include "cxxnet_data.h"
+#include "data.h"
 #include <opencv2/opencv.hpp>
-#include "../utils/cxxnet_thread_buffer.h"
-#include "../utils/cxxnet_io_utils.h"
+#include "../utils/thread_buffer.h"
+#include "../utils/utils.h"
 
 namespace cxxnet {
 /*! \brief thread buffer iterator */

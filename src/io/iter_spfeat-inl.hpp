@@ -1,9 +1,9 @@
-#ifndef CXXNET_ITER_SPFEAT_INL_HPP
-#define CXXNET_ITER_SPFEAT_INL_HPP
+#ifndef ITER_SPFEAT_INL_HPP
+#define ITER_SPFEAT_INL_HPP
 #pragma once
 
 #include "mshadow/tensor_container.h"
-#include "cxxnet_data.h"
+#include "data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
 
