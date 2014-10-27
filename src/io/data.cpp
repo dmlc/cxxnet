@@ -21,7 +21,6 @@ typedef mshadow::real_t  real_t;
 #include "iter_thread_npybin-inl.hpp"
 
 #if CXXNET_USE_OPENCV
-#include "iter_img-inl.hpp"
 #include "iter_thread_imbin-inl.hpp"
 #endif
 

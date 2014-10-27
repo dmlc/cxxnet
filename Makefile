@@ -19,6 +19,7 @@ endif
 ifeq ($(noopencv),1)
 	CFLAGS+= -DCXXNET_USE_OPENCV=0
 else
+	CFLAGS+= -DCXXNET_USE_OPENCV=1
 	LDFLAGS+= `pkg-config --libs opencv`
 endif
 
