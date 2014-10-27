@@ -87,6 +87,7 @@ struct LayerParam {
       if (!strcmp(val, "gaussian")) random_type = 0;
       else if (!strcmp(val, "uniform")) random_type = 1;
       else if (!strcmp(val, "sparse")) random_type = 2;
+      else utils::Error("invalid random_type %s", val);
       // 3: mshadow binary file
     }    
     if (!strcmp(name, "nhidden")) num_hidden = atoi(val);
