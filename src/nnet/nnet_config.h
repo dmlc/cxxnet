@@ -109,8 +109,8 @@ struct NetConfig {
     utils::Assert(param.num_layers == static_cast<int>(layers.size()),
                   "model inconsistent");
     for (int i = 0; i < param.num_layers; ++i) {
-      fo.Write(&layers[i].primary_layer_index, sizeof(int));
       fo.Write(&layers[i].type, sizeof(layer::LayerType));
+      fo.Write(&layers[i].primary_layer_index, sizeof(int));
       fo.Write(layers[i].nindex_in);
       fo.Write(layers[i].nindex_out);
     } 
@@ -172,8 +172,8 @@ struct NetConfig {
           layers.push_back(info);
           layercfg.resize(layers.size());
         } else {
-          utils::Check(cfg_layer_index < static_cast<int>(layers.size()) &&
-                       info == layers[cfg_layer_index],
+          utils::Check(cfg_layer_index < static_cast<int>(layers.size()), "config layer index exceed bound");         
+          utils::Check(info == layers[cfg_layer_index],
                        "config setting does not match existing network structure");
         }
         if (info.nindex_out.size() != 0) {
