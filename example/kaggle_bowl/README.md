@@ -12,6 +12,7 @@ python gen_img_list.py test /home/data/bowl/sampleSubmission.csv data/test/ test
 ```
 
 3. Generate binary image file
+First build im2bin at ```../../tools```, then run
 ```
 ../../tools/im2bin train.lst ./ train.bin
 ../../tools/im2bin test.lst ./ test.bin
