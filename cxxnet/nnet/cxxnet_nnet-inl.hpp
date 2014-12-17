@@ -428,6 +428,16 @@ namespace cxxnet {
                 preds.push_back( this->TransformPred( temp[i] ) );
             }
         }
+        virtual void PredictRaw(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
+            this->PreparePredTemp(batch);
+            preds.resize(temp.shape[1]);
+            for( index_t i = 0; i <temp.shape[1]; ++i ) {
+                preds[i].resize(temp.shape[0]);
+                for (index_t j = 0; j < temp.shape[0]; ++j) {
+                    preds[i][j] = temp[i][j];
+                }
+            }
+        }
     protected:
         // put prediction into temp
         virtual void PreparePredTemp( const DataBatch& batch ){

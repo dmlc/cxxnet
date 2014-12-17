@@ -68,6 +68,7 @@ namespace cxxnet{
             }
             if( task == "train" ) this->TaskTrain();
             if( task == "pred")   this->TaskPredict();
+            if( task == "pred_raw") this->TaskPredictRaw();
             return 0;
         }
 
@@ -206,7 +207,7 @@ namespace cxxnet{
                         itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
                         eval_names.push_back( evname );
                     }
-                    if( flag == 3 && task == "pred" ){
+                    if( flag == 3 && (task == "pred" || task == "pred_raw" )){
                         utils::Assert( itr_pred == NULL, "can only have one data:test" );
                         itr_pred = cxxnet::CreateIterator( itcfg );
                     }
@@ -245,6 +246,26 @@ namespace cxxnet{
             fclose( fo );
             printf("finished prediction, write into %s\n", name_pred.c_str());
         }
+        inline void TaskPredictRaw() {
+            utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate predictions");
+            printf("start predicting...\n");
+            FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
+            itr_pred->BeforeFirst();
+            while (itr_pred->Next()) {
+                const DataBatch& batch = itr_pred->Value();
+                std::vector<std::vector<float> > pred;
+                net_trainer->PredictRaw(pred, batch);
+                for (mshadow::index_t j = 0; j < pred.size(); ++j) {
+                    for (mshadow::index_t k = 0; k < pred[j].size(); ++k) {
+                        fprintf(fo, "%g ", pred[j][k]);
+                    }
+                    fprintf(fo, "\n");
+                }
+            }
+            fclose( fo );
+            printf("finished prediction, write into %s\n", name_pred.c_str());
+
+      }
         inline void TaskTrain( void ){
             time_t start    = time( NULL );
             unsigned long elapsed = 0;
