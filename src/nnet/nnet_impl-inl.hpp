@@ -15,11 +15,11 @@ namespace nnet {
 template<typename xpu>
 class CXXNetThreadTrainer : public INetTrainer {
  public:
-  CXXNetThreadTrainer(void) {    
+  CXXNetThreadTrainer(void) {
     batch_size = 100;
     update_period = 1;
     sample_counter = 0;
-    eval_train = 1; 
+    eval_train = 1;
     epoch_counter = 0;
     debug_sync = 0;
     seed = 0;
@@ -59,7 +59,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
   virtual void InitModel(void) {
-    this->InitNet();    
+    this->InitNet();
     nets_[0]->InitModel();
     nets_[0]->WaitJob();
     this->Save2ModelBlob();
@@ -92,7 +92,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     this->InitSynchs();
   }
   virtual void StartRound(int round) {
-    for (size_t i = 0; i < nets_.size(); ++i) {  
+    for (size_t i = 0; i < nets_.size(); ++i) {
       nets_[i]->StartRound(round);
     }
     this->WaitAllJobs();
@@ -102,17 +102,17 @@ class CXXNetThreadTrainer : public INetTrainer {
       mshadow::Shape<4> oshape = out_temp.shape;
       oshape[3] = data.batch_size;
       out_temp.Resize(oshape);
-      
+
       const size_t ndevice = devices_.size();
       mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
       for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-        mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
+        mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
         mshadow::index_t end = std::min(i * step, data.batch_size);
         mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
         layer::LabelInfo info;
         info.labels = data.labels + begin;
         info.batch_size = end - begin;
-      nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end));
+        nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end));
       }
       this->WaitAllJobs();
       // evlauate training loss
@@ -143,6 +143,26 @@ class CXXNetThreadTrainer : public INetTrainer {
       preds.push_back(this->TransformPred(out_temp[3][0][0]));
     }
   }
+  virtual void PredictRaw(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
+    this->ForwardToTemp(batch);
+    preds.resize(out_temp.shape[3]);
+    for( index_t i = 0; i < out_temp.shape[3]; ++i ) {
+      preds[i].resize(out_temp.shape[0]);
+      for (index_t j = 0; j < out_temp.shape[0]; ++j) {
+        preds[i][j] = out_temp[i][0][0][j];
+      }
+    }
+  }
+  virtual void PredictTop(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
+    this->ForwardToTemp(batch, -2);
+    preds.resize(out_temp.shape[3]);
+    for( index_t i = 0; i < out_temp.shape[3]; ++i ) {
+      preds[i].resize(out_temp.shape[0]);
+      for (index_t j = 0; j < out_temp.shape[0]; ++j) {
+        preds[i][j] = out_temp[i][0][0][j];
+      }
+    }
+  }
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char* data_name) {
     std::string ret;
     if (eval_train != 0) {
@@ -156,7 +176,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       const DataBatch& batch = iter_eval->Value();
       this->ForwardToTemp(batch);
       metric.AddEval(out_temp.Slice(0, out_temp.shape[3]-batch.num_batch_padd).FlatTo2D(), batch.labels);
-    }    
+    }
     ret += metric.Print(data_name);
     return ret;
   }
@@ -176,27 +196,29 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     return maxidx;
   }
-  inline void ForwardToTemp(const DataBatch &data) {
-    mshadow::Shape<4> oshape = out_temp.shape; oshape[3] = data.batch_size;
+  inline void ForwardToTemp(const DataBatch &data, int layer=-1) {
+    const int lid = nets_[0]->net().nodes.size() + layer;
+    mshadow::Shape<4> oshape = nets_[0]->net().nodes[lid].data.shape;
+    oshape[3] = data.batch_size;
     out_temp.Resize(oshape);
-    const size_t ndevice = devices_.size();    
+    const size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-      mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
+      mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
       mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
       nets_[i - 1]->PredictForward(mbatch);
-    }    
+    }
     this->WaitAllJobs();
     // copy results out
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-      mshadow::index_t begin = std::min((i - 1) * step, data.batch_size); 
+      mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
-      nets_[i - 1]->CopyNodeData(-1, out_temp.Slice(begin, end));
+      nets_[i - 1]->CopyNodeData(layer, out_temp.Slice(begin, end));
     }
     this->WaitAllJobs();
   }
-  
+
   inline void WaitAllJobs(void) {
     for (size_t i = nets_.size(); i != 0; --i) {
       nets_[i - 1]->WaitJob();
@@ -223,7 +245,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
   }
   inline void InitTemp(void) {
-    mshadow::Shape<4> oshape = nets_[0]->net().nodes.back().data.shape;    
+    mshadow::Shape<4> oshape = nets_[0]->net().nodes.back().data.shape;
     oshape[3] = batch_size;
     out_temp.Resize(oshape);
   }
@@ -236,14 +258,14 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     nets_.clear();
   }
-  
+
   /*! \brief epoch counter */
   long epoch_counter;
   /*! \brief debug cost for sync */
   int debug_sync;
   /*! \brief seed to the layers */
   int seed;
-  /*! \brief silent*/  
+  /*! \brief silent*/
   int silent;
   /*! \brief update period */
   int update_period;
@@ -265,21 +287,21 @@ class CXXNetThreadTrainer : public INetTrainer {
   /*! \brief serialized model in CPU */
   std::string model_blob_;
   /*! \brief threads of neural nets */
-  std::vector<NeuralNetThread<xpu>*> nets_;  
+  std::vector<NeuralNetThread<xpu>*> nets_;
   /*! \brief network configuration type */
   NetConfig net_cfg;
   /*! \brief history of configurations */
   std::vector< std::pair<std::string, std::string> > cfg;
   // --------------------------------
   // code for synchronization
-  // 
+  //
   struct GetWeightVisitor : public layer::ILayer<xpu>::IVisitor {
     std::string tag;
     std::vector< mshadow::Tensor<xpu,2> > weights, grads;
     template<int dim>
     inline void Visit_(const char *field_name,
-                        mshadow::Tensor<xpu,dim> weight,
-                        mshadow::Tensor<xpu,dim> grad) {
+                       mshadow::Tensor<xpu,dim> weight,
+                       mshadow::Tensor<xpu,dim> grad) {
       tag = field_name;
       this->weights.push_back(weight.FlatTo2D());
       this->grads.push_back(grad.FlatTo2D());
@@ -300,7 +322,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       this->Visit_(field_name, weight, grad);
     }
   };
-  
+
   inline void InitSynchs(void) {
     for (size_t i = 0; i < nets_.size(); ++i) {
       utils::Assert(nets_[i]->net().updaters.size() == net_cfg.layercfg.size(),
@@ -322,7 +344,7 @@ class CXXNetThreadTrainer : public INetTrainer {
         for (size_t k = 1; k < nets_.size(); ++k) {
           nets_[k]->net().updaters[i][j]->ApplyVisitor(&v);
         }
-        sync::ISynchronizer<xpu> *s = 
+        sync::ISynchronizer<xpu> *s =
             sync::CreateSynch(sync_type.c_str(), v.weights, v.grads, devices_, v.tag.c_str());
         if (s == NULL) continue;
         for (size_t k = 0; k < net_cfg.defcfg.size(); ++k) {

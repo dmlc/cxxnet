@@ -49,6 +49,9 @@ class INetTrainer{
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char* data_name) = 0;
   /*! \brief  predict labels */
   virtual void Predict(std::vector<float> &preds, const DataBatch& batch) = 0;
+  virtual void PredictRaw( std::vector<std::vector<float> > &preds, const DataBatch &batch) = 0;
+  virtual void PredictTop( std::vector<std::vector<float> > &preds, const DataBatch &batch) = 0;
+
 };
 
 /*!
