@@ -160,7 +160,7 @@ struct MetricLogloss : public MetricBase{
     if( pred.shape[0] != 1 ){
       return - std::log( std::max(std::min(pred[(int)label], 1.0f - 1e-15f), 1e-15f) );
     }else{
-      const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f) );
+      const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
       const float y = label;
       return  - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
     }
