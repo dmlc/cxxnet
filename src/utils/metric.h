@@ -158,12 +158,9 @@ struct MetricLogloss : public MetricBase{
  protected:
   virtual float CalcMetric( const mshadow::Tensor<cpu,1> &pred, float label ) {
     if( pred.shape[0] != 1 ){
-      mshadow::TensorContainer<cpu,2> tmp(mshadow::Shape2(1,pred.shape[0]));
-      mshadow::Copy( tmp[0], pred );
-      mshadow::Softmax( tmp, tmp );
-      return - std::log( tmp[0][(int)label] );
+      return - std::log( std::max(std::min(pred[(int)label], 1.0f - 1e-15f), 1e-15f) );
     }else{
-      const float py = 1.0f/(1.0f+std::exp(-pred[0]));
+      const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
       const float y = label;
       return  - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
     }
