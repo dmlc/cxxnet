@@ -28,17 +28,17 @@ struct Node {
    *     images (batch_size, nchannel, height, width)
    *     matrix (batch_size, 1, 1, length-of-vector)
    */
-  mshadow::Tensor<xpu,4> data;
+  mshadow::Tensor<xpu, 4> data;
   Node(void) {
     data.shape = mshadow::Shape4(0,0,0,0);
   }
   /*! \brief matrix view of the node */
-  inline mshadow::Tensor<xpu,2> mat(void) {
+  inline mshadow::Tensor<xpu, 2> mat(void) {
     return data.FlatTo2D();
   }
   /*! \brief check whether it holds a matrix data */
   inline bool is_mat(void) const {
-    return data.shape[2] == 1 && data.shape[1] == 1;
+    return data.size(1) == 1 && data.size(2) == 1;
   }
   inline void FreeSpace(void) {
     mshadow::FreeSpace(data);
@@ -63,7 +63,7 @@ struct LabelInfo {
    * \param begin beginning of index
    * \param end end of index
    */
-  inline LabelInfo Slice(mshadow::index_t begin, mshadow::index_t end) const {
+  inline LabelInfo Slice(index_t begin, index_t end) const {
     LabelInfo ret;
     ret.labels = labels + begin;
     ret.batch_size = end - begin;
@@ -130,14 +130,14 @@ class ILayer {
      *        it is ensured to be have same shape as weight
      */
     virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,1> weight,
-                       mshadow::Tensor<xpu,1> grad) = 0;
+                       mshadow::Tensor<xpu, 1> weight,
+                       mshadow::Tensor<xpu, 1> grad) = 0;
     virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,2> weight,
-                       mshadow::Tensor<xpu,2> grad) = 0;
+                       mshadow::Tensor<xpu, 2> weight,
+                       mshadow::Tensor<xpu, 2> grad) = 0;
     virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,3> weight,
-                       mshadow::Tensor<xpu,3> grad) = 0;
+                       mshadow::Tensor<xpu, 3> weight,
+                       mshadow::Tensor<xpu, 3> grad) = 0;
   };
  public:
   /*! \brief virtual destructor */

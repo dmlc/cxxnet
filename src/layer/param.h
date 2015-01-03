@@ -117,23 +117,23 @@ struct LayerParam {
     
     if (random_type == 0) {
       // gaussian initialization
-      prng->SampleGaussian(mat, 0.0f, init_sigma);
+      prng->SampleGaussian(&mat, 0.0f, init_sigma);
     } else if (random_type == 1) {
       // uniform initialization
       real_t a = sqrt(3.0f / (in_num + out_num));
       if (init_uniform > 0) a = init_uniform;
-      prng->SampleUniform(mat, -a, a);
+      prng->SampleUniform(&mat, -a, a);
     } else if (random_type == 2) {
       // sparse initalization
       real_t a = sqrt(3.0f / (in_num + out_num));
       utils::Check(dim == 2, "Sparse init only support 2 dim");
-      std::vector<real_t> tmp(mat.shape.MSize(), 0.0f);
-      mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape);
+      std::vector<real_t> tmp(mat.shape_.Size(), 0.0f);
+      mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape_);
       for (int i = 0; i < init_sparse; ++i) {
         int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
         int rej = 0;
         int j = i;
-        int loc = j * mat.shape.stride_ + idx;
+        int loc = j * mat.stride_ + idx;
         while (tmp[loc] > 0.0f) {
           rej++;
           idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);

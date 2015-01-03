@@ -17,7 +17,7 @@ class ActivationLayer : public ILayer<xpu>{
                               ConnectState<xpu> *p_cstate) {
     utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                  "ActivationLayer Layer only support 1-1 connection");
-    nodes_out[0]->data.shape = nodes_in[0]->data.shape;
+    nodes_out[0]->data.shape_ = nodes_in[0]->data.shape_;
   }
   virtual void Forward(bool is_train,
                        const std::vector<Node<xpu>*> &nodes_in,
