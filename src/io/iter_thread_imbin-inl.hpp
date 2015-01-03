@@ -65,8 +65,8 @@ protected:
     utils::Assert(res.data != NULL, "decoding fail");
 
     img.Resize(mshadow::Shape3(3, res.rows, res.cols));
-    for (index_t y = 0; y < img.shape[1]; ++y) {
-      for (index_t x = 0; x < img.shape[0]; ++x) {
+    for (index_t y = 0; y < img.size(1); ++y) {
+      for (index_t x = 0; x < img.size(2); ++x) {
         cv::Vec3b bgr = res.at<cv::Vec3b>(y, x);
         // store in RGB order
         img[2][y][x] = bgr[0];

@@ -4,21 +4,15 @@
 #include <string>
 #include <vector>
 #include "mshadow/tensor.h"
-namespace cxxnet {
-typedef mshadow::cpu cpu;
-typedef mshadow::gpu gpu;
-typedef mshadow::index_t index_t;
-typedef mshadow::real_t  real_t;
-};
-
 #include "data.h"
+#include "../global.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "iter_mnist-inl.hpp"
 #include "iter_mshadow-inl.hpp"
 #include "iter_proc-inl.hpp"
 #include "iter_sparse-inl.hpp"
-#include "iter_thread_npybin-inl.hpp"
+//#include "iter_thread_npybin-inl.hpp"
 
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
@@ -42,34 +36,34 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       }      
       if (!strcmp(val, "mshadow")) {
         utils::Assert(it == NULL, "mshadow can not chain over other iterator");
-        it = new BatchAdaptIterator(new MShadowIterator()); continue;
+        //it = new BatchAdaptIterator(new MShadowIterator()); continue;
       }
       #if CXXNET_USE_OPENCV
       if (!strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
-        it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
+        //it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
       }
       #endif
 
       #if CXXNET_ADAPT_XGBOOST
       if (!strcmp(val, "xgboost")) {
         utils::Assert(it == NULL);
-        it = new SparseBatchAdapter(new XGBoostPageIterator()); continue;
+        //it = new SparseBatchAdapter(new XGBoostPageIterator()); continue;
       }
       if (!strcmp(val, "xgboostdense")) {
         utils::Assert(it == NULL, "xgboost dense must not be empty");
-        it = new BatchAdaptIterator(new Sparse2DenseIterator(new XGBoostPageIterator())); continue;
+        //it = new BatchAdaptIterator(new Sparse2DenseIterator(new XGBoostPageIterator())); continue;
       }
       #endif
 
       if (!strcmp(val, "sparsebin")) {
         utils::Assert(it == NULL, "sparsebin can not chain over other iterator");
-        it = new SparseBatchAdapter(new ThreadSparsePageIterator()); continue;
+        //it = new SparseBatchAdapter(new ThreadSparsePageIterator()); continue;
       }
 
       if (!strcmp(val, "npybin")) {
         utils::Assert(it == NULL, "npybin can not chain over other iterator");
-        it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;
+        //it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;
       }
       if (!strcmp(val, "threadbuffer")) {
         utils::Assert(it != NULL, "must specify input of threadbuffer");

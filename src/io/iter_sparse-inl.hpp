@@ -39,13 +39,13 @@ public:
       out_.num_batch_padd = din.num_batch_padd;
       row_ptr.clear(); row_ptr.push_back(0); data.clear();
 
-      utils::Assert(din.batch_size == din.data.shape[1], "Dense2SparseAdapter: only support 1D input");
+      utils::Assert(din.batch_size == din.data.size(3), "Dense2SparseAdapter: only support 1D input");
       for (mshadow::index_t i = 0; i < din.batch_size; ++i) {
-        mshadow::Tensor<mshadow::cpu, 1> row = din.data[0][0][i];
-        for (mshadow::index_t j = 0; j < row.shape[0]; ++j) {
+        mshadow::Tensor<mshadow::cpu, 1> row = din.data[i][0][0];
+        for (mshadow::index_t j = 0; j < row.size(0); ++j) {
           data.push_back(SparseInst::Entry(j, row[j]));
         }
-        row_ptr.push_back(row_ptr.back() + row.shape[0]);
+        row_ptr.push_back(row_ptr.back() + row.size(0));
       }
       out_.sparse_row_ptr = &row_ptr[0];
       out_.sparse_data = &data[0];

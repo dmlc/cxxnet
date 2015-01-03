@@ -43,7 +43,7 @@ struct MetricBase : public IMetric{
     sum_metric = 0.0; cnt_inst = 0;
   }
   virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore, const float* labels) {
-    for(index_t i = 0; i < predscore.size(0); ++ i) {                    
+    for (index_t i = 0; i < predscore.size(0); ++ i) {                    
       sum_metric += CalcMetric(predscore[i], labels[i]);
       cnt_inst+= 1;
     }
@@ -96,7 +96,7 @@ struct MetricCorrSqr : public IMetric{
   }
   virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore, const float* labels) {
     utils::Assert(predscore.size(0) == 1,"RMSE can only accept shape[0]=1");
-    for(index_t i = 0; i < predscore.size(1); ++ i) {                    
+    for (index_t i = 0; i < predscore.size(1); ++ i) {                    
       const float x = predscore[i][0] - 0.5f;
       const float y = labels[i] - 0.5f;
       sum_x += x; sum_y += y;
@@ -138,9 +138,9 @@ struct MetricError : public MetricBase{
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &pred, float label) {
     index_t maxidx = 0;
-    if(pred.size(0) != 1) {
-      for(index_t i = 1; i < pred.size(0); ++ i) {
-        if(pred[i] > pred[maxidx]) maxidx = i;
+    if (pred.size(0) != 1) {
+      for (index_t i = 1; i < pred.size(0); ++ i) {
+        if (pred[i] > pred[maxidx]) maxidx = i;
       }
     }else{
       maxidx = pred[0] > 0.0 ? 1 : 0;
@@ -157,7 +157,7 @@ struct MetricLogloss : public MetricBase{
   virtual ~MetricLogloss(void) {}
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &pred, float label) {
-    if(pred.size(0) != 1) {
+    if (pred.size(0) != 1) {
       return - std::log(std::max(std::min(pred[(int)label], 1.0f - 1e-15f), 1e-15f));
     }else{
       const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
@@ -176,19 +176,19 @@ struct MetricRecall : public MetricBase{
   virtual ~MetricRecall(void) {}
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &pred, float label) {
-    if(pred.size(0) < (index_t)topn) {
+    if (pred.size(0) < (index_t)topn) {
       fprintf(stderr, "evaluating rec@%d, list=%u", topn, pred.size(0));
       utils::Error("it is meaningless to take rec@n for list shorter than n");                    
     }
     index_t klabel = (index_t)label;
     vec.resize(pred.size(0));
-    for(index_t i = 0; i < pred.size(0); ++ i) {
+    for (index_t i = 0; i < pred.size(0); ++ i) {
       vec[i] = std::make_pair(pred[i], i);
     }
     Shuffle(vec);
     std::sort(vec.begin(), vec.end(), CmpScore);
-    for(int i = 0; i < topn; ++ i) {
-      if(vec[i].second == klabel) return 1.0f;
+    for (int i = 0; i < topn; ++ i) {
+      if (vec[i].second == klabel) return 1.0f;
     }
     return 0.0f;
   }
@@ -204,38 +204,38 @@ struct MetricRecall : public MetricBase{
 struct MetricSet{
  public:
   ~MetricSet(void) {
-    for(size_t i = 0; i < evals_.size(); ++ i) {
+    for (size_t i = 0; i < evals_.size(); ++ i) {
       delete evals_[i];
     }
   }
   static IMetric* Create(const char *name) {
-    if(!strcmp(name, "rmse")) return new MetricRMSE();
-    if(!strcmp(name, "error")) return new MetricError();
-    if(!strcmp(name, "logloss")) return new MetricLogloss();
-    if(!strcmp(name, "r2"))    return new MetricCorrSqr();
-    if(!strncmp(name, "rec@",4)) return new MetricRecall(name);
+    if (!strcmp(name, "rmse")) return new MetricRMSE();
+    if (!strcmp(name, "error")) return new MetricError();
+    if (!strcmp(name, "logloss")) return new MetricLogloss();
+    if (!strcmp(name, "r2"))    return new MetricCorrSqr();
+    if (!strncmp(name, "rec@",4)) return new MetricRecall(name);
     return NULL;
   }
   void AddMetric(const char *name) {
     IMetric *metric = this->Create(name);
-    if(metric != NULL) evals_.push_back(metric);                
+    if (metric != NULL) evals_.push_back(metric);                
     // simple way to enforce uniqueness, not a good way, not ok here
     std::sort(evals_.begin(), evals_.end(), CmpName);
     evals_.resize(std::unique(evals_.begin(), evals_.end(), EqualName) - evals_.begin());
   }
   inline void Clear(void) {
-    for(size_t i = 0; i < evals_.size(); ++ i) {
+    for (size_t i = 0; i < evals_.size(); ++ i) {
       evals_[i]->Clear();
     }
   }
   inline void AddEval(const mshadow::Tensor<cpu,2> &predscore, const float* labels) {
-    for(size_t i = 0; i < evals_.size(); ++ i) {
+    for (size_t i = 0; i < evals_.size(); ++ i) {
       evals_[i]->AddEval(predscore, labels);
     }
   }
   inline std::string Print(const char *evname) {
     std::string res = "";
-    for(size_t i = 0; i < evals_.size(); ++ i) {
+    for (size_t i = 0; i < evals_.size(); ++ i) {
       char tmp[1024];
       sprintf(tmp, "\t%s-%s:%f", evname, evals_[i]->Name(), evals_[i]->Get());
       res += tmp;

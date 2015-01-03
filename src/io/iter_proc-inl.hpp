@@ -53,8 +53,8 @@ public:
     if (!strcmp(name, "crop_x_start"))  crop_x_start_ = atoi(val);
     if (!strcmp(name, "rand_mirror")) rand_mirror_ = atoi(val);
     if (!strcmp(name, "silent"))      silent_ = atoi(val);
-    if (!strcmp(name, "divideby"))    scale_ = static_cast<mshadow::real_t>(1.0f / atof(val));
-    if (!strcmp(name, "scale"))       scale_ = static_cast<mshadow::real_t>(atof(val));
+    if (!strcmp(name, "divideby"))    scale_ = static_cast<real_t>(1.0f / atof(val));
+    if (!strcmp(name, "scale"))       scale_ = static_cast<real_t>(atof(val));
     if (!strcmp(name, "image_mean"))   name_meanimg_ = val;
     if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
   }
@@ -76,7 +76,7 @@ public:
         if (silent_ == 0) {
           printf("loading mean image from %s\n", name_meanimg_.c_str());
         }
-        mshadow::utils::FileStream fs(fi) ;
+        utils::FileStream fs(fi) ;
         meanimg_.LoadBinary(fs);
         fclose(fi);
       }
@@ -131,12 +131,12 @@ private:
     using namespace mshadow::expr;
     out_.labels[top] = d.label;
     out_.inst_index[top] = d.index;
-    if (shape_[1] == 1) {
+    if (shape_[2] == 1) {
       out_.data[0][0][top] = d.data[0][0] * scale_;
     } else {
-      utils::Assert(d.data.shape[0] >= shape_[0] && d.data.shape[1] >= shape_[1], "shape constraint");
-      mshadow::index_t yy = d.data.shape[1] - shape_[1];
-      mshadow::index_t xx = d.data.shape[0] - shape_[0];
+      utils::Assert(d.data.size(2) >= shape_[2] && d.data.size(3) >= shape_[3], "shape constraint");
+      mshadow::index_t yy = d.data.size(2) - shape_[2];
+      mshadow::index_t xx = d.data.size(3) - shape_[3];
       if (rand_crop_ != 0) {
         yy = utils::NextUInt32(yy + 1);
         xx = utils::NextUInt32(xx + 1);
@@ -148,16 +148,16 @@ private:
 
       if (name_meanimg_.length() == 0) {
         if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
-          out_.data[top] = mirror(crop(d.data, out_.data[0][0].shape, yy, xx)) * scale_;
+          out_.data[top] = mirror(crop(d.data, out_.data[0][0].shape_, yy, xx)) * scale_;
         } else {
-          out_.data[top] = crop(d.data, out_.data[0][0].shape, yy, xx) * scale_ ;
+          out_.data[top] = crop(d.data, out_.data[0][0].shape_, yy, xx) * scale_ ;
         }
       } else {
         // substract mean image
         if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
-          out_.data[top] = mirror(crop(d.data - meanimg_, out_.data[0][0].shape, yy, xx)) * scale_;
+          out_.data[top] = mirror(crop(d.data - meanimg_, out_.data[0][0].shape_, yy, xx)) * scale_;
         } else {
-          out_.data[top] = crop(d.data - meanimg_, out_.data[0][0].shape, yy, xx) * scale_ ;
+          out_.data[top] = crop(d.data - meanimg_, out_.data[0][0].shape_, yy, xx) * scale_ ;
         }
       }
     }
@@ -171,7 +171,7 @@ private:
     size_t imcnt = 1;
 
     utils::Assert(base_->Next(), "input empty");
-    meanimg_.Resize(base_->Value().data.shape);
+    meanimg_.Resize(base_->Value().data.shape_);
     mshadow::Copy(meanimg_, base_->Value().data);
     while (base_->Next()) {
       meanimg_ += base_->Value().data; imcnt += 1;
@@ -206,7 +206,7 @@ private:
   // silent
   int silent_;
   // scale of data
-  mshadow::real_t scale_;
+  real_t scale_;
   // whether we do random cropping
   int rand_crop_;
   // whether we do random mirroring
@@ -275,7 +275,7 @@ private:
     inline bool Init() {
       base_->Init();
       utils::Assert(base_->Next(), "ThreadBufferIterator: input can not be empty");
-      oshape_ = base_->Value().data.shape;
+      oshape_ = base_->Value().data.shape_;
       batch_size_ = base_->Value().batch_size;
       base_->BeforeFirst();
       return true;

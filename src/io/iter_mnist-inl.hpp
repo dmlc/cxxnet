@@ -10,74 +10,74 @@
 namespace cxxnet {
 class MNISTIterator: public IIterator<DataBatch> {
  public:
-  MNISTIterator( void ){
-    img_.dptr = NULL;
+  MNISTIterator(void) {
+    img_.dptr_ = NULL;
     mode_ = 1;
     inst_offset_ = 0;
     silent_ = 0;
     shuffle_ = 0;
   }
-  virtual ~MNISTIterator( void ){
-    if( img_.dptr != NULL ) delete []img_.dptr;
+  virtual ~MNISTIterator(void) {
+    if (img_.dptr_ != NULL) delete []img_.dptr_;
   }
-  virtual void SetParam( const char *name, const char *val ) {
-    if( !strcmp( name, "silent") )       silent_ = atoi( val );            
-    if( !strcmp( name, "batch_size") )   batch_size_ = (index_t)atoi( val ); 
-    if( !strcmp( name, "input_flat") )   mode_ = atoi( val );
-    if( !strcmp( name, "shuffle") )      shuffle_ = atoi( val );
-    if( !strcmp( name, "index_offset") ) inst_offset_ = atoi( val );
-    if( !strcmp( name, "path_img") )     path_img = val;
-    if( !strcmp( name, "path_label") )   path_label = val;            
+  virtual void SetParam(const char *name, const char *val) {
+    if (!strcmp(name, "silent"))       silent_ = atoi(val);            
+    if (!strcmp(name, "batch_size"))   batch_size_ = (index_t)atoi(val); 
+    if (!strcmp(name, "input_flat"))   mode_ = atoi(val);
+    if (!strcmp(name, "shuffle"))      shuffle_ = atoi(val);
+    if (!strcmp(name, "index_offset")) inst_offset_ = atoi(val);
+    if (!strcmp(name, "path_img"))     path_img = val;
+    if (!strcmp(name, "path_label"))   path_label = val;            
   }
   // intialize iterator loads data in
-  virtual void Init( void ) {
+  virtual void Init(void) {
     this->LoadImage();
     this->LoadLabel();
-    if( mode_ == 1 ){
-      out_.data.shape = mshadow::Shape4(batch_size_, 1, 1,img_.shape[1] * img_.shape[0] );
-    }else{
-      out_.data.shape = mshadow::Shape4( batch_size_, 1, img_.shape[1], img_.shape[0] );
+    if (mode_ == 1) {
+      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, 1,img_.size(2) * img_.size(3));
+    } else {
+      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, img_.size(2), img_.size(3));
     }
     out_.inst_index = NULL;
-    out_.data.shape.stride_ = out_.data.shape[0];
+    out_.data.stride_ = out_.data.size(3);
     out_.batch_size = batch_size_;
-    if( shuffle_ ) this->Shuffle();
-    if( silent_ == 0 ){
-      mshadow::Shape<4> s = out_.data.shape;
+    if (shuffle_) this->Shuffle();
+    if (silent_ == 0) {
+      mshadow::Shape<4> s = out_.data.shape_;
       printf("MNISTIterator: load %u images, shuffle=%d, shape=%u,%u,%u,%u\n", 
-             (unsigned)img_.shape[2], shuffle_, s[3],s[2],s[1],s[0] );
+             (unsigned)img_.size(0), shuffle_, s[0], s[1], s[2], s[3]);
     }
   }
-  virtual void BeforeFirst( void ) {
+  virtual void BeforeFirst(void) {
     this->loc_ = 0;
   }
-  virtual bool Next( void ) {
-    if( loc_ + batch_size_ <= img_.shape[2] ){
-      out_.data.dptr = img_[ loc_ ].dptr;
-      out_.labels = &labels_[ loc_ ];
-      out_.inst_index = &inst_[ loc_ ];
+  virtual bool Next(void) {
+    if (loc_ + batch_size_ <= img_.size(0)) {
+      out_.data.dptr_ = img_[loc_].dptr_;
+      out_.labels = &labels_[loc_];
+      out_.inst_index = &inst_[loc_];
       loc_ += batch_size_;
       return true;
     } else{
       return false;
     }
   }
-  virtual const DataBatch &Value( void ) const {
+  virtual const DataBatch &Value(void) const {
     return out_;
   }
  private:
-  inline void LoadImage( void ) {
-    utils::GzFile gzimg( path_img.c_str(), "rb" );
+  inline void LoadImage(void) {
+    utils::GzFile gzimg(path_img.c_str(), "rb");
     ReadInt(gzimg);
     int image_count = ReadInt(gzimg);
     int image_rows  = ReadInt(gzimg);
     int image_cols  = ReadInt(gzimg);
             
-    img_.shape = mshadow::Shape3( image_count, image_rows, image_cols );
-    img_.shape.stride_ = img_.shape[0];
+    img_.shape_ = mshadow::Shape3(image_count, image_rows, image_cols);
+    img_.stride_ = img_.size(3);
             
     // allocate continuous memory
-    img_.dptr = new float[ img_.shape.MSize() ];
+    img_.dptr_ = new float[img_.MSize()];
     for (int i = 0; i < image_count; ++i) {
       for (int j = 0; j < image_rows; ++j) {
         for (int k = 0; k < image_cols; ++k) {
@@ -88,34 +88,34 @@ class MNISTIterator: public IIterator<DataBatch> {
     // normalize to 0-1
     img_ *= 1.0f / 256.0f;
   }        
-  inline void LoadLabel( void ) {
-    utils::GzFile gzlabel( path_label.c_str(), "rb" );
+  inline void LoadLabel(void) {
+    utils::GzFile gzlabel(path_label.c_str(), "rb");
     ReadInt(gzlabel);
     int labels_count =ReadInt(gzlabel);
 
-    labels_.resize( labels_count );
-    for( int i = 0; i < labels_count; ++i ) {
+    labels_.resize(labels_count);
+    for (int i = 0; i < labels_count; ++i) {
       labels_[i] = gzlabel.ReadType<unsigned char>();
-      inst_.push_back( (unsigned)i + inst_offset_ );
+      inst_.push_back((unsigned)i + inst_offset_);
     }
   }
-  inline void Shuffle( void ){
-    utils::Shuffle( inst_ );
-    std::vector<float> tmplabel( labels_.size() );
-    mshadow::TensorContainer<cpu,3> tmpimg( img_.shape );
-    for( size_t i = 0; i < inst_.size(); ++ i ){
+  inline void Shuffle(void) {
+    utils::Shuffle(inst_);
+    std::vector<float> tmplabel(labels_.size());
+    mshadow::TensorContainer<cpu,3> tmpimg(img_.shape_);
+    for (size_t i = 0; i < inst_.size(); ++ i) {
       unsigned ridx = inst_[i] - inst_offset_;
-      mshadow::Copy( tmpimg[i], img_[ridx] );
-      tmplabel[i] = labels_[ ridx ];
+      mshadow::Copy(tmpimg[i], img_[ridx]);
+      tmplabel[i] = labels_[ridx];
     }
     // copy back
-    mshadow::Copy( img_, tmpimg );
+    mshadow::Copy(img_, tmpimg);
     labels_ = tmplabel;
   }
  private:
   inline static int ReadInt(utils::IStream &fi) {
     unsigned char buf[4];
-    utils::Assert( fi.Read( buf, sizeof(buf) ) == sizeof(buf), "Failed to read an int\n");
+    utils::Assert(fi.Read(buf, sizeof(buf)) == sizeof(buf), "Failed to read an int\n");
     return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
   }
  private:

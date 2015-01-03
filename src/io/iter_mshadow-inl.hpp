@@ -14,17 +14,17 @@ namespace cxxnet {
 class MShadowIterator: public IIterator<DataInst> {
 public:
   MShadowIterator(void) {
-    img_.dptr = NULL;
-    labels_.dptr = NULL;
+    img_.dptr_ = NULL;
+    labels_.dptr_ = NULL;
     mode_ = 1;
     inst_offset_ = 0;
     silent_ = 0;
     shuffle_ = 0;
   }
   virtual ~MShadowIterator(void) {
-    if (img_.dptr == NULL) {
-      mshadow::FreeSpace(img_);
-      mshadow::FreeSpace(labels_);
+    if (img_.dptr_ == NULL) {
+      mshadow::FreeSpace(&img_);
+      mshadow::FreeSpace(&labels_);
     }
   }
   virtual void SetParam(const char *name, const char *val) {
@@ -48,19 +48,19 @@ public:
       this->LoadImageMNIST();
       this->LoadLabelMNIST();
     }
-    utils::Assert(img_.shape[3] == labels_.shape[0], "label and image much match each other");
+    utils::Assert(img_.size(0) == labels_.size(0), "label and image much match each other");
     if (shuffle_) this->Shuffle();
     if (silent_ == 0) {
-      mshadow::Shape<4> s = img_.shape;
+      mshadow::Shape<4> s = img_.shape_;
       printf("MShadowTIterator: shuffle=%d, data=%u,%u,%u,%u\n",
-             shuffle_, s[3], s[2], s[1], s[0]);
+             shuffle_, s[0], s[1], s[2], s[3]);
     }
   }
   virtual void BeforeFirst(void) {
     this->loc_ = 0;
   }
   virtual bool Next(void) {
-    if (loc_ < img_.shape[3]) {
+    if (loc_ < img_.size(0)) {
       out_.label = labels_[loc_];
       out_.index = inst_[loc_];
       out_.data =  img_[loc_];
@@ -74,15 +74,15 @@ public:
   }
 private:
   inline void LoadImageMShadow(void) {
-    mshadow::utils::FileStream fs(utils::FopenCheck(path_img_.c_str(), "rb"));
-    mshadow::LoadBinary(fs, img_, false);
+    utils::FileStream fs(utils::FopenCheck(path_img_.c_str(), "rb"));
+    mshadow::LoadBinary(fs, &img_, false);
     fs.Close();
   }
   inline void LoadLabelMShadow(void) {
-    mshadow::utils::FileStream fs(utils::FopenCheck(path_label_.c_str(), "rb"));
-    mshadow::LoadBinary(fs, labels_, false);
+    utils::FileStream fs(utils::FopenCheck(path_label_.c_str(), "rb"));
+    mshadow::LoadBinary(fs, &labels_, false);
     fs.Close();
-    inst_.resize(labels_.shape[0]);
+    inst_.resize(labels_.size(0));
     for (size_t i = 0; i < inst_.size(); ++ i) {
       inst_[i] = (unsigned)i + inst_offset_;
     }
@@ -107,9 +107,9 @@ private:
     fi.Read(&t_data[0], img_count * step);
     fi.Close();
 
-    img_.shape = mshadow::Shape4(1, img_count, img_rows, img_cols);
-    img_.shape.stride_ = img_.shape[0];
-    img_.dptr = new float[ img_.shape.MSize() ];
+    img_.shape_ = mshadow::Shape4(1, img_count, img_rows, img_cols);
+    img_.stride_ = img_.size(3);
+    img_.dptr_ = new float[img_.MSize()];
     int loc = 0;
     for (int i = 0; i < img_count; ++i) {
       for (int j = 0; j < img_rows; ++j) {
@@ -132,9 +132,9 @@ private:
     fi.Read(&t_data[0], img_count);
     fi.Close();
 
-    labels_.shape = mshadow::Shape1(img_count);
-    labels_.shape.stride_ = 1;
-    labels_.dptr = new float[labels_.shape.MSize()];
+    labels_.shape_ = mshadow::Shape1(img_count);
+    labels_.stride_ = img_count;
+    labels_.dptr_ = new float[labels_.MSize()];
     for (int i = 0; i < img_count; ++i) {
       labels_[i] = static_cast<float>(t_data[i]);
     }
@@ -148,8 +148,8 @@ private:
   }
   inline void Shuffle(void) {
     utils::Shuffle(inst_);
-    mshadow::TensorContainer<cpu, 1> tmplabel(labels_.shape);
-    mshadow::TensorContainer<cpu, 4> tmpimg(img_.shape);
+    mshadow::TensorContainer<cpu, 1> tmplabel(labels_.shape_);
+    mshadow::TensorContainer<cpu, 4> tmpimg(img_.shape_);
     for (size_t i = 0; i < inst_.size(); ++ i) {
       unsigned ridx = inst_[i] - inst_offset_;
       mshadow::Copy(tmpimg[i], img_[ridx]);
