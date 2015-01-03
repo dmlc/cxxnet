@@ -28,12 +28,12 @@ class DropoutLayer : public ILayer<xpu> {
                  "DropoutLayer: invalid dropout_threshold\n");
     // use 1 temp state for mask
     p_cstate->states.resize(1);
-    p_cstate->states[0].Resize(nodes_in[0]->data.shape);
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape_);
   }
   virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
                                   const std::vector<Node<xpu>*> &nodes_out,
                                   ConnectState<xpu> *p_cstate) {
-    p_cstate->states[0].Resize(nodes_in[0]->data.shape);  
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape_);  
   }
   virtual void Forward(bool is_train,
                        const std::vector<Node<xpu>*> &nodes_in,
@@ -43,7 +43,7 @@ class DropoutLayer : public ILayer<xpu> {
     mshadow::TensorContainer<xpu,4> &mask = p_cstate->states[0];
     if (is_train) {
       const real_t pkeep = 1.0f - dropout_threshold;
-      mask = F<op::threshold>(prnd_->uniform(mask.shape), pkeep) * (1.0f / pkeep);
+      mask = F<op::threshold>(prnd_->uniform(mask.shape_), pkeep) * (1.0f / pkeep);
       nodes_out[0]->data = nodes_out[0]->data * mask;
     }
   }

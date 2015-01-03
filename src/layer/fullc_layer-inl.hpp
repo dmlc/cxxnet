@@ -28,11 +28,11 @@ class FullConnectLayer : public ILayer<xpu> {
     // rexsize to correct shape
     wmat_.Resize(mshadow::Shape2(param_.num_hidden, param_.num_input_node));
     bias_.Resize(mshadow::Shape1(param_.num_hidden));
-    param_.RandInitWeight(this->prnd_, wmat_, wmat_.shape[0], wmat_.shape[1]);
+    param_.RandInitWeight(this->prnd_, wmat_, wmat_.size(1), wmat_.size(0));
     bias_ = param_.init_bias;
     // setup gradient weight
-    gwmat_.Resize(wmat_.shape);
-    gbias_.Resize(bias_.shape);
+    gwmat_.Resize(wmat_.shape_);
+    gbias_.Resize(bias_.shape_);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
   virtual void SaveModel(utils::IStream &fo) const{
@@ -46,8 +46,8 @@ class FullConnectLayer : public ILayer<xpu> {
     wmat_.LoadBinary(fi);
     bias_.LoadBinary(fi);
     // setup gradient weight
-    gwmat_.Resize(wmat_.shape);
-    gbias_.Resize(bias_.shape);
+    gwmat_.Resize(wmat_.shape_);
+    gbias_.Resize(bias_.shape_);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
 
@@ -59,12 +59,12 @@ class FullConnectLayer : public ILayer<xpu> {
     utils::Check(nodes_in[0]->is_mat(), "input need to be a matrix");
     utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
     // we change matrix convention 
-    nodes_out[0]->data.shape = 
-        mshadow::Shape4(nodes_in[0]->data.shape[3], 1, 1, param_.num_hidden);
+    nodes_out[0]->data.shape_ = 
+        mshadow::Shape4(nodes_in[0]->data.size(0), 1, 1, param_.num_hidden);
     if (param_.num_input_node == 0) {
-      param_.num_input_node = static_cast<int>(nodes_in[0]->data.shape[0]);
+      param_.num_input_node = static_cast<int>(nodes_in[0]->data.size(3));
     } else {
-      utils::Check(param_.num_input_node == static_cast<int>(nodes_in[0]->data.shape[0]),
+      utils::Check(param_.num_input_node == static_cast<int>(nodes_in[0]->data.size(3)),
                    "FullcLayer: input hidden nodes is not consistent");
     }
   }
@@ -85,12 +85,12 @@ class FullConnectLayer : public ILayer<xpu> {
  protected:
   // internal implementation
   inline void Forward_(bool is_train,
-                       mshadow::Tensor<xpu,2> wmat,                        
+                       mshadow::Tensor<xpu,2> wmat,
                        Node<xpu> *pnode_in,
                        Node<xpu> *pnode_out) {
     mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
     mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
-    index_t nbatch = m_in.shape[1];
+    index_t nbatch = m_in.size(0);
     m_out = dot(m_in, wmat.T());
     if (param_.no_bias == 0) {
       m_out += repmat(bias_, nbatch);
@@ -157,7 +157,7 @@ class DropConnLayer : public FullConnectLayer<xpu> {
     mshadow::Tensor<xpu, 2> tmpw = p_cstate->states[1][0][0];
     if (is_train) {
       const real_t pkeep = 1.0f - dropout_threshold;
-      mask = F<op::threshold>(this->prnd_->uniform(mask.shape), pkeep) * (1.0f / pkeep);
+      mask = F<op::threshold>(this->prnd_->uniform(mask.shape_), pkeep) * (1.0f / pkeep);
       tmpw = this->wmat_ * mask;
     } else {
       mshadow::Copy(tmpw, this->wmat_);
@@ -177,7 +177,7 @@ class DropConnLayer : public FullConnectLayer<xpu> {
   }  
 
  private:
-  mshadow::real_t dropout_threshold;
+  real_t dropout_threshold;
   typedef FullConnectLayer<xpu> Parent;
 };  // class DropconnLayer
 }  // namespace layer

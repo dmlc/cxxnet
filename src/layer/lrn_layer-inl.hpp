@@ -28,17 +28,17 @@ class LRNLayer : public ILayer<xpu> {
                               ConnectState<xpu> *p_cstate) {
     utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                  "LRNLayer: only support 1-1 connection");
-    nodes_out[0]->data.shape = nodes_in[0]->data.shape;
+    nodes_out[0]->data.shape_ = nodes_in[0]->data.shape_;
     // use 1 temp state for mask
     p_cstate->states.resize(1);
-    p_cstate->states[0].Resize(nodes_in[0]->data.shape);
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape_);
     // temp in is kepted in layer, since it does not go across forward/backprop
-    tmp_in.Resize(nodes_in[0]->data.shape);
+    tmp_in.Resize(nodes_in[0]->data.shape_);
   }
   virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
                                   const std::vector<Node<xpu>*> &nodes_out,
                                   ConnectState<xpu> *p_cstate) {
-    p_cstate->states[0].Resize(nodes_in[0]->data.shape);
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape_);
   }
   virtual void Forward(bool is_train,
                        const std::vector<Node<xpu>*> &nodes_in,
@@ -58,7 +58,7 @@ class LRNLayer : public ILayer<xpu> {
                         ConnectState<xpu> *p_cstate) {
     using namespace mshadow;
     using namespace mshadow::expr;
-    tmp_in.Resize(nodes_in[0]->data.shape);   
+    tmp_in.Resize(nodes_in[0]->data.shape_);
     mshadow::Tensor<xpu,4> &tmp_norm = p_cstate->states[0];
     const real_t salpha = alpha_ / nsize_;
     if (prop_grad) {

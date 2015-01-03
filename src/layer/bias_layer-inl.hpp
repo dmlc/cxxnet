@@ -23,7 +23,7 @@ class BiasLayer : public ILayer<xpu> {
   virtual void InitModel(void) {
     bias_.Resize(mshadow::Shape1(param_.num_input_node));
     bias_ = param_.init_bias;
-    gbias_.Resize(bias_.shape);
+    gbias_.Resize(bias_.shape_);
     gbias_ = 0.0f;
   }
   virtual void SaveModel(utils::IStream &fo) const{
@@ -31,10 +31,10 @@ class BiasLayer : public ILayer<xpu> {
     bias_.SaveBinary(fo);
   }
   virtual void LoadModel(utils::IStream &fi){
-    utils::Check(fi.Read(&param_, sizeof(LayerParam) ) != 0,
+    utils::Check(fi.Read(&param_, sizeof(LayerParam)) != 0,
                  "BiasLayer: LoadModel invalid model file");
     bias_.LoadBinary(fi);
-    gbias_.Resize(bias_.shape);
+    gbias_.Resize(bias_.shape_);
     gbias_ = 0.0f;
   }
 
@@ -46,9 +46,9 @@ class BiasLayer : public ILayer<xpu> {
     utils::Check(nodes_in[0] == nodes_out[0], "BiasLayer is an self-loop Layer");
     utils::Check(nodes_in[0]->is_mat(), "BiasLayer only works for flatten node so far");
     if (param_.num_input_node == 0) {
-      param_.num_input_node = static_cast<int>(nodes_in[0]->data.shape[0]);
+      param_.num_input_node = static_cast<int>(nodes_in[0]->data.size(3));
     } else {
-      utils::Check(param_.num_input_node == static_cast<int>(nodes_in[0]->data.shape[0]),
+      utils::Check(param_.num_input_node == static_cast<int>(nodes_in[0]->data.size(3)),
                    "BiasLayer: input hidden nodes is not consistent");
     }
   }
@@ -58,7 +58,7 @@ class BiasLayer : public ILayer<xpu> {
                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
     // InitConnection is already called, no need to check shape again
-    mshadow::index_t nbatch = nodes_in[0]->data.shape[1];
+    mshadow::index_t nbatch = nodes_in[0]->data.size(0);
     nodes_in[0]->mat() += repmat(bias_, nbatch);
   }
   virtual void Backprop(bool prop_grad,

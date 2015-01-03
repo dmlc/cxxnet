@@ -25,7 +25,7 @@ class SoftmaxLayer: public ILayer<xpu> {
     utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                  "SoftmaxLayer: only support 1-1 connection");
     utils::Check(nodes_in[0] == nodes_out[0], "SoftmaxLayer is an self-loop Layer");
-    tnode.Resize(nodes_in[0]->mat().shape);
+    tnode.Resize(nodes_in[0]->mat().shape_);
   }
   virtual void Forward(bool is_train,
                        const std::vector<Node<xpu>*> &nodes_in,
@@ -39,7 +39,7 @@ class SoftmaxLayer: public ILayer<xpu> {
                         ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
     // do computation in CPU for simplicity, since this is not bottle neck
-    tnode.Resize(nodes_in[0]->mat().shape);
+    tnode.Resize(nodes_in[0]->mat().shape_);
     mshadow::Copy(tnode, nodes_in[0]->mat());
     for (mshadow::index_t i = 0; i < plabelinfo->batch_size; ++i) {
       index_t k = static_cast<index_t>(plabelinfo->labels[i]);
