@@ -18,7 +18,7 @@ class SGDUpdater : public IUpdater<xpu> {
   SGDUpdater(mshadow::Tensor<xpu,dim> w, mshadow::Tensor<xpu,dim> dw, const char *tag)
       :w(w), dw(dw) {
     param.tag = tag;
-    m_w.Resize(w.shape, 0.0f);
+    m_w.Resize(w.shape_, 0.0f);
   }
   virtual ~SGDUpdater(void) {}
   virtual void Init(void) {

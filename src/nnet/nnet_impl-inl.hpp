@@ -33,7 +33,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       const char *devs = strchr(val, ':');
       if (devs != NULL) {
         int a, b;
-        if (sscanf(devs+1, "%d-%d", &a, &b) == 2){
+        if (sscanf(devs+1, "%d-%d", &a, &b) == 2) {
           for (int i = a; i < b; ++i) {
             devices_.push_back(i);
           }
@@ -53,7 +53,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (!strcmp(name, "eval_train")) eval_train = atoi(val);
     if (!strcmp(name, "seed")) seed = atoi(val);
     if (!strcmp(name, "debug_sync")) debug_sync = atoi(val);
-    if( !strcmp(name, "metric")) {
+    if(!strcmp(name, "metric")) {
       metric.AddMetric(val); train_metric.AddMetric(val);
     }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
@@ -99,8 +99,8 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
   virtual void Update(const DataBatch& data) {
     if (debug_sync == 0) {
-      mshadow::Shape<4> oshape = out_temp.shape;
-      oshape[3] = data.batch_size;
+      mshadow::Shape<4> oshape = out_temp.shape_;
+      oshape[0] = data.batch_size;
       out_temp.Resize(oshape);
 
       const size_t ndevice = devices_.size();
@@ -124,7 +124,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       for (size_t i = syncs_.size(); i != 0; --i) {
         syncs_[i - 1]->SyncBeforeUpdate();
       }
-      if (debug_sync == 0){
+      if (debug_sync == 0) {
         for (mshadow::index_t i = nets_.size(); i != 0; --i) {
           nets_[i - 1]->Update(epoch_counter);
         }
@@ -139,26 +139,27 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
   virtual void Predict(std::vector<float> &preds, const DataBatch& data) {
     this->ForwardToTemp(data);
-    for (mshadow::index_t i = 0; i < out_temp.shape[3]; ++i) {
-      preds.push_back(this->TransformPred(out_temp[3][0][0]));
+    for (index_t i = 0; i < out_temp.size(0); ++i) {
+      preds.push_back(this->TransformPred(out_temp[i][0][0]));
     }
   }
   virtual void PredictRaw(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
     this->ForwardToTemp(batch);
-    preds.resize(out_temp.shape[3]);
-    for( index_t i = 0; i < out_temp.shape[3]; ++i ) {
-      preds[i].resize(out_temp.shape[0]);
-      for (index_t j = 0; j < out_temp.shape[0]; ++j) {
+    preds.resize(out_temp.size(0));
+    for(index_t i = 0; i < out_temp.size(0); ++i) {
+      preds[i].resize(out_temp.size(3));
+      for (index_t j = 0; j < out_temp.size(3); ++j) {
         preds[i][j] = out_temp[i][0][0][j];
       }
     }
   }
   virtual void PredictTop(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
     this->ForwardToTemp(batch, -2);
-    preds.resize(out_temp.shape[3]);
-    for( index_t i = 0; i < out_temp.shape[3]; ++i ) {
-      preds[i].resize(out_temp.shape[0]);
-      for (index_t j = 0; j < out_temp.shape[0]; ++j) {
+    // TODO (bing): merge with PredictRaw
+    preds.resize(out_temp.size(0));
+    for(index_t i = 0; i < out_temp.size(0); ++i) {
+      preds[i].resize(out_temp.size(3));
+      for (index_t j = 0; j < out_temp.size(3); ++j) {
         preds[i][j] = out_temp[i][0][0][j];
       }
     }
@@ -175,7 +176,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     while (iter_eval->Next()) {
       const DataBatch& batch = iter_eval->Value();
       this->ForwardToTemp(batch);
-      metric.AddEval(out_temp.Slice(0, out_temp.shape[3]-batch.num_batch_padd).FlatTo2D(), batch.labels);
+      metric.AddEval(out_temp.Slice(0, out_temp.size(0) - batch.num_batch_padd).FlatTo2D(), batch.labels);
     }
     ret += metric.Print(data_name);
     return ret;
@@ -183,23 +184,23 @@ class CXXNetThreadTrainer : public INetTrainer {
 
  private:
   inline float TransformPred(mshadow::Tensor<cpu,1> pred) {
-    if (pred.shape[0] != 1) {
+    if (pred.size(0) != 1) {
       return GetMaxIndex(pred);
     } else {
       return pred[0];
     }
   }
-  inline static int GetMaxIndex( mshadow::Tensor<cpu,1> pred ){
+  inline static int GetMaxIndex(mshadow::Tensor<cpu,1> pred) {
     index_t maxidx = 0;
-    for( index_t i = 1; i < pred.shape[0]; ++ i ){
-      if( pred[i] > pred[maxidx] ) maxidx = i;
+    for(index_t i = 1; i < pred.size(0); ++ i) {
+      if(pred[i] > pred[maxidx]) maxidx = i;
     }
     return maxidx;
   }
   inline void ForwardToTemp(const DataBatch &data, int layer=-1) {
     const int lid = nets_[0]->net().nodes.size() + layer;
-    mshadow::Shape<4> oshape = nets_[0]->net().nodes[lid].data.shape;
-    oshape[3] = data.batch_size;
+    mshadow::Shape<4> oshape = nets_[0]->net().nodes[lid].data.shape_;
+    oshape[0] = data.batch_size;
     out_temp.Resize(oshape);
     const size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
@@ -224,7 +225,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       nets_[i - 1]->WaitJob();
     }
   }
-  inline void Save2ModelBlob(void){
+  inline void Save2ModelBlob(void) {
     // save to model blob
     model_blob_.clear();
     utils::MemoryBufferStream fs(&model_blob_);
@@ -245,8 +246,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
   }
   inline void InitTemp(void) {
-    mshadow::Shape<4> oshape = nets_[0]->net().nodes.back().data.shape;
-    oshape[3] = batch_size;
+    mshadow::Shape<4> oshape = nets_[0]->net().nodes.back().data.shape_;
+    oshape[0] = batch_size;
     out_temp.Resize(oshape);
   }
   inline void FreeNet(void) {

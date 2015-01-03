@@ -102,7 +102,7 @@ public:
   /*! \brief constructor */
   DataBatch(void) {
     labels = NULL; inst_index = NULL;
-    data.dptr = NULL;
+    data.dptr_ = NULL;
     batch_size = 0; num_batch_padd = 0;
     sparse_row_ptr = NULL;
     sparse_data = NULL;
@@ -119,7 +119,7 @@ public:
     if (labels != NULL) {
       delete [] labels;
       delete [] inst_index;
-      mshadow::FreeSpace(data);
+      mshadow::FreeSpace(&data);
       labels = NULL;
     }
   }

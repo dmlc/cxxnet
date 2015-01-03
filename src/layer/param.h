@@ -127,7 +127,7 @@ struct LayerParam {
       // sparse initalization
       real_t a = sqrt(3.0f / (in_num + out_num));
       utils::Check(dim == 2, "Sparse init only support 2 dim");
-      std::vector<real_t> tmp(mat.shape_.Size(), 0.0f);
+      std::vector<real_t> tmp(mat.MSize(), 0.0f);
       mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape_);
       for (int i = 0; i < init_sparse; ++i) {
         int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);

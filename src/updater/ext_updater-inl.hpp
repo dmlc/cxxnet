@@ -32,10 +32,10 @@ class NoiseSGDUpdater : public SGDUpdater<xpu, dim> {
     // multiplicative noise 
     switch (noise_type_) {
       case 1:{
-        dw *= (1.0f + sigma_ * (prnd_->uniform(dw.shape) - 0.5f)); break;
+        dw *= (1.0f + sigma_ * (prnd_->uniform(dw.shape_) - 0.5f)); break;
       }
       case 0:{
-        dw *= (1.0f + sigma_ * prnd_->gaussian(dw.shape)); break;
+        dw *= (1.0f + sigma_ * prnd_->gaussian(dw.shape_)); break;
       }
       default: utils::Error("unknown noise type");
     }
@@ -61,8 +61,8 @@ class SGHMCUpdater : public IUpdater<xpu> {
   SGHMCUpdater(mshadow::Random<xpu> *p_rnd, mshadow::Tensor<xpu,dim> w, mshadow::Tensor<xpu,dim> dw, const char *tag)
       : prnd(p_rnd), w(w), dw(dw) {
     param.tag = tag;
-    m_w.Resize(w.shape, 0.0f);
-    temp.Resize(w.shape);
+    m_w.Resize(w.shape_, 0.0f);
+    temp.Resize(w.shape_);
   }
   virtual ~SGHMCUpdater(void) {}
   virtual void StartRound(int round) {
@@ -83,7 +83,7 @@ class SGHMCUpdater : public IUpdater<xpu> {
     m_w *= param.momentum;
     m_w += (-param.learning_rate) * (dw + param.wd * w);
     if(param.need_sample()) {
-      m_w += prnd->gaussian(w.shape) * param.GetSigma();
+      m_w += prnd->gaussian(w.shape_) * param.GetSigma();
     }
     w += m_w;
     // dw accumulate gradient instead of storing them, updater need to reset then to 0 after each update
@@ -96,11 +96,11 @@ class SGHMCUpdater : public IUpdater<xpu> {
   virtual void UpdateHyper(void) {
     mshadow::Copy(temp, w);
     mshadow::Tensor<cpu,2> wt = temp.FlatTo2D();
-    double sumcnt = wt.shape[1] * wt.shape[0];
+    double sumcnt = wt.size(0) * wt.size(1);
     double sumsqr = 0.0f;
     // note: make the norm sum operation in mshadow
-    for(index_t y = 0; y < wt.shape[1]; ++ y)
-      for(index_t x = 0; x < wt.shape[0]; ++ x) {
+    for(index_t y = 0; y < wt.size(0); ++ y)
+      for(index_t x = 0; x < wt.size(1); ++ x) {
         sumsqr += wt[y][x] * wt[y][x];
       }
     double alpha = param.hyper_alpha + 0.5 * sumcnt;
@@ -115,10 +115,10 @@ class SGHMCUpdater : public IUpdater<xpu> {
     param.wd = static_cast<float>(plambda / param.num_train);
     if(param.silent == 0 && param.print_hupdate != 0) {
       printf("hyperupdate[");
-      for(int i = dim-1; i > 0 ; --i) {
-        printf("%u,", temp.shape[i]);
+      for(int i = 0; i < dim - 1; ++i) {
+        printf("%u,", temp.size(i));
       }
-      printf("%u]:plambda=%f,wd=%f\n", temp.shape[0], plambda, param.wd);
+      printf("%u]:plambda=%f,wd=%f\n", temp.size(dim-1), plambda, param.wd);
     }
   }
   virtual void SetParam(const char *name, const char *val) {

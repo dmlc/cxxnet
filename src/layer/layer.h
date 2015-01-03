@@ -30,7 +30,7 @@ struct Node {
    */
   mshadow::Tensor<xpu, 4> data;
   Node(void) {
-    data.shape = mshadow::Shape4(0,0,0,0);
+    data.shape_ = mshadow::Shape4(0,0,0,0);
   }
   /*! \brief matrix view of the node */
   inline mshadow::Tensor<xpu, 2> mat(void) {
@@ -41,7 +41,7 @@ struct Node {
     return data.size(1) == 1 && data.size(2) == 1;
   }
   inline void FreeSpace(void) {
-    mshadow::FreeSpace(data);
+    mshadow::FreeSpace(&data);
   }  
 }; // struct Node
 

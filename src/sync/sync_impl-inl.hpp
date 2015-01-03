@@ -22,12 +22,12 @@ class SimpleSynch : public ISynchronizer<xpu> {
     utils::Assert(weights.size() != 0, "empty list");
     utils::Assert(weights.size() == grads.size(), "SimpleSynch grad weights size mismatch");
     for (size_t i = 1; i < weights.size(); ++i) {
-      utils::Assert(weights[i].shape == weights[0].shape, "SimpleSynch shape mismatch");
-      utils::Assert(weights[i].shape.MSize() == weights[0].shape.MSize(), "SimpleSynch shape mismatch");
+      utils::Assert(weights[i].shape_ == weights[0].shape_, "SimpleSynch shape mismatch");
+      utils::Assert(weights[i].MSize() == weights[0].MSize(), "SimpleSynch shape mismatch");
     }            
     for (size_t i = 0; i < grads.size(); ++i) {
-      utils::Assert(grads[i].shape == weights[0].shape, "SimpleSynch shape mismatch");
-      utils::Assert(grads[i].shape.MSize() == weights[0].shape.MSize(), "SimpleSynch shape mismatch");
+      utils::Assert(grads[i].shape_ == weights[0].shape_, "SimpleSynch shape mismatch");
+      utils::Assert(grads[i].MSize() == weights[0].MSize(), "SimpleSynch shape mismatch");
     }
     host_device = 0;
 #ifdef __CUDACC__
@@ -42,8 +42,8 @@ class SimpleSynch : public ISynchronizer<xpu> {
 #endif
     // no synchronization is needed for 1 weight
     if (weights.size() > 1) {
-      wtmp.Resize(mshadow::Shape1(weights[0].shape.MSize()));
-      wsum.Resize(mshadow::Shape1(weights[0].shape.MSize()));
+      wtmp.Resize(mshadow::Shape1(weights[0].MSize()));
+      wsum.Resize(mshadow::Shape1(weights[0].MSize()));
     }
     // default parameters
     // by default we also synchronize weight
@@ -61,29 +61,29 @@ class SimpleSynch : public ISynchronizer<xpu> {
   virtual void SyncBeforeUpdate(void) {
     if (weights.size() == 1) return;
     // sync gradient
-    Copy(wsum.dptr, host_device, 
-         grads[0].dptr, devices[0],
-         sizeof(mshadow::real_t) * wsum.shape[0]);
+    Copy(wsum.dptr_, host_device, 
+         grads[0].dptr_, devices[0],
+         sizeof(real_t) * wsum.size(0));
     
     for (size_t i = 1; i < grads.size(); ++i) {
-      Copy(wtmp.dptr, host_device, 
-           grads[i].dptr, devices[i],
-           sizeof(mshadow::real_t) * wtmp.shape[0]);
+      Copy(wtmp.dptr_, host_device, 
+           grads[i].dptr_, devices[i],
+           sizeof(real_t) * wtmp.size(0));
       wsum += wtmp;
     }
     for (size_t i = 0; i < grads.size(); ++i) {
-      Copy(grads[i].dptr, devices[i],
-           wsum.dptr, host_device, 
-           sizeof(mshadow::real_t) * wsum.shape[0]);
+      Copy(grads[i].dptr_, devices[i],
+           wsum.dptr_, host_device, 
+           sizeof(real_t) * wsum.size(0));
     }
   }
   /*! \brief synchronization actions to be performs before the updater */
   virtual void SyncAfterUpdate(void) {
     if (weights.size() == 1|| sync_weight == 0) return;
     for (size_t i = 1; i < weights.size(); ++i) {
-      Copy(weights[i].dptr, devices[i],
-           weights[0].dptr, devices[0], 
-           sizeof(mshadow::real_t) * wsum.shape[0]);
+      Copy(weights[i].dptr_, devices[i],
+           weights[0].dptr_, devices[0],
+           sizeof(real_t) * wsum.size(0));
     }
   }
   inline static void Copy(real_t *dst, int dst_dev,

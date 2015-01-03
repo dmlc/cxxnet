@@ -90,7 +90,7 @@ struct NeuralNet {
    */
   inline void Forward(bool is_train, mshadow::Tensor<cpu,4> batch) {
     // check if we need to adjust batch size according to the input
-    this->AdjustBatchSize(batch.shape[3]);
+    this->AdjustBatchSize(batch.size(0));
     // copy data into node
     mshadow::Copy(nodes[0].data, batch);
     for (size_t i = 0; i < connections.size(); ++i) {
@@ -138,7 +138,7 @@ struct NeuralNet {
     nodes.resize(cfg.param.num_nodes);
     mshadow::Shape<3> s = cfg.param.input_shape;
     // setup input shape
-    nodes[0].data.shape = mshadow::Shape4(max_batch, s[2], s[1], s[0]);
+    nodes[0].data.shape_ = mshadow::Shape4(max_batch, s[0], s[1], s[2]);
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       const NetConfig::LayerInfo &info = cfg.layers[i];
@@ -199,17 +199,17 @@ struct NeuralNet {
   // intialize the space of nodes
   inline void InitNodes(void) {
     for (size_t i = 0; i < nodes.size(); ++ i) {
-      mshadow::Shape<4> s = nodes[i].data.shape;
-      mshadow::AllocSpace(nodes[i].data);
-      printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[3], s[2], s[1], s[0]);
+      mshadow::Shape<4> s = nodes[i].data.shape_;
+      mshadow::AllocSpace(&nodes[i].data);
+      printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[0], s[1], s[2], s[3]);
     }
   }
   // adjust batch size to a new value, the batch_size must be smaller than max_batch
   inline void AdjustBatchSize(mshadow::index_t batch_size) {
     utils::Assert(max_batch >= batch_size, "cannot set batch size larger than max batch");
-    if (batch_size != nodes[0].data.shape[3]) {
+    if (batch_size != nodes[0].data.size(0)) {
       for (size_t i = 0; i < nodes.size(); ++i) {
-        nodes[i].data.shape[3] = batch_size;
+        nodes[i].data.shape_[0] = batch_size;
       }
       for (size_t i = 0; i < connections.size(); ++ i) {
         layer::Connection<xpu> &c = connections[i];
@@ -399,9 +399,9 @@ class NeuralNetThread {
       case kUpdate: net_->Update(iparam_epoch); return;
       case kStartRound: net_->StartRound(static_cast<int>(iparam_epoch)); return;
       case kTrainProp: {
-        if (iparam_batch.shape[3] == 0) return;
+        if (iparam_batch.size(0) == 0) return;
         net_->Forward(true, iparam_batch);
-        if (oparam_node.dptr != NULL) {
+        if (oparam_node.dptr_ != NULL) {
           mshadow::Copy(oparam_node, net_->nodes.back().data);
         }
         net_->Backprop(iparam_flag);
