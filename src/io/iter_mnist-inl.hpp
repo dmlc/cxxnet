@@ -34,9 +34,9 @@ class MNISTIterator: public IIterator<DataBatch> {
     this->LoadImage();
     this->LoadLabel();
     if (mode_ == 1) {
-      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, 1,img_.size(2) * img_.size(3));
+      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, 1,img_.size(1) * img_.size(2));
     } else {
-      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, img_.size(2), img_.size(3));
+      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, img_.size(1), img_.size(2));
     }
     out_.inst_index = NULL;
     out_.data.stride_ = out_.data.size(3);
@@ -74,7 +74,7 @@ class MNISTIterator: public IIterator<DataBatch> {
     int image_cols  = ReadInt(gzimg);
             
     img_.shape_ = mshadow::Shape3(image_count, image_rows, image_cols);
-    img_.stride_ = img_.size(3);
+    img_.stride_ = img_.size(2);
             
     // allocate continuous memory
     img_.dptr_ = new float[img_.MSize()];
