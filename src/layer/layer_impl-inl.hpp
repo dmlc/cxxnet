@@ -15,6 +15,7 @@
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
 #include "./softmax_layer-inl.hpp"
+#include "./concat_layer-inl.hpp"
 
 namespace cxxnet {
 namespace layer {
@@ -38,6 +39,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>();
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>();
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
+    case kConcat: return new ConcatLayer<xpu>();
     default: utils::Error("unknown layer type"); return NULL;
   }
 }

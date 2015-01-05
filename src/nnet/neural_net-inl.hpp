@@ -35,7 +35,7 @@ struct NeuralNet {
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
   // constructor do nothing
-  NeuralNet(const NetConfig &cfg, mshadow::index_t batch_size, int seed)       
+  NeuralNet(const NetConfig &cfg, mshadow::index_t batch_size, int seed)
       : cfg(cfg), rnd(seed) {
     // set maximum batch
     this->max_batch = batch_size;
@@ -45,7 +45,7 @@ struct NeuralNet {
   }
   /*! \brief save model to file */
   inline void SaveModel(utils::IStream &fo) const {
-    for (int i = 0; i < connections.size(); ++ i) {
+    for (index_t i = 0; i < connections.size(); ++ i) {
       if (connections[i].type != layer::kSharedLayer) {
         connections[i].layer->SaveModel(fo);
       }
@@ -60,7 +60,7 @@ struct NeuralNet {
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
     }
     for (size_t i = 0; i < connections.size(); ++ i) {
-      if (connections[i].type != layer::kSharedLayer) {        
+      if (connections[i].type != layer::kSharedLayer) {
         connections[i].layer->InitModel();
       }
     }
@@ -75,7 +75,7 @@ struct NeuralNet {
       if (connections[i].type != layer::kSharedLayer) {
         connections[i].layer->LoadModel(fi);
       }
-    }    
+    }
     for (size_t i = 0; i < connections.size(); ++ i) {
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
@@ -98,11 +98,11 @@ struct NeuralNet {
       c.layer->Forward(is_train, c.nodes_in, c.nodes_out, &c.state);
     }
   }
-  /*! 
-   * \brief backprop 
+  /*!
+   * \brief backprop
    * \param prop_to_input whether prop gradient to input node
    */
-  inline void Backprop(bool prop_to_input = false) {    
+  inline void Backprop(bool prop_to_input = false) {
     for (size_t i = connections.size(); i > 0; --i) {
       layer::Connection<xpu> &c = connections[i-1];
       c.layer->Backprop(i != 1 || prop_to_input,
@@ -110,7 +110,7 @@ struct NeuralNet {
     }
   }
   /*!
-   * \brief update model parameters 
+   * \brief update model parameters
    * \param epoch number of epoches
    */
   inline void Update(size_t epoch) {
@@ -131,7 +131,7 @@ struct NeuralNet {
       }
     }
   }
-  
+
  private:
   // intialize the neural net data structure
   inline void InitNet(void) {
@@ -152,7 +152,7 @@ struct NeuralNet {
       }
       if (c.type == layer::kSharedLayer) {
         utils::Assert(info.primary_layer_index >=0, "primary_layer_index problem");
-        utils::Check(info.primary_layer_index < static_cast<int>(connections.size()), 
+        utils::Check(info.primary_layer_index < static_cast<int>(connections.size()),
                      "shared layer primary_layer_index exceed bound");
         c.layer = connections[info.primary_layer_index].layer;
       } else {
@@ -167,7 +167,7 @@ struct NeuralNet {
       if (connections[i].type == layer::kSharedLayer) continue;
       for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
         connections[i].layer->SetParam(cfg.defcfg[j].first.c_str(),
-                                       cfg.defcfg[j].second.c_str());      
+                                       cfg.defcfg[j].second.c_str());
       }
       for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
         connections[i].layer->SetParam(cfg.layercfg[i][j].first.c_str(),
@@ -185,7 +185,7 @@ struct NeuralNet {
       for (size_t k = 0; k < out.size(); ++k) {
         for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
           out[k]->SetParam(cfg.defcfg[j].first.c_str(),
-                           cfg.defcfg[j].second.c_str());      
+                           cfg.defcfg[j].second.c_str());
         }
         for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
           out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
@@ -213,7 +213,7 @@ struct NeuralNet {
       }
       for (size_t i = 0; i < connections.size(); ++ i) {
         layer::Connection<xpu> &c = connections[i];
-        c.layer->OnBatchSizeChanged(c.nodes_in, c.nodes_out, &c.state);  
+        c.layer->OnBatchSizeChanged(c.nodes_in, c.nodes_out, &c.state);
       }
     }
   }
@@ -223,7 +223,7 @@ struct NeuralNet {
       nodes[i].FreeSpace();
     }
     for (size_t i = 0; i < connections.size(); ++i) {
-      if (connections[i].type != layer::kSharedLayer) {        
+      if (connections[i].type != layer::kSharedLayer) {
         delete connections[i].layer;
       }
     }
@@ -244,7 +244,7 @@ template<typename xpu>
 class NeuralNetThread {
  public:
   /*! \brief create a new neural net thread on specific device */
-  NeuralNetThread(const NetConfig &cfg, 
+  NeuralNetThread(const NetConfig &cfg,
                   int device_id,
                   mshadow::index_t batch_size,
                   int seed,
@@ -284,8 +284,8 @@ class NeuralNetThread {
     }
   }
 
-  /*! 
-   * \brief wait till the the thread finishes current task 
+  /*!
+   * \brief wait till the the thread finishes current task
    * This function MUST be called every time before running next job
    */
   inline void WaitJob(void) {
@@ -423,7 +423,7 @@ class NeuralNetThread {
   // used to copy out fields in the last layer
   mshadow::Tensor<cpu,4> oparam_node;
   // input flag
-  bool iparam_flag;  
+  bool iparam_flag;
   // input epochs
   size_t iparam_epoch;
   // input node id

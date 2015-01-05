@@ -15,16 +15,16 @@
 namespace cxxnet {
 /*! \brief namespace of layer defintiion */
 namespace layer {
-/*! 
+/*!
  * \brief node structure, this is used to store forward activation,
  *    and backproped gradient in the network
  * \tparam xpu the device name it lies in, can be cpu/gpu
  */
 template<typename xpu>
 struct Node {
-  /*! 
-   * \brief content of the node 
-   *  layout: 
+  /*!
+   * \brief content of the node
+   *  layout:
    *     images (batch_size, nchannel, height, width)
    *     matrix (batch_size, 1, 1, length-of-vector)
    */
@@ -42,10 +42,10 @@ struct Node {
   }
   inline void FreeSpace(void) {
     mshadow::FreeSpace(&data);
-  }  
+  }
 }; // struct Node
 
-/*! 
+/*!
  * \brief data structure to hold additional information about label of instances
  * this information is used by layers that computes the gradient over objectibe functions,
  * this data structure  will be evolving, to meet needs of different kinds of supervision signals
@@ -58,7 +58,7 @@ struct LabelInfo {
   // constructor
   LabelInfo(void) : labels(NULL), batch_size(0) {
   }
-  /*! 
+  /*!
    * \brief slice the label information to take [begin, end)
    * \param begin beginning of index
    * \param end end of index
@@ -71,10 +71,10 @@ struct LabelInfo {
   }
 };
 
-/*! 
- * \brief connection states 
+/*!
+ * \brief connection states
  *   temporal state space that can be used to share information between forward and backprop
- *   not every layer needs this, this is used 
+ *   not every layer needs this, this is used
  */
 template<typename xpu>
 struct ConnectState {
@@ -82,9 +82,9 @@ struct ConnectState {
   std::vector< mshadow::TensorContainer<xpu, 4> > states;
 };
 
-/*! 
+/*!
  * \brief Interface of layer
- *    this is a pure interface and there is not data memember 
+ *    this is a pure interface and there is not data memember
  *    in ILayer. However, there can be common pattern of memembers in a layer,
  *    see the following notes
  *
@@ -92,18 +92,18 @@ struct ConnectState {
  *     In the current design of cxxnet, there is concept of Connection, and Layer
  *     A Layer is defines set of of functions Forward and Backprop, given input/output nodes
  *     A Layer is not attached to specific pair of nodes, while Connection is.
- *     Connection is the connection between nodes, whose function is backed by Layers. 
+ *     Connection is the connection between nodes, whose function is backed by Layers.
  *     Different connection can share a same Layer
  *
- *     This means Layer can not contain any node specific state(for example, dropout mask) in the class. 
+ *     This means Layer can not contain any node specific state(for example, dropout mask) in the class.
  *     The Connection specific states are maintained by Connection, and passed to Layer during Forward/Backprop
- *      
+ *
  *  Weights and gradient:
  *     Some layers can have connection weight parameters, and gradient of weights.
- *     These weights are hold in the specific implementation. 
+ *     These weights are hold in the specific implementation.
  *     They can be accesed by using a vistor, see also IVisitor
  *     SaveModel and LoadModel are used to serialize and deserialize them
- * 
+ *
  *  Parameters:
  *     Parameters related to each layer (e.g. number of hidden nodes), can be set by calling SetParam
  *
@@ -122,8 +122,8 @@ class ILayer {
      * \brief visit content of the layer, this is called by Layer
      *    when ApplyVisitor is called
      *
-     *    Visitor can use to get weight content, copy/set weights, etc. 
-     *   
+     *    Visitor can use to get weight content, copy/set weights, etc.
+     *
      * \param field_name the name of field on the layer
      * \param weight the connect weight used in the layer
      * \param grad the gradient of the weight,
@@ -144,7 +144,7 @@ class ILayer {
   virtual ~ILayer(void) {}
   /*!
    * \brief initialize the connection, this function takes charge of two shings
-   *   (1) setup the shape of output nodes in nodes_out, given the 
+   *   (1) setup the shape of output nodes in nodes_out, given the
    *   (2) allocate necessary temporal state space in p_cstate
    * \param nodes_in vector of input nodes
    * \param nodes_out vector of output nodes
@@ -187,9 +187,9 @@ class ILayer {
                         const std::vector<Node<xpu>*> &nodes_in,
                         const std::vector<Node<xpu>*> &nodes_out,
                         ConnectState<xpu> *p_cstate) = 0;
-  
+
  public:
-  /*! 
+  /*!
    * \brief apply visitor to the layer,
    *   this is used to visit tha content of the layer
    */
@@ -235,7 +235,8 @@ enum LayerType {
   kSumPooling = 12,
   kAvgPooling = 13,
   kLRN = 15,
-  kBias = 17
+  kBias = 17,
+  kConcat = 18
 };
 /*!
  * \brief get the layer type from string
@@ -258,6 +259,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "sum_pooling")) return kSumPooling;
   if (!strcmp(type, "avg_pooling")) return kAvgPooling;
   if (!strcmp(type, "lrn")) return kLRN;
+  if (!strcmp(type, "concat")) return kConcat;
   utils::Error("unknown layer type: \"%s\"", type);
   return kConv;
 }
@@ -274,7 +276,7 @@ ILayer<xpu>* CreateLayer(LayerType type,
                          mshadow::Random<xpu> *p_rnd,
                          const LabelInfo *label_info);
 
-/*! 
+/*!
  * \brief this data structure specifies a connection
  * this is a node specific data structure, that defines connection between nodes
  * \tparam xpu the device the connection lies in
