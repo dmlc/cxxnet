@@ -14,6 +14,10 @@
 #include "../utils/global_random.h"
 #include "../utils/thread_buffer.h"
 
+//#ifdef CXXNET_USE_OPENCV
+  #include <opencv2/opencv.hpp>
+//#endif
+
 namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
 class BatchAdaptIterator: public IIterator<DataBatch> {
@@ -35,6 +39,15 @@ public:
     name_meanimg_ = "";
     crop_y_start_ = -1;
     crop_x_start_ = -1;
+    max_rotate_angle_ = -1;
+    max_aspect_ratio_ = -1.0f;
+    min_crop_size_ = -1;
+    max_crop_size_ = -1;
+    output_size_width_ = -1;
+    output_size_height_ = -1;
+    mean_r_ = 0.0f;
+    mean_g_ = 0.0f;
+    mean_b_ = 0.0f;
   }
   virtual ~BatchAdaptIterator(void) {
     delete base_;
@@ -56,7 +69,17 @@ public:
     if (!strcmp(name, "divideby"))    scale_ = static_cast<real_t>(1.0f / atof(val));
     if (!strcmp(name, "scale"))       scale_ = static_cast<real_t>(atof(val));
     if (!strcmp(name, "image_mean"))   name_meanimg_ = val;
+    if (!strcmp(name, "max_rotate_angle")) max_rotate_angle_ = atof(val);
+    if (!strcmp(name, "max_aspect_ratio"))  max_aspect_ratio_ = atoi(val);
     if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
+    if (!strcmp(name, "output_size_width"))     output_size_width_ = atoi(val);
+    if (!strcmp(name, "output_size_height"))     output_size_height_ = atoi(val);
+    if (!strcmp(name, "min_crop_size"))     min_crop_size_ = atoi(val);
+    if (!strcmp(name, "max_crop_size"))     max_crop_size_ = atoi(val);
+    if (!strcmp(name, "mean_value")) {
+      utils::Assert(sscanf(val, "%f,%f,%f", &mean_b_, &mean_g_, &mean_r_) == 3,
+                    "mean value must be three consecutive float without space example: 128,127.5,128.2 ");
+    }
   }
   virtual void Init(void) {
     base_->Init();
@@ -137,6 +160,46 @@ private:
       utils::Assert(d.data.size(2) >= shape_[2] && d.data.size(3) >= shape_[3], "shape constraint");
       mshadow::index_t yy = d.data.size(2) - shape_[2];
       mshadow::index_t xx = d.data.size(3) - shape_[3];
+      #ifdef CXXNET_USE_OPENCV
+      cv::Mat res(d.data.size(2), d.data.size(3), CV_32FC3);
+      for (index_t i = 0; i < d.data.size(2); ++i) {
+        for (index_t j = 0; j < d.data.size(3); ++j) {
+          for (index_t c = 0; c < d.data.size(1); ++c) {
+            res.at<float>(i, j, c) = d.data[c][i][j];
+          }
+        }
+      }
+      if (max_rotate_angle_ > 0.0f) {
+        int angle = utils::NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
+        int len = std::max(res.cols, res.rows);
+        cv::Point2f pt(len / 2.0f, len / 2.0f);
+        cv::Mat r = cv::getRotationMatrix2D(pt, angle, 1.0);
+        cv::Mat temp;
+        cv::warpAffine(res, temp, r, cv::Size(len, len));
+        res = temp;
+      }
+      if (min_crop_size_ > 0 && max_crop_size_ > 0) {
+        int crop_size_x = utils::NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
+                                       min_crop_size_;
+        int crop_size_y = crop_size_x * (1 + utils::NextDouble() * \
+                                                      max_aspect_ratio_ * 2 - max_aspect_ratio_);
+        crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
+        mshadow::index_t y = res.rows - crop_size_y;
+        mshadow::index_t x = res.cols - crop_size_x;
+        cv::Rect roi(y, x, crop_size_y, crop_size_x);
+        res = res(roi);
+        cv::resize(res, res, cv::Size(output_size_height_, output_size_width_));
+      }
+      for (index_t i = 0; i < d.data.size(2); ++i) {
+        for (index_t j = 0; j < d.data.size(3); ++j) {
+          cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
+          d.data[0][i][j] = bgr[0];
+          d.data[1][i][j] = bgr[1];
+          d.data[2][i][j] = bgr[2];
+        }
+      }
+      res.release();
+      #endif
       if (rand_crop_ != 0) {
         yy = utils::NextUInt32(yy + 1);
         xx = utils::NextUInt32(xx + 1);
@@ -145,8 +208,16 @@ private:
       }
       if (crop_y_start_ != -1) yy = crop_y_start_;
       if (crop_x_start_ != -1) xx = crop_x_start_;
-
-      if (name_meanimg_.length() == 0) {
+      if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
+        d.data[0] -= mean_b_;
+        d.data[1] -= mean_g_;
+        d.data[2] -= mean_r_;
+        if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
+          out_.data[top] = mirror(crop(d.data, out_.data[0][0].shape_, yy, xx)) * scale_;
+        } else {
+          out_.data[top] = crop(d.data, out_.data[0][0].shape_, yy, xx) * scale_ ;
+        }
+      } else if (name_meanimg_.length() == 0) {
         if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
           out_.data[top] = mirror(crop(d.data, out_.data[0][0].shape_, yy, xx)) * scale_;
         } else {
@@ -223,6 +294,18 @@ private:
   mshadow::TensorContainer<cpu, 3> meanimg_;
   // mean image file, if specified, will generate mean image file, and substract by mean
   std::string name_meanimg_;
+  // Indicate the max ratation angle for augmentation, we will random rotate
+  // [-max_rotate_angle, max_rotate_angle]
+  int max_rotate_angle_;
+  // max aspect ration
+  float max_aspect_ratio_;
+  int max_crop_size_;
+  int min_crop_size_;
+  int output_size_width_;
+  int output_size_height_;
+  float mean_r_;
+  float mean_g_;
+  float mean_b_;
 }; // class BatchAdaptIterator
 }; // namespace cxxnet
 
