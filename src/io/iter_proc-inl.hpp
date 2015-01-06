@@ -158,7 +158,7 @@ private:
     if (shape_[2] == 1) {
       out_.data[0][0][top] = d.data[0][0] * scale_;
     } else {
-      utils::Assert(d.data.size(2) >= shape_[2] && d.data.size(3) >= shape_[3], "shape constraint");
+      utils::Assert(d.data.size(1) >= shape_[2] && d.data.size(2) >= shape_[3], "shape constraint");
       #ifdef CXXNET_USE_OPENCV
       cv::Mat res(d.data.size(1), d.data.size(2), CV_32FC3);
       for (index_t i = 0; i < d.data.size(1); ++i) {
@@ -206,8 +206,8 @@ private:
       }
       res.release();
       #endif
-      mshadow::index_t yy = d.data.size(2) - shape_[2];
-      mshadow::index_t xx = d.data.size(3) - shape_[3];
+      mshadow::index_t yy = d.data.size(1) - shape_[2];
+      mshadow::index_t xx = d.data.size(2) - shape_[3];
       if (rand_crop_ != 0) {
         yy = utils::NextUInt32(yy + 1);
         xx = utils::NextUInt32(xx + 1);
