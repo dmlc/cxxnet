@@ -229,14 +229,14 @@ enum LayerType {
   kSoftplus = 6,
   kFlatten = 7,
   kDropout = 8,
-  kDropConn = 9,
   kConv = 10,
   kMaxPooling = 11,
   kSumPooling = 12,
   kAvgPooling = 13,
   kLRN = 15,
   kBias = 17,
-  kConcat = 18
+  kConcat = 18,
+  kXelu = 19
 };
 /*!
  * \brief get the layer type from string
@@ -253,13 +253,13 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "softplus")) return kSoftplus;
   if (!strcmp(type, "flatten")) return kFlatten;
   if (!strcmp(type, "dropout")) return kDropout;
-  if (!strcmp(type, "dropconn")) return kDropConn;
   if (!strcmp(type, "conv")) return kConv;
   if (!strcmp(type, "max_pooling")) return kMaxPooling;
   if (!strcmp(type, "sum_pooling")) return kSumPooling;
   if (!strcmp(type, "avg_pooling")) return kAvgPooling;
   if (!strcmp(type, "lrn")) return kLRN;
   if (!strcmp(type, "concat")) return kConcat;
+  if (!strcmp(type, "xelu")) return kXelu;
   utils::Error("unknown layer type: \"%s\"", type);
   return kConv;
 }

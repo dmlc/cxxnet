@@ -49,6 +49,8 @@ struct LayerParam {
   int num_input_channel;
   /*! \brief number of input hidden nodes, used by fullc */
   int num_input_node;
+  /*! \brief reduce fector for xelu layer */
+  int xelu;
   /*! \brief reserved fields, for future compatibility */
   int reserved[64];
   /*! \brief construtor */
@@ -69,6 +71,7 @@ struct LayerParam {
     silent = 0;
     num_input_channel = 0;
     num_input_node = 0;
+    xelu = 2;
     // 64 MB
     temp_col_max = 64<<18;
     memset(reserved, 0, sizeof(reserved));
@@ -90,10 +93,11 @@ struct LayerParam {
       else if (!strcmp(val, "sparse")) random_type = 2;
       else utils::Error("invalid random_type %s", val);
       // 3: mshadow binary file
-    }    
+    }
     if (!strcmp(name, "nhidden")) num_hidden = atoi(val);
     if (!strcmp(name, "nchannel")) num_channel = atoi(val);
     if (!strcmp(name, "ngroup")) num_group = atoi(val);
+    if (!strcmp(name, "factor")) xelu = atof(val);
     if (!strcmp(name, "kernel_size")) {
       kernel_width = kernel_height = atoi(val);
     }
@@ -114,7 +118,7 @@ struct LayerParam {
   inline void RandInitWeight(mshadow::Random<xpu> *prng,
                              mshadow::Tensor<xpu, dim> mat,
                              index_t in_num, index_t out_num) {
-    
+
     if (random_type == 0) {
       // gaussian initialization
       prng->SampleGaussian(&mat, 0.0f, init_sigma);

@@ -16,6 +16,7 @@
 #include "./pooling_layer-inl.hpp"
 #include "./softmax_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
+#include "./xelu_layer-inl.hpp"
 
 namespace cxxnet {
 namespace layer {
@@ -32,7 +33,6 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kBias: return new BiasLayer<xpu>();
     case kDropout: return new DropoutLayer<xpu>(p_rnd);
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd);
-    case kDropConn: return new DropConnLayer<xpu>(p_rnd);
     case kLRN: return new LRNLayer<xpu>();
     case kFlatten: return new FlattenLayer<xpu>();
     case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>();
@@ -40,6 +40,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>();
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
     case kConcat: return new ConcatLayer<xpu>();
+    case kXelu: return new XeluLayer<xpu>();
     default: utils::Error("unknown layer type"); return NULL;
   }
 }

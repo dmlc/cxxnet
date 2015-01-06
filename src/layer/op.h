@@ -35,6 +35,18 @@ struct relu_grad {
   }
 };
 
+struct xelu {
+  MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
+    return a > 0 ? a : a / b;
+  }
+};
+
+struct xelu_grad {
+  MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
+    return a > 0 ? 1 : 1.0f / b;
+  }
+};
+
 struct tanh {
   MSHADOW_XINLINE static real_t Map(real_t a) {
     return tanhf( a );
