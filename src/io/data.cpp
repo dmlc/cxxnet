@@ -33,7 +33,7 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       if (!strcmp(val, "mnist")) {
         utils::Check(it == NULL, "mnist can not chain over other iterator");
         it = new MNISTIterator(); continue;
-      }      
+      }
       if (!strcmp(val, "mshadow")) {
         utils::Assert(it == NULL, "mshadow can not chain over other iterator");
         //it = new BatchAdaptIterator(new MShadowIterator()); continue;
@@ -41,7 +41,7 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       #if CXXNET_USE_OPENCV
       if (!strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
-        //it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
+        it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
       }
       #endif
 
