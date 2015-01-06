@@ -58,8 +58,8 @@ class FullConnectLayer : public ILayer<xpu> {
                  "DropoutLayer Layer only support 1-1 connection");
     utils::Check(nodes_in[0]->is_mat(), "input need to be a matrix");
     utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
-    // we change matrix convention 
-    nodes_out[0]->data.shape_ = 
+    // we change matrix convention
+    nodes_out[0]->data.shape_ =
         mshadow::Shape4(nodes_in[0]->data.size(0), 1, 1, param_.num_hidden);
     if (param_.num_input_node == 0) {
       param_.num_input_node = static_cast<int>(nodes_in[0]->data.size(3));
@@ -127,59 +127,6 @@ class FullConnectLayer : public ILayer<xpu> {
   mshadow::TensorContainer<xpu,1> gbias_;
 };
 
-// dropconn layer that randomly drops connection in fullc
-template<typename xpu>
-class DropConnLayer : public FullConnectLayer<xpu> {
- public:
-  DropConnLayer(mshadow::Random<xpu> *p_rnd) : Parent(p_rnd) {
-    dropout_threshold = 0.0f;
-  }
-  virtual void SetParam(const char *name, const char* val) {
-    Parent::SetParam(name, val);
-    if (!strcmp("threshold", name)) dropout_threshold = static_cast<real_t>(atof(val));
-  }  
-  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
-                              const std::vector<Node<xpu>*> &nodes_out,
-                              ConnectState<xpu> *p_cstate) {
-    Parent::InitConnection(nodes_in, nodes_out, p_cstate);
-    p_cstate->states.resize(2);
-    mshadow::Shape<4> wshape =
-        mshadow::Shape4(1, 1, this->param_.num_hidden, this->param_.num_input_node);
-    p_cstate->states[0].Resize(wshape);
-    p_cstate->states[1].Resize(wshape);
-  }
-  virtual void Forward(bool is_train,
-                       const std::vector<Node<xpu>*> &nodes_in,
-                       const std::vector<Node<xpu>*> &nodes_out,
-                       ConnectState<xpu> *p_cstate) {
-    using namespace mshadow::expr;
-    mshadow::Tensor<xpu, 2> mask = p_cstate->states[0][0][0];
-    mshadow::Tensor<xpu, 2> tmpw = p_cstate->states[1][0][0];
-    if (is_train) {
-      const real_t pkeep = 1.0f - dropout_threshold;
-      mask = F<op::threshold>(this->prnd_->uniform(mask.shape_), pkeep) * (1.0f / pkeep);
-      tmpw = this->wmat_ * mask;
-    } else {
-      mshadow::Copy(tmpw, this->wmat_);
-    }
-    Parent::Forward_(is_train, tmpw, nodes_in[0], nodes_out[0]);
-  }
-
-  virtual void Backprop(bool prop_grad,
-                        const std::vector<Node<xpu>*> &nodes_in,
-                        const std::vector<Node<xpu>*> &nodes_out,
-                        ConnectState<xpu> *p_cstate) {
-    using namespace mshadow::expr;
-    mshadow::Tensor<xpu, 2> mask = p_cstate->states[0][0][0];
-    mshadow::Tensor<xpu, 2> tmpw = p_cstate->states[1][0][0];    
-    Parent::Backprop_(prop_grad, tmpw, nodes_in[0], nodes_out[0]);
-    Parent::gwmat_ *= mask;
-  }  
-
- private:
-  real_t dropout_threshold;
-  typedef FullConnectLayer<xpu> Parent;
-};  // class DropconnLayer
 }  // namespace layer
 }  // namespace cxxnet
 #endif  // LAYER_FULLC_LAYER_INL_HPP_
