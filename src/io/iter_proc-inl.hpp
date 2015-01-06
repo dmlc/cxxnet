@@ -40,7 +40,7 @@ public:
     crop_y_start_ = -1;
     crop_x_start_ = -1;
     max_rotate_angle_ = -1;
-    max_aspect_ratio_ = -1.0f;
+    max_aspect_ratio_ = 0.0f;
     min_crop_size_ = -1;
     max_crop_size_ = -1;
     output_size_width_ = -1;
@@ -57,7 +57,7 @@ public:
     base_->SetParam(name, val);
     if (!strcmp(name, "batch_size"))  batch_size_ = (index_t)atoi(val);
     if (!strcmp(name, "input_shape")) {
-      utils::Assert(sscanf(val, "%u,%u,%u", &shape_[2], &shape_[1], &shape_[0]) == 3,
+      utils::Assert(sscanf(val, "%u,%u,%u", &shape_[1], &shape_[2], &shape_[3]) == 3,
                     "input_shape must be three consecutive integers without space example: 1,1,200 ");
     }
     if (!strcmp(name, "round_batch")) round_batch_ = atoi(val);
@@ -85,9 +85,10 @@ public:
     base_->Init();
     mshadow::Shape<4> tshape = shape_;
     if (tshape[2] == 1 && tshape[1] == 1) {
-      tshape[1] = batch_size_; tshape[3] = 1;
+      // what is this for?
+      tshape[0] = batch_size_; tshape[3] = 1;
     } else {
-      tshape[3] = batch_size_;
+      tshape[0] = batch_size_;
     }
     out_.AllocSpaceDense(tshape, batch_size_, false);
 
@@ -159,12 +160,12 @@ private:
     } else {
       utils::Assert(d.data.size(2) >= shape_[2] && d.data.size(3) >= shape_[3], "shape constraint");
       #ifdef CXXNET_USE_OPENCV
-      cv::Mat res(d.data.size(2), d.data.size(3), CV_32FC3);
-      for (index_t i = 0; i < d.data.size(2); ++i) {
-        for (index_t j = 0; j < d.data.size(3); ++j) {
-          for (index_t c = 0; c < d.data.size(1); ++c) {
-            res.at<float>(i, j, c) = d.data[c][i][j];
-          }
+      cv::Mat res(d.data.size(1), d.data.size(2), CV_32FC3);
+      for (index_t i = 0; i < d.data.size(1); ++i) {
+        for (index_t j = 0; j < d.data.size(2); ++j) {
+          res.at<cv::Vec3b>(i, j)[0] = d.data[0][i][j];
+          res.at<cv::Vec3b>(i, j)[1] = d.data[1][i][j];
+          res.at<cv::Vec3b>(i, j)[2] = d.data[2][i][j];
         }
       }
       if (max_rotate_angle_ > 0.0f) {
@@ -184,12 +185,19 @@ private:
         crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
         mshadow::index_t y = res.rows - crop_size_y;
         mshadow::index_t x = res.cols - crop_size_x;
+        if (rand_crop_ != 0) {
+          y = utils::NextUInt32(y + 1);
+          x = utils::NextUInt32(x + 1);
+        } else {
+          y /= 2; x /= 2;
+        }
         cv::Rect roi(y, x, crop_size_y, crop_size_x);
         res = res(roi);
-        cv::resize(res, res, cv::Size(output_size_height_, output_size_width_));
       }
-      for (index_t i = 0; i < d.data.size(2); ++i) {
-        for (index_t j = 0; j < d.data.size(3); ++j) {
+      cv::resize(res, res, cv::Size(d.data.size(1), d.data.size(2)));
+
+      for (index_t i = 0; i < d.data.size(1); ++i) {
+        for (index_t j = 0; j < d.data.size(2); ++j) {
           cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
           d.data[0][i][j] = bgr[0];
           d.data[1][i][j] = bgr[1];
@@ -209,9 +217,7 @@ private:
       if (crop_y_start_ != -1) yy = crop_y_start_;
       if (crop_x_start_ != -1) xx = crop_x_start_;
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
-        d.data[0] -= mean_b_;
-        d.data[1] -= mean_g_;
-        d.data[2] -= mean_r_;
+        d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
         if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
           out_.data[top] = mirror(crop(d.data, out_.data[0][0].shape_, yy, xx)) * scale_;
         } else {
