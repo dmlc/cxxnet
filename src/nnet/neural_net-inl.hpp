@@ -106,7 +106,7 @@ struct NeuralNet {
     mshadow::Copy(nodes[0].data, batch, stream);
     for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
-      if (need_sync) {
+      if (need_sync && updaters[i].size() != 0) {
         for (size_t j = 0; j < updaters[i].size(); ++j) {
           updaters[i][j]->UpdateWait();
         }
@@ -125,7 +125,9 @@ struct NeuralNet {
       layer::Connection<xpu> &c = connections[i - 1];
       c.layer->Backprop(i != 1 || prop_to_input,
                         c.nodes_in, c.nodes_out, &c.state);
-      if (need_update) {
+      if (need_update && updaters[i - 1].size() != 0) {
+        // wait backprop to complete before call update
+        stream->Wait();
         for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
           updaters[i - 1][j]->Update(update_epoch);
         }
@@ -251,6 +253,8 @@ struct NeuralNet {
   }
   /*! \brief free all space allocated in this struct*/
   inline void FreeSpace(void) {
+    // wait all actions to complete before free
+    stream->Wait();
     for (size_t i = 0; i < nodes.size(); ++i) {
       nodes[i].FreeSpace();
     }
