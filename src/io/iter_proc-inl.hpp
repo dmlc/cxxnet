@@ -193,11 +193,11 @@ private:
         }
         cv::Rect roi(y, x, crop_size_y, crop_size_x);
         res = res(roi);
+        crop_y_start = crop_x_start = 0;
       }
-      cv::resize(res, res, cv::Size(d.data.size(1), d.data.size(2)));
-
-      for (index_t i = 0; i < d.data.size(1); ++i) {
-        for (index_t j = 0; j < d.data.size(2); ++j) {
+      cv::resize(res, res, cv::Size(shape[2], shape[3]));
+      for (index_t i = 0; i < shape[2]; ++i) {
+        for (index_t j = 0; j < shape[3]; ++j) {
           cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
           d.data[0][i][j] = bgr[0];
           d.data[1][i][j] = bgr[1];
