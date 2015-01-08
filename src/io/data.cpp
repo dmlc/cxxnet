@@ -9,7 +9,6 @@
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "iter_mnist-inl.hpp"
-#include "iter_mshadow-inl.hpp"
 #include "iter_proc-inl.hpp"
 #include "iter_sparse-inl.hpp"
 //#include "iter_thread_npybin-inl.hpp"
@@ -33,10 +32,6 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       if (!strcmp(val, "mnist")) {
         utils::Check(it == NULL, "mnist can not chain over other iterator");
         it = new MNISTIterator(); continue;
-      }
-      if (!strcmp(val, "mshadow")) {
-        utils::Assert(it == NULL, "mshadow can not chain over other iterator");
-        //it = new BatchAdaptIterator(new MShadowIterator()); continue;
       }
       #if CXXNET_USE_OPENCV
       if (!strcmp(val, "imgbin")) {
