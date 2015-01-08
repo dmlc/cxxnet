@@ -21,7 +21,7 @@ void CreateAsyncUpdaters<gpu>(int data_key_base,
                               const char *type,
                               mshadow::Random<gpu> *p_rnd,
                               layer::ILayer<gpu> *p_layer,
-                              std::vector<IAsyncUpdater<xpu>*> *out_updaters) {
+                              std::vector<IAsyncUpdater<gpu>*> *out_updaters) {
   CreateAsyncUpdaterVisitor<gpu> visitor(data_key_base, device_id, param_server,
                                          type, p_rnd, out_updaters);  
   p_layer->ApplyVisitor(&visitor);  
