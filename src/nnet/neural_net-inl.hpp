@@ -461,7 +461,7 @@ class NeuralNetThread {
         return;
       }
       case kPredForward: {
-        net_->Forward(false, iparam_batch, false);
+        net_->Forward(false, iparam_batch, true);
         return;
       }
       case kCopyNode: {
