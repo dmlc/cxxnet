@@ -187,8 +187,11 @@ class ILayer {
                         const std::vector<Node<xpu>*> &nodes_in,
                         const std::vector<Node<xpu>*> &nodes_out,
                         ConnectState<xpu> *p_cstate) = 0;
-
- public:
+  /*!
+   * \brief set the stream of internal computation to be stream
+   * \param stream the stream to be used
+   */
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {}
   /*!
    * \brief apply visitor to the layer,
    *   this is used to visit tha content of the layer
@@ -293,6 +296,22 @@ struct Connection {
   std::vector<Node<xpu>*> nodes_in;
   /*! \brief list of output nodes */
   std::vector<Node<xpu>*> nodes_out;
+  /*!
+   * \brief set the internal computation stream
+   * \param stream the stream that was used for computation
+   */
+  inline void SetStream(mshadow::Stream<xpu> *stream) {
+    layer->SetStream(stream);
+    for (size_t i = 0; i < state.states.size(); ++i) {
+      state.states[i].set_stream(stream);
+    }
+    for (size_t i = 0; i < nodes_in.size(); ++i) {
+      nodes_in[i].data.set_stream(stream);
+    }
+    for (size_t i = 0; i < nodes_out.size(); ++i) {
+      nodes_out[i].data.set_stream(stream);
+    }
+  }
 };
 }  // namespace layer
 }  // namespace cxxnet

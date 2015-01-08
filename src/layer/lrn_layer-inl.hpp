@@ -23,6 +23,9 @@ class LRNLayer : public ILayer<xpu> {
     if (!strcmp(name, "beta")) beta_ = static_cast<real_t>(atof(val));
     if (!strcmp(name, "knorm")) knorm_ = static_cast<real_t>(atof(val));
   }
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    tmp_in.set_stream(stream);
+  }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
                               ConnectState<xpu> *p_cstate) {

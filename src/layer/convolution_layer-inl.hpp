@@ -51,6 +51,12 @@ class ConvolutionLayer : public ILayer<xpu> {
     gbias_.Resize(bias_.shape_);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    gwmat_.set_stream(stream);
+    gbias_.set_stream(stream);
+    temp_dst_.set_stream(stream);
+    temp_col_.set_stream(stream);
+  }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
                               ConnectState<xpu> *p_cstate) {

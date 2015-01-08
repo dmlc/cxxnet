@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <mshadow/tensor.h>
+#include <mshadow-ps/ps.h>
 #include "../global.h"
 #include "../layer/layer.h"
 
@@ -18,12 +19,17 @@ namespace updater {
  * \tparam xpu which device the data of the updater lies 
  */
 template<typename xpu>
-class IUpdater{  
+class IUpdater { 
  public:
   /*! \brief reuse layer's visitor type, can be used to access weight in updater */
   typedef typename layer::ILayer<xpu>::IVisitor IVisitor;
   /*!\brief virtual destructor */
   virtual ~IUpdater(void) {}
+  /*!
+   * \brief set the stream of internal computation to be stream
+   * \param stream the stream to be used
+   */
+  virtual void SetStream(mshadow::Stream<xpu> *stream) = 0;
   /*! \brief intialize, print information about updater if not silent */
   virtual void Init(void) = 0;
   /*! 
@@ -49,6 +55,19 @@ class IUpdater{
 };
 
 /*!
+ * \brief asynchronize updater, basically same as updater
+ * however, the Update function in asynchronize update directly returns
+ * and user need to call UpdateWait to wait the update to finish
+ */
+template<typename xpu>
+class IAsyncUpdater : IUpdater<xpu>{
+ public:
+  /*!
+   * \brief block until update is finished
+   */
+  virtual void UpdateWait(void) = 0;
+};
+/*!
  * \brief factory: create updaters for a given layer, push_back them to out_updaters
  * \param type indicate the type of updater
  * \param p_rnd pointer to random number generator
@@ -61,6 +80,27 @@ void CreateUpdaters(const char *type,
                     mshadow::Random<xpu> *p_rnd,
                     layer::ILayer<xpu> *p_layer,
                     std::vector<IUpdater<xpu>*> *out_updaters);
+
+/*!
+ * \brief factory: create updaters for a given layer, push_back them to out_updaters
+ * \param data_key_base used to index the updaters, each new updater will
+ *                      take data_key_base as their id, and increase it by 1
+ * \param device_id the device id where the async updater lies
+ * \param param_server parameter server that could be used by async updater
+ * \param type indicate the type of updater
+ * \param p_rnd pointer to random number generator
+ * \param p_layer pointer to the layer object, where the data is going to be pulled from
+ * \param out_updaters vector to hold outputs, if there is already elements in out_updaters, 
+ *                     the function is going to push new updaters to the back of the vector
+ */
+template<typename xpu>
+void CreateAsyncUpdaters(int data_key_base,
+                         int device_id,
+                         mshadow::ps::IParamServer<xpu, real_t> *param_server,
+                         const char *type,
+                         mshadow::Random<xpu> *p_rnd,
+                         layer::ILayer<xpu> *p_layer,
+                         std::vector<IAsyncUpdater<xpu>*> *out_updaters);
 }  // namespace updater
 }  // namespace cxxnet
 #endif  // UPDATER_UPDATER_H_

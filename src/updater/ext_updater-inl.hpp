@@ -27,6 +27,10 @@ class NoiseSGDUpdater : public SGDUpdater<xpu, dim> {
       printf("NoiseSGDUpdater: eta=%f, mom=%f, sigma=%f\n", Parent::param.base_lr_, Parent::param.momentum, sigma_);
     }
   }
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    SGDUpdater<xpu, dim>::SetStream(stream);
+    prnd_->set_stream(stream);
+  }
   virtual void Update(long epoch) {
     mshadow::Tensor<xpu,dim> &dw = Parent::dw;
     // multiplicative noise 
@@ -73,6 +77,11 @@ class SGHMCUpdater : public IUpdater<xpu> {
     if(param.silent == 0) {
       printf("SGDHMCUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum);
     }
+  }
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    w.set_stream(stream);
+    m_w.set_stream(stream);
+    prnd->set_stream(stream);   
   }
   // update model parameters
   virtual void Update(long epoch) {

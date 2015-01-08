@@ -6,7 +6,7 @@
  * \author Tianqi Chen
  */
 #include <mshadow/tensor.h>
-#include "./updater.h"
+ #include "./updater.h"
 #include "./param.h"
 
 namespace cxxnet {
@@ -26,12 +26,17 @@ class SGDUpdater : public IUpdater<xpu> {
       printf("SGDUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum);
     }
   }
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    w.set_stream(stream);
+    m_w.set_stream(stream);
+  }
   virtual void Update(long epoch) {
     param.ScheduleEpoch(epoch);
     m_w *= param.momentum;
     m_w += (-param.learning_rate) * (dw + param.wd * w);
     w += m_w;
     // dw accumulate gradient instead of storing them, updater need to reset then to 0 after each update
+    // this will happen in the computing stream, which was OK
     dw = 0.0f;
   }
   virtual void StartRound(int round) {

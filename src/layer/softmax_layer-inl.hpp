@@ -10,7 +10,7 @@ namespace layer {
 template<typename xpu>
 class SoftmaxLayer: public ILayer<xpu> {
  public:
-  SoftmaxLayer(const LabelInfo *label_info) {
+  SoftmaxLayer(const LabelInfo *label_info) : stream(NULL) {
     this->plabelinfo = label_info;
     update_period = 1;
   }
@@ -18,6 +18,9 @@ class SoftmaxLayer: public ILayer<xpu> {
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "batch_size")) batch_size = atoi(val);
     if (!strcmp(name, "update_period")) update_period = atoi(val);    
+  }
+  virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    this->stream = stream;
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
@@ -40,17 +43,21 @@ class SoftmaxLayer: public ILayer<xpu> {
     using namespace mshadow::expr;
     // do computation in CPU for simplicity, since this is not bottle neck
     tnode.Resize(nodes_in[0]->mat().shape_);
-    mshadow::Copy(tnode, nodes_in[0]->mat());
+    mshadow::Copy(tnode, nodes_in[0]->mat(), stream);
+    // wait till copy finish
+    if (stream != NULL) stream->Wait();
     for (mshadow::index_t i = 0; i < plabelinfo->batch_size; ++i) {
       index_t k = static_cast<index_t>(plabelinfo->labels[i]);
       tnode[i][k] -= 1.0f;
     }
-    mshadow::Copy(nodes_in[0]->mat(), tnode);
+    mshadow::Copy(nodes_in[0]->mat(), tnode, stream);
     // scale gradient by dividing global batch size
     nodes_in[0]->mat() *= (1.0f / (batch_size * update_period));
   }
   
  protected:
+  /*! \brief stream used for internal computation */
+  mshadow::Stream<xpu> *stream;
   /*!
    * \brief global batch_size set by user, this 
    *        is not necessarily the batch_size in plabelinfo, since a batch can be divided 

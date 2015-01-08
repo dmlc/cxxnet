@@ -14,9 +14,9 @@
 #include "../utils/global_random.h"
 #include "../utils/thread_buffer.h"
 
-//#ifdef CXXNET_USE_OPENCV
-  #include <opencv2/opencv.hpp>
-//#endif
+#if CXXNET_USE_OPENCV
+#include <opencv2/opencv.hpp>
+#endif
 
 namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
@@ -159,7 +159,7 @@ private:
       out_.data[0][0][top] = d.data[0][0] * scale_;
     } else {
       utils::Assert(d.data.size(1) >= shape_[2] && d.data.size(2) >= shape_[3], "shape constraint");
-      #ifdef CXXNET_USE_OPENCV
+#if CXXNET_USE_OPENCV
       cv::Mat res(d.data.size(1), d.data.size(2), CV_32FC3);
       for (index_t i = 0; i < d.data.size(1); ++i) {
         for (index_t j = 0; j < d.data.size(2); ++j) {
@@ -205,7 +205,7 @@ private:
         }
       }
       res.release();
-      #endif
+#endif
       mshadow::index_t yy = d.data.size(1) - shape_[2];
       mshadow::index_t xx = d.data.size(2) - shape_[3];
       if (rand_crop_ != 0) {
