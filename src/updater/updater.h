@@ -60,10 +60,12 @@ class IUpdater {
  * and user need to call UpdateWait to wait the update to finish
  */
 template<typename xpu>
-class IAsyncUpdater : IUpdater<xpu>{
+class IAsyncUpdater : public IUpdater<xpu> {
  public:
   /*!
    * \brief block until update is finished
+   * if there were no update or update was already finished
+   * this function will directly return
    */
   virtual void UpdateWait(void) = 0;
 };

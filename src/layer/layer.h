@@ -306,10 +306,10 @@ struct Connection {
       state.states[i].set_stream(stream);
     }
     for (size_t i = 0; i < nodes_in.size(); ++i) {
-      nodes_in[i].data.set_stream(stream);
+      nodes_in[i]->data.set_stream(stream);
     }
     for (size_t i = 0; i < nodes_out.size(); ++i) {
-      nodes_out[i].data.set_stream(stream);
+      nodes_out[i]->data.set_stream(stream);
     }
   }
 };

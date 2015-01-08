@@ -31,14 +31,21 @@ struct NeuralNet {
   /*! \brief layers in the neural net */
   std::vector<layer::Connection<xpu> > connections;
   /*! \brief updaters in the neural net */
-  std::vector< std::vector<updater::IUpdater<xpu>*> > updaters;
+  std::vector<std::vector<updater::IAsyncUpdater<xpu>*> > updaters;
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
+  /*! \brief stream for this  */  
+  mshadow::Stream<xpu> *stream;
   // constructor do nothing
-  NeuralNet(const NetConfig &cfg, mshadow::index_t batch_size, int seed)
-      : cfg(cfg), rnd(seed) {
+  NeuralNet(const NetConfig &cfg,
+            mshadow::index_t batch_size,
+            int seed,
+            mshadow::Stream<xpu> *stream)
+      : cfg(cfg), rnd(seed), stream(stream) {
     // set maximum batch
     this->max_batch = batch_size;
+    stream = mshadow::NewStream<xpu>();
+    rnd.set_stream(stream);
   }
   ~NeuralNet(void) {
     this->FreeSpace();
@@ -46,6 +53,9 @@ struct NeuralNet {
   /*! \brief save model to file */
   inline void SaveModel(utils::IStream &fo) const {
     for (index_t i = 0; i < connections.size(); ++ i) {
+      for (size_t j = 0; j < updaters[i].size(); ++j) {
+        updaters[i][j]->UpdateWait();
+      }
       if (connections[i].type != layer::kSharedLayer) {
         connections[i].layer->SaveModel(fo);
       }
@@ -65,10 +75,10 @@ struct NeuralNet {
       }
     }
     this->InitNodes();
-    this->InitUpdaters();
   }
   /*! \brief load model from stream */
   inline void LoadModel(utils::IStream &fi) {
+    this->FreeSpace();
     this->InitNet();
     this->ConfigConntions();
     for (size_t i = 0; i < connections.size(); ++ i) {
@@ -81,20 +91,26 @@ struct NeuralNet {
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
     }
     this->InitNodes();
-    this->InitUpdaters();
   }
   /*!
    * \brief forward prop
    * \param is_train whether is training phase
    * \param batch the input batch
    */
-  inline void Forward(bool is_train, mshadow::Tensor<cpu,4> batch) {
+  inline void Forward(bool is_train,
+                      mshadow::Tensor<cpu,4> batch,
+                      bool need_sync) {
     // check if we need to adjust batch size according to the input
     this->AdjustBatchSize(batch.size(0));
     // copy data into node
-    mshadow::Copy(nodes[0].data, batch);
+    mshadow::Copy(nodes[0].data, batch, stream);
     for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
+      if (need_sync) {
+        for (size_t j = 0; j < updaters[i].size(); ++j) {
+          updaters[i][j]->UpdateWait();
+        }
+      }
       c.layer->Forward(is_train, c.nodes_in, c.nodes_out, &c.state);
     }
   }
@@ -102,11 +118,18 @@ struct NeuralNet {
    * \brief backprop
    * \param prop_to_input whether prop gradient to input node
    */
-  inline void Backprop(bool prop_to_input = false) {
+  inline void Backprop(bool prop_to_input,
+                       bool need_update,
+                       long update_epoch) {
     for (size_t i = connections.size(); i > 0; --i) {
-      layer::Connection<xpu> &c = connections[i-1];
+      layer::Connection<xpu> &c = connections[i - 1];
       c.layer->Backprop(i != 1 || prop_to_input,
                         c.nodes_in, c.nodes_out, &c.state);
+      if (need_update) {
+        for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
+          updaters[i - 1][j]->Update(update_epoch);
+        }
+      }
     }
   }
   /*!
@@ -130,6 +153,35 @@ struct NeuralNet {
         updaters[i][j]->StartRound(round);
       }
     }
+  }
+  // create the updaters
+  inline void InitUpdaters(mshadow::ps::IParamServer<xpu, real_t> *ps, int devid) {    
+    int key_base = 0;
+    for (int i = 0; i < cfg.param.num_layers; ++i) {
+      std::vector<updater::IAsyncUpdater<xpu>*> out;
+      if (connections[i].type != layer::kSharedLayer) {
+        updater::CreateAsyncUpdaters
+            (key_base, devid, ps,
+             cfg.updater_type.c_str(),
+             &rnd, connections[i].layer, &out);
+        for (size_t k = 0; k < out.size(); ++k) {
+          for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
+            out[k]->SetParam(cfg.defcfg[j].first.c_str(),
+                             cfg.defcfg[j].second.c_str());
+          }
+          for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
+            out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
+                             cfg.layercfg[i][j].second.c_str());
+          }
+          out[k]->Init();
+          out[k]->SetStream(stream);
+        }
+      }
+      key_base += static_cast<int>(out.size());
+      updaters.push_back(out);
+    }
+    utils::Assert(updaters.size() == connections.size(),
+                  "updater size do not match number of layers");
   }
 
  private:
@@ -158,6 +210,7 @@ struct NeuralNet {
       } else {
         c.layer = layer::CreateLayer(c.type, &rnd, &label_info);
       }
+      c.SetStream(stream);
       connections.push_back(c);
     }
   }
@@ -173,27 +226,6 @@ struct NeuralNet {
         connections[i].layer->SetParam(cfg.layercfg[i][j].first.c_str(),
                                        cfg.layercfg[i][j].second.c_str());
       }
-    }
-  }
-  // create the updaters
-  inline void InitUpdaters(void) {
-    for (int i = 0; i < cfg.param.num_layers; ++ i) {
-      if (connections[i].type == layer::kSharedLayer) continue;
-      std::vector<updater::IUpdater<xpu>*> out;
-      updater::CreateUpdaters(cfg.updater_type.c_str(),
-                              &rnd, connections[i].layer, &out);
-      for (size_t k = 0; k < out.size(); ++k) {
-        for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
-          out[k]->SetParam(cfg.defcfg[j].first.c_str(),
-                           cfg.defcfg[j].second.c_str());
-        }
-        for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
-          out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
-                           cfg.layercfg[i][j].second.c_str());
-        }
-        out[k]->Init();
-      }
-      updaters.push_back(out);
     }
   }
   // intialize the space of nodes
@@ -245,13 +277,15 @@ class NeuralNetThread {
  public:
   /*! \brief create a new neural net thread on specific device */
   NeuralNetThread(const NetConfig &cfg,
+                  mshadow::ps::IParamServer<xpu, real_t> *ps,
                   int device_id,
                   mshadow::index_t batch_size,
                   int seed,
                   bool new_thread = true)
-      : cfg(cfg), device_id(device_id), batch_size(batch_size),
+      : cfg(cfg), pserver(ps),
+        device_id(device_id), batch_size(batch_size),
         seed(seed), new_thread(new_thread) {
-    net_ = NULL;
+    net_ = NULL;    
     if (new_thread) {
       destroy_signal = false;
       job_start.Init(0);
@@ -263,7 +297,8 @@ class NeuralNetThread {
       if (!xpu::kDevCPU) {
         mshadow::InitTensorEngine(device_id);
       }
-      net_ = new NeuralNet<xpu>(cfg, batch_size, seed);
+      stream = mshadow::NewStream<xpu>();
+      net_ = new NeuralNet<xpu>(cfg, batch_size, seed, stream);
     }
   }
   // destructor
@@ -277,6 +312,7 @@ class NeuralNetThread {
         job_end.Destroy();
       } else {
         delete net_;
+        mshadow::DeleteStream(stream);
         if (!xpu::kDevCPU) {
           mshadow::ShutdownTensorEngine();
         }
@@ -319,12 +355,18 @@ class NeuralNetThread {
   inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
                                    const layer::LabelInfo &label_info,
                                    mshadow::Tensor<cpu,4> out_data,
-                                   bool prop_to_input = false) {
+                                   bool prop_to_input,
+                                   bool need_sync,
+                                   bool need_update,
+                                   size_t update_epoch) {
     utils::Assert(net_ != NULL, "thread must be initialized before use");
     net_->label_info = label_info;
     iparam_batch = batch;
     iparam_flag = prop_to_input;
-    oparam_node = out_data;
+    oparam_node = out_data;    
+    iparam_need_sync = need_sync;
+    iparam_need_update = need_update;
+    iparam_epoch = update_epoch;    
     this->task = kTrainProp;
     this->ExecTask();
   }
@@ -368,8 +410,9 @@ class NeuralNetThread {
     if (!xpu::kDevCPU) {
       mshadow::InitTensorEngine(device_id);
     }
+    stream = mshadow::NewStream<xpu>();
     // allocate net
-    net_ = new NeuralNet<xpu>(cfg, batch_size, seed);
+    net_ = new NeuralNet<xpu>(cfg, batch_size, seed, stream);
     // tell the master that net is created
     job_end.Post();
     while (!destroy_signal) {
@@ -378,6 +421,7 @@ class NeuralNetThread {
       this->TaskDispatch();
       job_end.Post();
     }
+    mshadow::DeleteStream(stream);
     delete net_;
     if (!xpu::kDevCPU) {
       mshadow::ShutdownTensorEngine();
@@ -393,28 +437,38 @@ class NeuralNetThread {
   inline void TaskDispatch(void) {
     utils::Assert(net_ != NULL, "thread must be initialized before use");
     switch (task) {
-      case kInitModel: net_->InitModel(); return;
-      case kLoadModel: net_->LoadModel(*iparam_fp); return;
+      case kInitModel: {
+        net_->InitModel();
+        net_->InitUpdaters(pserver, device_id);
+        return;
+      }
+      case kLoadModel: {
+        net_->LoadModel(*iparam_fp);
+        net_->InitUpdaters(pserver, device_id);
+        return;
+      }
       case kSaveModel: net_->SaveModel(*iparam_fp); return;
       case kUpdate: net_->Update(iparam_epoch); return;
       case kStartRound: net_->StartRound(static_cast<int>(iparam_epoch)); return;
       case kTrainProp: {
         if (iparam_batch.size(0) == 0) return;
-        net_->Forward(true, iparam_batch);
+        net_->Forward(true, iparam_batch, iparam_need_sync);
         if (oparam_node.dptr_ != NULL) {
-          mshadow::Copy(oparam_node, net_->nodes.back().data);
+          mshadow::Copy(oparam_node, net_->nodes.back().data, stream);
         }
-        net_->Backprop(iparam_flag);
+        net_->Backprop(iparam_flag, iparam_need_update, iparam_epoch);
+        stream->Wait();
         return;
       }
       case kPredForward: {
-        net_->Forward(false, iparam_batch);
+        net_->Forward(false, iparam_batch, false);
         return;
       }
       case kCopyNode: {
         if (iparam_nid < 0) iparam_nid += static_cast<int>(net_->nodes.size());
         utils::Assert(iparam_nid < static_cast<int>(net_->nodes.size()), "nid out of range");
-        mshadow::Copy(oparam_node, net_->nodes[iparam_nid].data);
+        mshadow::Copy(oparam_node, net_->nodes[iparam_nid].data, stream);
+        stream->Wait();
         return;
       }
     }
@@ -424,6 +478,8 @@ class NeuralNetThread {
   mshadow::Tensor<cpu,4> oparam_node;
   // input flag
   bool iparam_flag;
+  // special input flag for update
+  bool iparam_need_sync, iparam_need_update;
   // input epochs
   size_t iparam_epoch;
   // input node id
@@ -444,6 +500,10 @@ class NeuralNetThread {
   utils::Semaphore job_end, job_start;
   // thread object
   utils::Thread worker_thread;
+  // parameter server
+  mshadow::ps::IParamServer<xpu, real_t> *pserver;
+  // stream used for computation
+  mshadow::Stream<xpu> *stream;
   // device id used to intialize tensor engine
   int device_id;
   // local batch size of this thread

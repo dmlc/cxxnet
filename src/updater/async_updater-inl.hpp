@@ -20,7 +20,6 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       : data_key(data_key), devid(devid),
         priority(priority), w(w), dw(dw),
         pserver(pserver), updater(updater) {
-    use_ps = 0;
   }
   virtual ~AsyncUpdater(void) {
     delete updater;
@@ -32,7 +31,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     updater->SetStream(stream);
   }
   virtual void Update(long epoch) {
-    if (use_ps == 0) {
+    if (pserver == NULL) {
       updater->Update(epoch); return;
     }
     this->update_epoch = epoch;
@@ -42,7 +41,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
                      this);    
   }
   virtual void UpdateWait(void) {
-    if (use_ps == 0) return;
+    if (pserver == NULL) return;
     pserver->PullWait(data_key, devid);
   }
   virtual void StartRound(int round) {
@@ -50,7 +49,6 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   }
   virtual void SetParam(const char *name, const char *val) {
     updater->SetParam(name, val);
-    if (!strcmp(name, "param_server")) use_ps = 0;
   }
   virtual void ApplyVisitor(typename IUpdater<xpu>::IVisitor *pvisitor) {
     updater->ApplyVisitor(pvisitor);

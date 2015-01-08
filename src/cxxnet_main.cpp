@@ -15,7 +15,7 @@ using namespace nnet;
 
 class CXXNetLearnTask{
  public:
-  CXXNetLearnTask( void ){
+  CXXNetLearnTask(void) {
     this->task = "train";
     this->net_type = 0;
     this->net_trainer = NULL;
@@ -35,71 +35,71 @@ class CXXNetLearnTask{
     reset_net_type = -1;
     this->SetParam("dev", "gpu");
   }
-  ~CXXNetLearnTask( void ){
-    if( net_trainer != NULL ){
+  ~CXXNetLearnTask(void) {
+    if (net_trainer != NULL) {
       delete net_trainer;
       // shut down tensor engine if it is GPU based
-      //if( device == "gpu" ) mshadow::ShutdownTensorEngine();
+      //if (device == "gpu") mshadow::ShutdownTensorEngine();
     }
 
-    if( itr_train != NULL )   delete itr_train;
-    if( itr_pred  != NULL )   delete itr_pred;
-    for( size_t i = 0; i < itr_evals.size(); ++ i ){
+    if (itr_train != NULL)   delete itr_train;
+    if (itr_pred  != NULL)   delete itr_pred;
+    for(size_t i = 0; i < itr_evals.size(); ++ i) {
       delete itr_evals[i];
     }
   }
  public:
-  inline int Run( int argc, char *argv[] ){
-    if( argc < 2 ){
+  inline int Run(int argc, char *argv[]) {
+    if (argc < 2) {
       printf("Usage: <config>\n");
       return 0;
     }
-    utils::ConfigIterator itr( argv[1] );
-    while( itr.Next() ) {
-      this->SetParam( itr.name(), itr.val() );
+    utils::ConfigIterator itr(argv[1]);
+    while (itr.Next()) {
+      this->SetParam(itr.name(), itr.val());
     }
-    for( int i = 2; i < argc; i ++ ){
+    for(int i = 2; i < argc; i ++) {
       char name[256], val[256];
-      if( sscanf( argv[i], "%[^=]=%s", name, val ) == 2 ){
-        this->SetParam( name, val );
+      if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
+        this->SetParam(name, val);
       }
     }
     this->Init();
-    if( !silent ){
+    if (!silent) {
       printf("initializing end, start working\n");
     }
-    if( task == "train" ) this->TaskTrain();
-    if( task == "pred")   this->TaskPredict();
+    if (task == "train") this->TaskTrain();
+    if (task == "pred")   this->TaskPredict();
     if (task == "pred_top") this->TaskPredictTop();
-    if( task == "pred_raw") this->TaskPredictRaw();
+    if (task == "pred_raw") this->TaskPredictRaw();
     return 0;
   }
 
-  inline void SetParam( const char *name , const char *val ){
-    if( !strcmp( val, "default") ) return;
-    if( !strcmp( name,"net_type"))            net_type = atoi( val );
-    if( !strcmp( name,"reset_net_type"))      reset_net_type = atoi( val );
-    if( !strcmp( name,"print_step"))          print_step = atoi( val );
-    if( !strcmp( name,"continue"))            continue_training = atoi( val );
-    if( !strcmp( name,"save_model" ) )        save_period = atoi( val );
-    if( !strcmp( name,"start_counter" ))      start_counter = atoi( val );
-    if( !strcmp( name,"model_in" ))           name_model_in = val;
-    if( !strcmp( name,"model_dir" ))          name_model_dir= val;
-    if( !strcmp( name,"num_round"  ))         num_round     = atoi( val );
-    if( !strcmp( name,"max_round"))           max_round = atoi( val );
-    if( !strcmp( name, "silent") )            silent        = atoi( val );
-    if( !strcmp( name, "task") )              task = val;
-    if( !strcmp( name, "dev") )               device = val;
-    if( !strcmp( name, "test_io") )           test_io = atoi(val);
-    cfg.push_back( std::make_pair( std::string(name), std::string(val) ) );
+  inline void SetParam(const char *name , const char *val) {
+    if (!strcmp(val, "default")) return;
+    if (!strcmp(name,"net_type"))            net_type = atoi(val);
+    if (!strcmp(name,"reset_net_type"))      reset_net_type = atoi(val);
+    if (!strcmp(name,"print_step"))          print_step = atoi(val);
+    if (!strcmp(name,"continue"))            continue_training = atoi(val);
+    if (!strcmp(name,"save_model"))        save_period = atoi(val);
+    if (!strcmp(name,"start_counter"))      start_counter = atoi(val);
+    if (!strcmp(name,"model_in"))           name_model_in = val;
+    if (!strcmp(name,"model_dir"))          name_model_dir= val;
+    if (!strcmp(name,"num_round" ))         num_round     = atoi(val);
+    if (!strcmp(name,"max_round"))           max_round = atoi(val);
+    if (!strcmp(name, "silent"))            silent        = atoi(val);
+    if (!strcmp(name, "task"))              task = val;
+    if (!strcmp(name, "dev"))               device = val;
+    if (!strcmp(name, "test_io"))           test_io = atoi(val);
+    cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
  private:
   // configure trainer
-  inline void Init( void ){
-    if( continue_training == 0 || SyncLastestModel() == 0 ){
+  inline void Init(void) {
+    if (continue_training == 0 || SyncLastestModel() == 0) {
       continue_training = 0;
-      if( name_model_in == "NULL" ){
-        utils::Assert( task == "train", "must specify model_in if not training" );
+      if (name_model_in == "NULL") {
+        utils::Assert(task == "train", "must specify model_in if not training");
         net_trainer = this->CreateNet();
         net_trainer->InitModel();
       }else{
@@ -109,137 +109,141 @@ class CXXNetLearnTask{
     this->CreateIterators();
   }
   // load in latest model from model_folder
-  inline int SyncLastestModel( void ){
+  inline int SyncLastestModel(void) {
     FILE *fi = NULL, *last = NULL;
     char name[ 256 ];
     int s_counter = start_counter;
     do{
-      if( last != NULL ) fclose( last );
+      if (last != NULL) fclose(last);
       last = fi;
-      sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++ );
-      fi = fopen64( name, "rb");
-    }while( fi != NULL );
+      sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++);
+      fi = fopen64(name, "rb");
+    }while (fi != NULL);
 
-    if( last != NULL ){
-      utils::Assert( fread( &net_type, sizeof(int), 1, last ) > 0, "loading model" );
+    if (last != NULL) {
+      utils::Assert(fread(&net_type, sizeof(int), 1, last) > 0, "loading model");
       net_trainer = this->CreateNet();
-      utils::FileStream fs( last );
-      net_trainer->LoadModel( fs );
+      utils::FileStream fs(last);
+      net_trainer->LoadModel(fs);
       start_counter = s_counter - 1;
-      fclose( last );
+      fclose(last);
       return 1;
     }else{
       return 0;
     }
   }
   // load model from file
-  inline void LoadModel( void ){
-    FILE *fi = utils::FopenCheck( name_model_in.c_str(), "rb" );
-    utils::Assert( fread( &net_type, sizeof(int), 1, fi ) > 0, "loading model" );
+  inline void LoadModel(void) {
+    FILE *fi = utils::FopenCheck(name_model_in.c_str(), "rb");
+    utils::Assert(fread(&net_type, sizeof(int), 1, fi) > 0, "loading model");
     net_trainer = this->CreateNet();
-    utils::FileStream fs( fi );
-    net_trainer->LoadModel( fs );
-    fclose( fi );
+    utils::FileStream fs(fi);
+    net_trainer->LoadModel(fs);
+    fclose(fi);
   }
   // save model into file
-  inline void SaveModel( void ){
+  inline void SaveModel(void) {
     char name[256];
-    sprintf(name,"%s/%04d.model" , name_model_dir.c_str(), start_counter ++ );
-    if( save_period == 0 || start_counter % save_period != 0 ) return;
-    FILE *fo  = utils::FopenCheck( name, "wb" );
-    fwrite( &net_type, sizeof(int), 1, fo );
-    utils::FileStream fs( fo );
-    net_trainer->SaveModel( fs );
-    fclose( fo );
+    sprintf(name,"%s/%04d.model" , name_model_dir.c_str(), start_counter ++);
+    if (save_period == 0 || start_counter % save_period != 0) return;
+    FILE *fo  = utils::FopenCheck(name, "wb");
+    fwrite(&net_type, sizeof(int), 1, fo);
+    utils::FileStream fs(fo);
+    net_trainer->SaveModel(fs);
+    fclose(fo);
   }
   // create a neural net
-  inline INetTrainer* CreateNet( void ){
-    if( !strncmp( device.c_str(), "gpu", 3 ) ){
+  inline INetTrainer* CreateNet(void) {
+    if (!strncmp(device.c_str(), "gpu", 3)) {
       //int devid;
-      //if( sscanf( device.c_str(), "gpu:%d", &devid ) == 1 ) {
+      //if (sscanf(device.c_str(), "gpu:%d", &devid) == 1) {
       //this->device = "gpu";
-      //mshadow::InitTensorEngine( devid );
+      //mshadow::InitTensorEngine(devid);
       //}else{
-      ////mshadow::InitTensorEngine( 0 );
-      //bin/}
+      ////mshadow::InitTensorEngine(0);
+      //}
     }
-    if( reset_net_type != -1 ){
+    if (reset_net_type != -1) {
       net_type = reset_net_type;
     }
     INetTrainer *net;
     if (!strncmp(device.c_str(), "gpu", 3)) {
-      net = cxxnet::CreateNet<mshadow::gpu>( net_type );
+#if MSHADOW_USE_CUDA
+      net = cxxnet::CreateNet<mshadow::gpu>(net_type);
+#else
+      utils::Error("MSHADOW_USE_CUDA was not enabled");
+#endif
     } else {
-      net = cxxnet::CreateNet<mshadow::cpu>( net_type );
+      net = cxxnet::CreateNet<mshadow::cpu>(net_type);
     }
 
-    for( size_t i = 0; i < cfg.size(); ++ i ){
-      net->SetParam( cfg[i].first.c_str(), cfg[i].second.c_str() );
+    for(size_t i = 0; i < cfg.size(); ++ i) {
+      net->SetParam(cfg[i].first.c_str(), cfg[i].second.c_str());
     }
     return net;
   }
-  inline void InitIter( IIterator<DataBatch>* itr,
-                        const std::vector< std::pair< std::string, std::string> > &defcfg ){
-    for( size_t i = 0; i < defcfg.size(); ++ i ){
-      itr->SetParam( defcfg[i].first.c_str(), defcfg[i].second.c_str() );
+  inline void InitIter(IIterator<DataBatch>* itr,
+                        const std::vector< std::pair< std::string, std::string> > &defcfg) {
+    for(size_t i = 0; i < defcfg.size(); ++ i) {
+      itr->SetParam(defcfg[i].first.c_str(), defcfg[i].second.c_str());
     }
     itr->Init();
 
   }
   // iterators
-  inline void CreateIterators( void ){
+  inline void CreateIterators(void) {
     int flag = 0;
     std::string evname;
     std::vector< std::pair< std::string, std::string> > itcfg;
     std::vector< std::pair< std::string, std::string> > defcfg;
-    for( size_t i = 0; i < cfg.size(); ++ i ){
+    for(size_t i = 0; i < cfg.size(); ++ i) {
       const char *name = cfg[i].first.c_str();
       const char *val  = cfg[i].second.c_str();
-      if( !strcmp( name, "data" ) ){
+      if (!strcmp(name, "data")) {
         flag = 1; continue;
       }
-      if( !strcmp( name, "eval" ) ){
-        evname = std::string( val );
+      if (!strcmp(name, "eval")) {
+        evname = std::string(val);
         flag = 2; continue;
       }
-      if( !strcmp( name, "pred" ) ){
+      if (!strcmp(name, "pred")) {
         flag = 3; name_pred = val; continue;
       }
-      if( !strcmp( name, "iter" ) && !strcmp( val, "end" ) ){
-        utils::Assert( flag != 0, "wrong configuration file" );
-        if( flag == 1 && task != "pred" ){
-          utils::Assert( itr_train == NULL, "can only have one data" );
-          itr_train = cxxnet::CreateIterator( itcfg );
+      if (!strcmp(name, "iter") && !strcmp(val, "end")) {
+        utils::Assert(flag != 0, "wrong configuration file");
+        if (flag == 1 && task != "pred") {
+          utils::Assert(itr_train == NULL, "can only have one data");
+          itr_train = cxxnet::CreateIterator(itcfg);
         }
-        if( flag == 2 && task != "pred" ){
-          itr_evals.push_back( cxxnet::CreateIterator( itcfg ) );
-          eval_names.push_back( evname );
+        if (flag == 2 && task != "pred") {
+          itr_evals.push_back(cxxnet::CreateIterator(itcfg));
+          eval_names.push_back(evname);
         }
-        if( flag == 3 && (task == "pred" || task == "pred_raw" || task == "pred_top")){
-          utils::Assert( itr_pred == NULL, "can only have one data:test" );
-          itr_pred = cxxnet::CreateIterator( itcfg );
+        if (flag == 3 && (task == "pred" || task == "pred_raw" || task == "pred_top")) {
+          utils::Assert(itr_pred == NULL, "can only have one data:test");
+          itr_pred = cxxnet::CreateIterator(itcfg);
         }
         flag = 0; itcfg.clear();
       }
-      if( flag == 0 ) {
-        defcfg.push_back( cfg[i] );
+      if (flag == 0) {
+        defcfg.push_back(cfg[i]);
       }else{
-        itcfg.push_back( cfg[i] );
+        itcfg.push_back(cfg[i]);
       }
     }
-    if( itr_train != NULL ){
-      this->InitIter( itr_train, defcfg );
+    if (itr_train != NULL) {
+      this->InitIter(itr_train, defcfg);
     }
     if (itr_pred != NULL) {
       this->InitIter(itr_pred, defcfg);
     }
-    for( size_t i = 0; i < itr_evals.size(); ++ i ){
-      this->InitIter( itr_evals[i], defcfg );
+    for(size_t i = 0; i < itr_evals.size(); ++ i) {
+      this->InitIter(itr_evals[i], defcfg);
     }
   }
  private:
-  inline void TaskPredict( void ) {
-    utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate predictions");
+  inline void TaskPredict(void) {
+    utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
     printf("start predicting...\n");
     FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
     itr_pred->BeforeFirst();
@@ -247,18 +251,18 @@ class CXXNetLearnTask{
       const DataBatch& batch = itr_pred->Value();
       std::vector<float> pred;
       net_trainer->Predict(pred, batch);
-      utils::Assert( batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
-      pred.resize( pred.size() - batch.num_batch_padd );
+      utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
+      pred.resize(pred.size() - batch.num_batch_padd);
 
       for (mshadow::index_t j = 0; j < pred.size(); ++j) {
         fprintf(fo, "%g\n", pred[j]);
       }
     }
-    fclose( fo );
+    fclose(fo);
     printf("finished prediction, write into %s\n", name_pred.c_str());
   }
   inline void TaskPredictRaw() {
-    utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate predictions");
+    utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
     printf("start predicting...\n");
     FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
     itr_pred->BeforeFirst();
@@ -277,7 +281,7 @@ class CXXNetLearnTask{
   inline void TaskPredictTop() {
         int row = 0;
         int col = 0;
-        utils::Assert( itr_pred != NULL, "must specify a predict iterator to generate predictions");
+        utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
         printf("start predicting...\n");
         FILE *fo = utils::FopenCheck(name_pred.c_str(), "wb");
         std::string name_meta = name_pred + ".meta";
@@ -296,60 +300,60 @@ class CXXNetLearnTask{
           }
           col = pred[0].size();
         }
-        fclose( fo );
+        fclose(fo);
         fprintf(fm, "%d\n%d\n", row, col);
         fclose(fm);
         printf("finished prediction, write into %s\n", name_pred.c_str());
   }
-  inline void TaskTrain( void ){
-    time_t start    = time( NULL );
+  inline void TaskTrain(void) {
+    time_t start    = time(NULL);
     unsigned long elapsed = 0;
-    if( continue_training == 0 ){
+    if (continue_training == 0) {
       this->SaveModel();
     }
-    if( test_io != 0 ){
+    if (test_io != 0) {
       printf("start I/O test\n");
     }
     int cc = max_round;
-    while( start_counter <= num_round && cc -- ) {
-      if( !silent ){
-        printf("update round %d", start_counter -1 ); fflush( stdout );
+    while (start_counter <= num_round && cc --) {
+      if (!silent) {
+        printf("update round %d", start_counter -1); fflush(stdout);
       }
       int sample_counter = 0;
-      net_trainer->StartRound( start_counter );
+      net_trainer->StartRound(start_counter);
       itr_train->BeforeFirst();
-      while( itr_train->Next() ){
-        if( test_io == 0 ){
-          net_trainer->Update( itr_train->Value() );
+      while (itr_train->Next()) {
+        if (test_io == 0) {
+          net_trainer->Update(itr_train->Value());
         }
-        if( ++ sample_counter  % print_step == 0 ){
+        if (++ sample_counter  % print_step == 0) {
           elapsed = (long)(time(NULL) - start);
-          if( !silent ){
+          if (!silent) {
             printf("\r                                                               \r");
             printf("round %8d:[%8d] %ld sec elapsed", start_counter-1,
-                   sample_counter, elapsed );
-            fflush( stdout );
+                   sample_counter, elapsed);
+            fflush(stdout);
           }
         }
       }
 
-      if( test_io == 0 ){
+      if (test_io == 0) {
         // code handling evaluation
-        fprintf( stderr, "[%d]", start_counter );
+        fprintf(stderr, "[%d]", start_counter);
 
-        for( size_t i = 0; i < itr_evals.size(); ++i ){
-          std::string res = net_trainer->Evaluate( itr_evals[i], eval_names[i].c_str() );
-          fprintf(stderr, "%s", res.c_str() );
+        for(size_t i = 0; i < itr_evals.size(); ++i) {
+          std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
+          fprintf(stderr, "%s", res.c_str());
         }
-        fprintf( stderr, "\n" );
-        fflush( stderr );
+        fprintf(stderr, "\n");
+        fflush(stderr);
       }
       elapsed = (unsigned long)(time(NULL) - start);
       this->SaveModel();
     }
 
-    if( !silent ){
-      printf("\nupdating end, %lu sec in all\n", elapsed );
+    if (!silent) {
+      printf("\nupdating end, %lu sec in all\n", elapsed);
     }
   }
  private:
@@ -400,7 +404,7 @@ class CXXNetLearnTask{
 };
 };
 
-int main( int argc, char *argv[] ){
+int main(int argc, char *argv[]) {
   cxxnet::CXXNetLearnTask tsk;
-  return tsk.Run( argc, argv );
+  return tsk.Run(argc, argv);
 }

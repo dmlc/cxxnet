@@ -7,7 +7,7 @@
 #include "../utils/io.h"
 #include "../utils/metric.h"
 #include "./neural_net-inl.hpp"
-#include "../sync/sync.h"
+
 
 namespace cxxnet {
 namespace nnet {
@@ -21,8 +21,9 @@ class CXXNetThreadTrainer : public INetTrainer {
     sample_counter = 0;
     eval_train = 1;
     epoch_counter = 0;
-    debug_sync = 0;
     seed = 0;
+    pserver = NULL;
+    type_pserver = "NONE";
   }
   virtual ~CXXNetThreadTrainer(void) {
     this->FreeNet();
@@ -52,13 +53,13 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (!strcmp(name, "update_period")) update_period = atoi(val);
     if (!strcmp(name, "eval_train")) eval_train = atoi(val);
     if (!strcmp(name, "seed")) seed = atoi(val);
-    if (!strcmp(name, "debug_sync")) debug_sync = atoi(val);
+    if (!strcmp(name, "param_server")) type_pserver = val;
     if(!strcmp(name, "metric")) {
       metric.AddMetric(val); train_metric.AddMetric(val);
     }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
-  virtual void InitModel(void) {
+  virtual void InitModel(void) {    
     this->InitNet();
     nets_[0]->InitModel();
     nets_[0]->WaitJob();
@@ -69,7 +70,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       nets_[i]->WaitJob();
     }
     this->InitTemp();
-    this->InitSynchs();
+
   }
   virtual void SaveModel(utils::IStream &fo) {
     this->Save2ModelBlob();
@@ -89,7 +90,6 @@ class CXXNetThreadTrainer : public INetTrainer {
       nets_[i]->WaitJob();
     }
     this->InitTemp();
-    this->InitSynchs();
   }
   virtual void StartRound(int round) {
     for (size_t i = 0; i < nets_.size(); ++i) {
@@ -98,43 +98,34 @@ class CXXNetThreadTrainer : public INetTrainer {
     this->WaitAllJobs();
   }
   virtual void Update(const DataBatch& data) {
-    if (debug_sync == 0) {
-      mshadow::Shape<4> oshape = out_temp.shape_;
-      oshape[0] = data.batch_size;
-      out_temp.Resize(oshape);
-
-      const size_t ndevice = devices_.size();
-      mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
-      for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-        mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
-        mshadow::index_t end = std::min(i * step, data.batch_size);
-        mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
-        layer::LabelInfo info;
-        info.labels = data.labels + begin;
-        info.batch_size = end - begin;
-        nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end));
-      }
-      this->WaitAllJobs();
-      // evlauate training loss
-      if (eval_train != 0) {
-        train_metric.AddEval(out_temp.FlatTo2D(), data.labels);
-      }
+    mshadow::Shape<4> oshape = out_temp.shape_;
+    oshape[0] = data.batch_size;
+    out_temp.Resize(oshape);
+    
+    const size_t ndevice = devices_.size();
+    mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
+    
+    bool need_sync = sample_counter % update_period == 0;
+    bool need_update = (sample_counter + 1) % update_period == 0;
+    
+    for (mshadow::index_t i = nets_.size(); i != 0; --i) {
+      mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
+      mshadow::index_t end = std::min(i * step, data.batch_size);
+      mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
+      layer::LabelInfo info;
+      info.labels = data.labels + begin;
+      info.batch_size = end - begin;
+      nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end),
+                                         false, need_sync, need_update, epoch_counter);
     }
-    if (++ sample_counter >= update_period) {
-      for (size_t i = syncs_.size(); i != 0; --i) {
-        syncs_[i - 1]->SyncBeforeUpdate();
-      }
-      if (debug_sync == 0) {
-        for (mshadow::index_t i = nets_.size(); i != 0; --i) {
-          nets_[i - 1]->Update(epoch_counter);
-        }
-        epoch_counter += 1;
-        this->WaitAllJobs();
-      }
-      for (size_t i = syncs_.size(); i != 0; --i) {
-        syncs_[i - 1]->SyncAfterUpdate();
-      }
+    this->WaitAllJobs();
+    // evlauate training loss
+    if (eval_train != 0) {
+      train_metric.AddEval(out_temp.FlatTo2D(), data.labels);
+    }
+    if (++sample_counter >= update_period) {
       sample_counter = 0;
+      epoch_counter += 1;
     }
   }
   virtual void Predict(std::vector<float> &preds, const DataBatch& data) {
@@ -233,16 +224,29 @@ class CXXNetThreadTrainer : public INetTrainer {
     nets_[0]->WaitJob();
   }
   inline void InitNet(void) {
+    this->InitParamServer();
     utils::Assert(nets_.size() == 0, "net must be empty before this");
     net_cfg.Configure(cfg);
     if (devices_.size() == 0) devices_.push_back(0);
     const size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
     for (size_t i = 0; i < ndevice; ++i) {
-      nets_.push_back(new NeuralNetThread<xpu>(net_cfg, devices_[i], step, i + seed * 100));
+      nets_.push_back(new NeuralNetThread<xpu>(net_cfg, pserver,
+                                               devices_[i], step, i + seed * 100));
     }
     if (silent == 0) {
       printf("finish initialization with %lu devices\n", devices_.size());
+    }
+  }
+  inline void InitParamServer(void) {
+    utils::Assert(pserver == NULL, "net must be empty before this");
+    if (type_pserver != "NONE") {
+      pserver = mshadow::ps::Create<xpu, real_t>(type_pserver.c_str());
+      for (size_t i = 0; i < cfg.size(); ++i) {
+        pserver->SetParam(cfg[i].first.c_str(), cfg[i].second.c_str());
+      }
+      if (devices_.size() == 0) devices_.push_back(0);
+      pserver->Init(devices_);
     }
   }
   inline void InitTemp(void) {
@@ -254,16 +258,18 @@ class CXXNetThreadTrainer : public INetTrainer {
     for (size_t i = 0; i < devices_.size(); ++i) {
       delete nets_[i];
     }
-    for (size_t i = 0; i < syncs_.size(); ++i) {
-      delete syncs_[i];
-    }
     nets_.clear();
+    if (pserver != NULL) {
+      delete pserver;
+      pserver = NULL;
+    }
   }
-
+  /*! \brief parameter server */
+  mshadow::ps::IParamServer<xpu, real_t> *pserver;
+  /*! \brief type of parameter server */
+  std::string type_pserver;
   /*! \brief epoch counter */
   long epoch_counter;
-  /*! \brief debug cost for sync */
-  int debug_sync;
   /*! \brief seed to the layers */
   int seed;
   /*! \brief silent*/
@@ -293,73 +299,6 @@ class CXXNetThreadTrainer : public INetTrainer {
   NetConfig net_cfg;
   /*! \brief history of configurations */
   std::vector< std::pair<std::string, std::string> > cfg;
-  // --------------------------------
-  // code for synchronization
-  //
-  struct GetWeightVisitor : public layer::ILayer<xpu>::IVisitor {
-    std::string tag;
-    std::vector< mshadow::Tensor<xpu,2> > weights, grads;
-    template<int dim>
-    inline void Visit_(const char *field_name,
-                       mshadow::Tensor<xpu,dim> weight,
-                       mshadow::Tensor<xpu,dim> grad) {
-      tag = field_name;
-      this->weights.push_back(weight.FlatTo2D());
-      this->grads.push_back(grad.FlatTo2D());
-    }
-    virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,1> weight,
-                       mshadow::Tensor<xpu,1> grad) {
-      this->Visit_(field_name, weight, grad);
-    }
-    virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,2> weight,
-                       mshadow::Tensor<xpu,2> grad) {
-      this->Visit_(field_name, weight, grad);
-    }
-    virtual void Visit(const char *field_name,
-                       mshadow::Tensor<xpu,3> weight,
-                       mshadow::Tensor<xpu,3> grad) {
-      this->Visit_(field_name, weight, grad);
-    }
-  };
-
-  inline void InitSynchs(void) {
-    for (size_t i = 0; i < nets_.size(); ++i) {
-      utils::Assert(nets_[i]->net().updaters.size() == net_cfg.layercfg.size(),
-                    "net struct inconsistent");
-      for (size_t j = 0; j < nets_[0]->net().updaters.size(); ++j) {
-        utils::Assert(nets_[i]->net().updaters[j].size() == nets_[0]->net().updaters[j].size(),
-                      "net struct inconsistent");
-      }
-    }
-    for (size_t i = 0; i < nets_[0]->net().updaters.size(); ++i) {
-      const std::vector<std::pair<std::string, std::string> > &conf = net_cfg.layercfg[i];
-      std::string sync_type = net_cfg.sync_type;
-      for (size_t k = 0; k < conf.size(); ++k) {
-        if (conf[k].first == "sync") sync_type = conf[k].second;
-      }
-      for (size_t j = 0;  j < nets_[0]->net().updaters[i].size(); ++j) {
-        GetWeightVisitor v;
-        nets_[0]->net().updaters[i][j]->ApplyVisitor(&v);
-        for (size_t k = 1; k < nets_.size(); ++k) {
-          nets_[k]->net().updaters[i][j]->ApplyVisitor(&v);
-        }
-        sync::ISynchronizer<xpu> *s =
-            sync::CreateSynch(sync_type.c_str(), v.weights, v.grads, devices_, v.tag.c_str());
-        if (s == NULL) continue;
-        for (size_t k = 0; k < net_cfg.defcfg.size(); ++k) {
-          s->SetParam(net_cfg.defcfg[k].first.c_str(), net_cfg.defcfg[k].second.c_str());
-        }
-        for (size_t k = 0; k < conf.size(); ++k) {
-          s->SetParam(conf[k].first.c_str(), conf[k].second.c_str());
-        }
-        syncs_.push_back(s);
-      }
-    }
-  }
-  /*! \brief synchronizers */
-  std::vector<sync::ISynchronizer<xpu>*> syncs_;
 };
 
 template<typename xpu>
