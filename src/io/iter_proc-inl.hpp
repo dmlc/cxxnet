@@ -161,6 +161,8 @@ private:
       utils::Assert(d.data.size(1) >= shape_[2] && d.data.size(2) >= shape_[3], "shape constraint");
 #if CXXNET_USE_OPENCV
       cv::Mat res(d.data.size(1), d.data.size(2), CV_32FC3);
+      index_t out_h = d.data.size(1);
+      index_t out_w = d.data.size(2);
       for (index_t i = 0; i < d.data.size(1); ++i) {
         for (index_t j = 0; j < d.data.size(2); ++j) {
           res.at<cv::Vec3b>(i, j)[0] = d.data[0][i][j];
@@ -193,11 +195,13 @@ private:
         }
         cv::Rect roi(y, x, crop_size_y, crop_size_x);
         res = res(roi);
-        crop_y_start = crop_x_start = 0;
+        crop_y_start_ = crop_x_start_ = 0;
+        cv::resize(res, res, cv::Size(shape[2], shape[3]));
+        out_h = shape[2];
+        out_w = shape[3];
       }
-      cv::resize(res, res, cv::Size(shape[2], shape[3]));
-      for (index_t i = 0; i < shape[2]; ++i) {
-        for (index_t j = 0; j < shape[3]; ++j) {
+      for (index_t i = 0; i < out_h; ++i) {
+        for (index_t j = 0; j < out_w; ++j) {
           cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
           d.data[0][i][j] = bgr[0];
           d.data[1][i][j] = bgr[1];
