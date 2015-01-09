@@ -42,7 +42,7 @@ class FullConnectLayer : public ILayer<xpu> {
   }
   virtual void LoadModel(utils::IStream &fi){
     utils::Check(fi.Read(&param_, sizeof(LayerParam)) != 0,
-                  "FullConnectLayer:LoadModel invalid model file");
+                  "FullConnectLayer:LoadModel invalid model file");    
     wmat_.LoadBinary(fi);
     bias_.LoadBinary(fi);
     // setup gradient weight

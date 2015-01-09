@@ -84,6 +84,7 @@ struct NeuralNet {
     this->ConfigConntions();
     for (size_t i = 0; i < connections.size(); ++ i) {
       if (connections[i].type != layer::kSharedLayer) {
+        connections[i].SetStream(stream);
         connections[i].layer->LoadModel(fi);
       }
     }
