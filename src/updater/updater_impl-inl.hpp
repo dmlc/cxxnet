@@ -102,20 +102,23 @@ struct CreateAsyncUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,1> weight,
                      mshadow::Tensor<xpu,1> grad) {
-    out_updaters->push_back(CreateAsyncUpdater_(data_key++, devid, -data_key, pserver,
+    out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
                                                 type, p_rnd, weight, grad, field_name));
+    data_key += 1;
   }
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,2> weight,
                      mshadow::Tensor<xpu,2> grad) {
-    out_updaters->push_back(CreateAsyncUpdater_(data_key++, devid, -data_key, pserver,
+    out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
                                                 type, p_rnd, weight, grad, field_name));
+    data_key += 1;
   }
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,3> weight,
                      mshadow::Tensor<xpu,3> grad) {
-    out_updaters->push_back(CreateAsyncUpdater_(data_key++, devid, -data_key, pserver,
+    out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
                                                 type, p_rnd, weight, grad, field_name));
+    data_key += 1;
   }
 };
 
