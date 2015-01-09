@@ -2,7 +2,7 @@
 export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
-export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp
+export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp -DMSHADOW_FORCE_STREAM
 export blas=0
 export noopencv=1
 ifeq ($(blas),1)
