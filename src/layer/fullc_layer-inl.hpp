@@ -51,6 +51,9 @@ class FullConnectLayer : public ILayer<xpu> {
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    // stream of wmat and bias may be reset, but it is ok
+    wmat_.set_stream(stream);
+    bias_.set_stream(stream);
     gwmat_.set_stream(stream);
     gbias_.set_stream(stream);
   }

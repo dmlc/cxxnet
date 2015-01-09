@@ -26,7 +26,7 @@ class ActivationLayer : public ILayer<xpu>{
     using namespace mshadow::expr;
     // InitConnection is already called, no need to check size again
     nodes_in[0]->data = F<ForwardOp>(nodes_in[0]->data);
-    mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data);
+    mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data, nodes_out[0]->data.stream_);
   }
   virtual void Backprop(bool prop_grad,
                         const std::vector<Node<xpu>*> &nodes_in,

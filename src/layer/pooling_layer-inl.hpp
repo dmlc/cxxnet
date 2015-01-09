@@ -56,7 +56,7 @@ class PoolingLayer : public ILayer<xpu> {
       tmp = pool<Reducer>(nodes_in[0]->data, pshape, ksize_y, ksize_x, param_.stride) 
           * (1.0f / (ksize_y*ksize_x));
     }
-    mshadow::Copy(nodes_out[0]->data, tmp);
+    mshadow::Copy(nodes_out[0]->data, tmp, nodes_out[0]->data.stream_);
   }
   virtual void Backprop(bool prop_grad,
                         const std::vector<Node<xpu>*> &nodes_in,

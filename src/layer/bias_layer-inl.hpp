@@ -38,6 +38,7 @@ class BiasLayer : public ILayer<xpu> {
     gbias_ = 0.0f;
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
+    bias_.set_stream(stream);
     gbias_.set_stream(stream);
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,

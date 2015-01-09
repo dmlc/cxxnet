@@ -68,6 +68,7 @@ struct NeuralNet {
     for (size_t i = 0; i < connections.size(); ++ i) {
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
+      c.SetStream(stream);
     }
     for (size_t i = 0; i < connections.size(); ++ i) {
       if (connections[i].type != layer::kSharedLayer) {
@@ -89,6 +90,7 @@ struct NeuralNet {
     for (size_t i = 0; i < connections.size(); ++ i) {
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
+      c.SetStream(stream);
     }
     this->InitNodes();
   }
@@ -175,8 +177,8 @@ struct NeuralNet {
             out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
                              cfg.layercfg[i][j].second.c_str());
           }
-          out[k]->Init();
           out[k]->SetStream(stream);
+          out[k]->Init();
         }
       }
       key_base += static_cast<int>(out.size());
@@ -212,7 +214,6 @@ struct NeuralNet {
       } else {
         c.layer = layer::CreateLayer(c.type, &rnd, &label_info);
       }
-      c.SetStream(stream);
       connections.push_back(c);
     }
   }
