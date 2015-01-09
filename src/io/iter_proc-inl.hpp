@@ -155,11 +155,12 @@ private:
     using namespace mshadow::expr;
     out_.labels[top] = d.label;
     out_.inst_index[top] = d.index;
+    bool cut = false;
     if (shape_[2] == 1) {
       out_.data[0][0][top] = d.data[0][0] * scale_;
     } else {
       utils::Assert(d.data.size(1) >= shape_[2] && d.data.size(2) >= shape_[3], "shape constraint");
-#if CXXNET_USE_OPENCV
+      #if CXXNET_USE_OPENCV
       cv::Mat res(d.data.size(1), d.data.size(2), CV_32FC3);
       index_t out_h = d.data.size(1);
       index_t out_w = d.data.size(2);
@@ -196,9 +197,10 @@ private:
         cv::Rect roi(y, x, crop_size_y, crop_size_x);
         res = res(roi);
         crop_y_start_ = crop_x_start_ = 0;
-        cv::resize(res, res, cv::Size(shape[2], shape[3]));
-        out_h = shape[2];
-        out_w = shape[3];
+        cv::resize(res, res, cv::Size(shape_[2], shape_[3]));
+        out_h = shape_[2];
+        out_w = shape_[3];
+        cut = true;
       }
       for (index_t i = 0; i < out_h; ++i) {
         for (index_t j = 0; j < out_w; ++j) {
@@ -209,14 +211,16 @@ private:
         }
       }
       res.release();
-#endif
-      mshadow::index_t yy = d.data.size(1) - shape_[2];
-      mshadow::index_t xx = d.data.size(2) - shape_[3];
-      if (rand_crop_ != 0) {
-        yy = utils::NextUInt32(yy + 1);
-        xx = utils::NextUInt32(xx + 1);
-      } else {
-        yy /= 2; xx /= 2;
+      #endif
+      mshadow::index_t yy = 0;
+      mshadow::index_t xx = 0;
+      if (!cut) {
+        if (rand_crop_ != 0) {
+          yy = utils::NextUInt32(yy + 1);
+          xx = utils::NextUInt32(xx + 1);
+        } else {
+          yy /= 2; xx /= 2;
+        }
       }
       if (crop_y_start_ != -1) yy = crop_y_start_;
       if (crop_x_start_ != -1) xx = crop_x_start_;
