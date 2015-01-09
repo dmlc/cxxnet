@@ -445,11 +445,13 @@ class NeuralNetThread {
       case kInitModel: {
         net_->InitModel();
         net_->InitUpdaters(pserver, device_id);
+        stream->Wait();
         return;
       }
       case kLoadModel: {
         net_->LoadModel(*iparam_fp);
         net_->InitUpdaters(pserver, device_id);
+        stream->Wait();
         return;
       }
       case kSaveModel: net_->SaveModel(*iparam_fp); return;
