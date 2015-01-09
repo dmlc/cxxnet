@@ -23,7 +23,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     epoch_counter = 0;
     seed = 0;
     pserver = NULL;
-    type_pserver = "NONE";
+    type_pserver = "UNSPECIFIED";
   }
   virtual ~CXXNetThreadTrainer(void) {
     this->FreeNet();
@@ -250,6 +250,10 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
   inline void InitParamServer(void) {
     utils::Assert(pserver == NULL, "net must be empty before this");
+    if (type_pserver == "UNSPECIFIED") {
+      if (devices_.size() <=1) type_pserver = "NONE";
+      else type_pserver = "local";
+    }
     if (type_pserver != "NONE") {
       pserver = mshadow::ps::Create<xpu, real_t>(type_pserver.c_str());
       for (size_t i = 0; i < cfg.size(); ++i) {
