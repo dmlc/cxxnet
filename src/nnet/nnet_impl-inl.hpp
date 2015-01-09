@@ -224,12 +224,22 @@ class CXXNetThreadTrainer : public INetTrainer {
     nets_[0]->WaitJob();
   }
   inline void InitNet(void) {
-    this->InitParamServer();
     utils::Assert(nets_.size() == 0, "net must be empty before this");
     net_cfg.Configure(cfg);
     if (devices_.size() == 0) devices_.push_back(0);
-    const size_t ndevice = devices_.size();
+    size_t ndevice = devices_.size(); 
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
+    while (step * (devices_.size() - 1) >= batch_size) {
+      devices_.pop_back();
+    }
+    if (ndevice > devices_.size()) {
+      ndevice = devices_.size();
+      if (silent == 0) {
+        printf("Warning: The number of devices is induce mini-batch=%u\n" \
+               "We can equally use %lu devices to cover the batch_size\n", step, ndevice);
+      }
+    }
+    this->InitParamServer();
     for (size_t i = 0; i < ndevice; ++i) {
       nets_.push_back(new NeuralNetThread<xpu>(net_cfg, pserver,
                                                devices_[i], step, i + seed * 100));
