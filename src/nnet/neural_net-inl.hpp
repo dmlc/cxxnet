@@ -207,11 +207,13 @@ struct NeuralNet {
       for (size_t j = 0; j < info.nindex_out.size(); ++j) {
         c.nodes_out.push_back(&nodes[info.nindex_out[j]]);
       }
-      if (c.type == layer::kSharedLayer) {
+      if (c.type == layer::kSharedLayer) {        
         utils::Assert(info.primary_layer_index >=0, "primary_layer_index problem");
         utils::Check(info.primary_layer_index < static_cast<int>(connections.size()),
                      "shared layer primary_layer_index exceed bound");
         c.layer = connections[info.primary_layer_index].layer;
+        utils::Check(c.layer->AllowSharing(),
+                     "some layer you set shared do not allow sharing");
       } else {
         c.layer = layer::CreateLayer(c.type, &rnd, &label_info);
       }

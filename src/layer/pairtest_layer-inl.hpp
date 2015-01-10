@@ -192,8 +192,7 @@ class PairTestLayer : public ILayer<xpu> {
     if (rerr > 1e-5 || diff != diff) {
       fprintf(stderr, "%s: err=%f, maxd[%u]=%f, diff=%f, ssum=%f\n", tag, rerr, mxidx, maxdiff, diff, ssum);
     }
-  }
-  
+  }  
 };
 }  // namespace layer
 }  // namespace cxxnet
