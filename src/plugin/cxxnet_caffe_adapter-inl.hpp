@@ -21,64 +21,6 @@ namespace cxxnet{
      */
     template<typename xpu>
     class CaffeLayer: public ILayer{
-    private:
-        class CaffeUpdater: public IUpdater{
-        public:
-            CaffeUpdater( const char *updater, mshadow::Random<xpu> &rnd,
-                          caffe::Blob<real_t>* blb, const char *tag, int batch_size )
-                :blb_(blb), batch_size_(batch_size){
-                this->tag = tag;
-                if( xpu::kDevCPU ){
-                    weight_.dptr = blb->mutable_cpu_data();
-                    grad_.dptr = blb->mutable_cpu_diff();
-                }else{
-                    weight_.dptr = blb->mutable_gpu_data();
-                    grad_.dptr = blb->mutable_gpu_diff();
-                }
-                weight_.shape[0] = weight_.shape.stride_ = blb->count();
-                grad_.shape = weight_.shape;
-                base_ = CreateUpdater<xpu>( updater, rnd, weight_, grad_, tag );
-            }
-            virtual ~CaffeUpdater( void ){
-                delete base_;
-            }
-            virtual void Init( void ){
-                base_->Init();
-            }
-            virtual void Update( long epoch ) {
-                if( xpu::kDevCPU ){
-                    utils::Assert( blb_->mutable_cpu_data() == weight_.dptr, "CaffeUpdater" );
-                    utils::Assert( blb_->mutable_cpu_diff() == grad_.dptr, "CaffeUpdater" );
-                }else{
-                    utils::Assert( blb_->mutable_gpu_data() == weight_.dptr, "CaffeUpdater" );
-                    utils::Assert( blb_->mutable_gpu_diff() == grad_.dptr, "CaffeUpdater" );
-                }
-                base_->Update( epoch );
-            }
-            virtual void StartRound( int round ) {
-                base_->StartRound( round );
-            }
-            virtual void SetParam( const char *name, const char *val ){
-                if( !strncmp( name, tag.c_str(), tag.length() ) ){
-                    if( name[tag.length()] == ':' ) name += tag.length() + 1;
-                }
-                base_->SetParam( name, val );
-            }
-            virtual void SetData(const mshadow::Tensor<cpu,2>& weight,
-                                 const mshadow::Tensor<cpu,2>& gradient) {
-                base_->SetData(weight, gradient);
-            }
-            virtual void GetData(mshadow::TensorContainer<cpu,2>& weight,
-                                 mshadow::TensorContainer<cpu,2>& gradient ) const {
-                base_->GetData(weight, gradient);
-            }
-        private:
-            std::string tag;
-            IUpdater *base_;
-            caffe::Blob<real_t> * blb_;
-            int batch_size_;
-            mshadow::Tensor<xpu,1> weight_, grad_;
-        };
     public:
         CaffeLayer( mshadow::Random<xpu> &rnd, Node<xpu>& in, Node<xpu>& out )
             :rnd_(rnd), in_(in), out_(out){
@@ -92,9 +34,26 @@ namespace cxxnet{
             if( blb_in_ != NULL )  delete blb_in_;
             if( blb_out_ != NULL ) delete blb_out_;
         }
+        virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
+            const std::vector<boost::shared_ptr<caffe::Blob<real_t> > > &blobs = base_->blobs();
+            for( size_t i = 0; i < blobs.size(); ++ i ){
+                // Assume that blobs do not change
+                char tag[ 256 ];
+                sprintf( tag, "blob%d", (int)i );
+                if( xpu::kDevCPU ){
+                    index_t count = blobs[i]->count();
+                    mshadow::Tensor<xpu,1> weight( blobs[i]->mutable_cpu_data(), Shape1(count) );
+                    mshadow::Tensor<xpu,1> grad( blobs[i]->mutable_cpu_diff(), Shape1(count) )
+                }else{
+                    mshadow::Tensor<xpu,1> weight( blobs[i]->mutable_gpu_data(), Shape1(count) );
+                    mshadow::Tensor<xpu,1> grad( blobs[i]->mutable_gpu_diff(), Shape1(count) )
+                }
+                pvisitor->Visit(tag, weight, grad);
+            }
+          }
         virtual void Forward( bool is_train ){
-            mshadow::Shape<4> shape_in = in_.data.shape; shape_in.stride_ = shape_in[0];
-            mshadow::Shape<4> shape_ou = out_.data.shape; shape_ou.stride_ = shape_ou[0];
+            mshadow::Shape<4> shape_in = in_.data.shape; shape_in.stride_ = shape_in[3];
+            mshadow::Shape<4> shape_ou = out_.data.shape; shape_ou.stride_ = shape_ou[3];
             if( xpu::kDevCPU ){
                 mshadow::Tensor<xpu,4> tbin( blb_in_->mutable_cpu_data(), shape_in );
                 mshadow::Copy( tbin, in_.data );
@@ -110,8 +69,8 @@ namespace cxxnet{
             }
         }
         virtual void Backprop( bool prop_grad ){
-            mshadow::Shape<4> shape_in = in_.data.shape; shape_in.stride_ = shape_in[0];
-            mshadow::Shape<4> shape_ou = out_.data.shape; shape_ou.stride_ = shape_ou[0];
+            mshadow::Shape<4> shape_in = in_.data.shape; shape_in.stride_ = shape_in[3];
+            mshadow::Shape<4> shape_ou = out_.data.shape; shape_ou.stride_ = shape_ou[3];
             if( xpu::kDevCPU ){
                 mshadow::Tensor<xpu,4> tbout( blb_out_->mutable_cpu_diff(), shape_ou );
                 mshadow::Copy( tbout, out_.data );
@@ -134,13 +93,13 @@ namespace cxxnet{
             utils::Assert( mode_ != -1, "CaffeLayer: must specify mode: 0:flatten, 1:conv-channels" );
             mshadow::Shape<4> ishape = in_.data.shape;
             if( mode_ == 0 ){
-                utils::Assert( ishape[3] == 1 && ishape[2] == 1, "the input is not flattened, forget a FlattenLayer?" );
-                batch_size_ = ishape[1];
-                blb_in_  = new caffe::Blob<real_t>( ishape[1], ishape[0], 1, 1 );
+                utils::Assert( ishape[0] == 1 && ishape[1] == 1, "the input is not flattened, forget a FlattenLayer?" );
+                batch_size_ = ishape[2];
+                blb_in_  = new caffe::Blob<real_t>( ishape[2], ishape[3], 1, 1 );
                 blb_out_ = new caffe::Blob<real_t>();
             }else{
-                batch_size_ = in_.data.shape[3];
-                blb_in_  = new caffe::Blob<real_t>( ishape[3], ishape[2], ishape[1], ishape[0] );
+                batch_size_ = in_.data.shape[0];
+                blb_in_  = new caffe::Blob<real_t>( ishape[0], ishape[1], ishape[2], ishape[3] );
                 blb_out_ = new caffe::Blob<real_t>();
             }
             vec_in_.clear(); vec_in_.push_back( blb_in_ );
@@ -155,15 +114,6 @@ namespace cxxnet{
                 out_.data.shape = mshadow::Shape4( 1, 1, blb_out_->num(), blb_out_->channels() );
             }else{
                 out_.data.shape = mshadow::Shape4( blb_out_->num(), blb_out_->channels(), blb_out_->height(), blb_out_->width() );
-            }
-        }
-        virtual void GetUpdaters( const char *updater, std::vector<IUpdater*> &updaters ) {
-            const std::vector<boost::shared_ptr<caffe::Blob<real_t> > > &blobs = base_->blobs();
-            for( size_t i = 0; i < blobs.size(); ++ i ){
-                // Assume that blobs do not change
-                char tag[ 256 ];
-                sprintf( tag, "blob%d", (int)i );
-                updaters.push_back( new CaffeUpdater( updater, rnd_, blobs[i].get(), tag, batch_size_ ) );
             }
         }
         virtual void SetParam( const char *name, const char* val ) {
