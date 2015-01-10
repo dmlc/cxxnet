@@ -15,6 +15,7 @@
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
 #include "./softmax_layer-inl.hpp"
+#include "./pairtest_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
 #include "./xelu_layer-inl.hpp"
 
@@ -24,11 +25,14 @@ template<typename xpu>
 ILayer<xpu>* CreateLayer_(LayerType type,
                           mshadow::Random<xpu> *p_rnd,
                           const LabelInfo *label_info) {
+  if (type >= kPairTestGap) {
+    return new PairTestLayer<xpu>(CreateLayer_(type / kPairTestGap, p_rnd, label_info),
+                                  CreateLayer_(type % kPairTestGap, p_rnd, label_info));
+  }
   switch(type) {
     case kSigmoid: return new ActivationLayer<xpu, op::sigmoid, op::sigmoid_grad>();
     case kTanh: return new ActivationLayer<xpu, op::tanh, op::tanh_grad>();
     case kRectifiedLinear: return new ActivationLayer<xpu, op::relu, op::relu_grad>();
-      //case kSoftplus: return new ActivationLayer<xpu, op::softplus, op::softplus_grad>();
     case kConv: return new ConvolutionLayer<xpu>(p_rnd);
     case kBias: return new BiasLayer<xpu>();
     case kDropout: return new DropoutLayer<xpu>(p_rnd);

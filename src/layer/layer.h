@@ -1,5 +1,5 @@
-#ifndef CXXNET_LAYER_LAYER_H
-#define CXXNET_LAYER_LAYER_H
+#ifndef CXXNET_LAYER_LAYER_H_
+#define CXXNET_LAYER_LAYER_H_
 /*!
  * \file layer.h
  * \brief abstract interface of layer
@@ -188,6 +188,13 @@ class ILayer {
                         const std::vector<Node<xpu>*> &nodes_out,
                         ConnectState<xpu> *p_cstate) = 0;
   /*!
+   * \brief return whether this layer can be shared across multiple
+   * connections, for most layers this should be true
+   */
+  virtual bool AllowSharing(void) const {
+    return true;
+  }
+  /*!
    * \brief set the stream of internal computation to be stream
    * \param stream the stream to be used
    */
@@ -220,27 +227,29 @@ class ILayer {
 };
 
 /*! \brief these are enumeration */
-enum LayerType {
-  // shared layer is a special type indicating that this connection
-  // is sharing Layer with an existing connection
-  kSharedLayer = 0,
-  kFullConnect = 1,
-  kSoftmax = 2,
-  kRectifiedLinear = 3,
-  kSigmoid = 4,
-  kTanh = 5,
-  kSoftplus = 6,
-  kFlatten = 7,
-  kDropout = 8,
-  kConv = 10,
-  kMaxPooling = 11,
-  kSumPooling = 12,
-  kAvgPooling = 13,
-  kLRN = 15,
-  kBias = 17,
-  kConcat = 18,
-  kXelu = 19
-};
+// shared layer is a special type indicating that this connection
+// is sharing Layer with an existing connection
+const int kSharedLayer = 0;
+const int kFullConnect = 1;
+const int kSoftmax = 2;
+const int kRectifiedLinear = 3;
+const int kSigmoid = 4;
+const int kTanh = 5;
+const int kSoftplus = 6;
+const int kFlatten = 7;
+const int kDropout = 8;
+const int kConv = 10;
+const int kMaxPooling = 11;
+const int kSumPooling = 12;
+const int kAvgPooling = 13;
+const int kLRN = 15;
+const int kBias = 17;
+const int kConcat = 18;
+const int kXelu = 19;
+/*! \brief gap used to encode pairtest layer */
+const int kPairTestGap = 1024;
+/*! \brief use integer to encode layer types */
+typedef int LayerType;
 /*!
  * \brief get the layer type from string
  * \param type indicate the type of a layer
@@ -263,6 +272,11 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "lrn")) return kLRN;
   if (!strcmp(type, "concat")) return kConcat;
   if (!strcmp(type, "xelu")) return kXelu;
+  if (!strncmp(type, "pairtest-", 9)) {
+    char tmaster[256], tslave[256];
+    sscanf(type + 9, "%[^-]-%[^:]", tmaster, tslave);
+    return kPairTestGap * GetLayerType(tmaster) + GetLayerType(tslave);
+  }
   utils::Error("unknown layer type: \"%s\"", type);
   return kConv;
 }
@@ -278,7 +292,6 @@ template<typename xpu>
 ILayer<xpu>* CreateLayer(LayerType type,
                          mshadow::Random<xpu> *p_rnd,
                          const LabelInfo *label_info);
-
 /*!
  * \brief this data structure specifies a connection
  * this is a node specific data structure, that defines connection between nodes

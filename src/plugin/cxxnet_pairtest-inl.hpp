@@ -103,8 +103,7 @@ namespace cxxnet{
         virtual void SetParam( const char *name, const char* val ) {
             master_->SetParam( name, val );
             slave_->SetParam( name, val );
-            if( !strncmp( name, "master:", 7 ) ) master_->SetParam( name+7, val );
-            if( !strncmp( name, "slave:", 6 ) ) slave_->SetParam( name+7, val );
+
         }
         virtual void InitModel(void) {
             master_->InitModel();
