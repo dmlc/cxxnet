@@ -164,12 +164,13 @@ class PairTestLayer : public ILayer<xpu> {
     utils::Check(vm.data.size() == vs.data.size(),
                  "%s: number of %s mismatch", method, dtype);
     for (size_t i = 0; i < vm.data.size(); ++i) {
-      CmpResult(vm.data[i], vs.data[i], method);
+      CmpResult(vm.data[i], vs.data[i], method, vm.fields[i].c_str());
     }
   }
   inline static void CmpResult(mshadow::Tensor<xpu, 2> dmaster,
                                mshadow::Tensor<xpu, 2> dslave,
-                               const char *tag) {
+                               const char *tag,
+                               const char *tag2 = "") {
     mshadow::TensorContainer<cpu, 2> tmst(false), tslv(false);
     mshadow::Stream<xpu> stream;
     tmst.Resize(dmaster.shape_);
@@ -190,7 +191,8 @@ class PairTestLayer : public ILayer<xpu> {
     // relative absolute error
     double rerr = diff / ssum;
     if (rerr > 1e-5 || diff != diff) {
-      fprintf(stderr, "%s: err=%f, maxd[%u]=%f, diff=%f, ssum=%f\n", tag, rerr, mxidx, maxdiff, diff, ssum);
+      fprintf(stderr, "%s%s: err=%f, maxd[%u]=%f, diff=%f, ssum=%f\n",
+              tag, tag2, rerr, mxidx, maxdiff, diff, ssum);
     }
   }  
 };
