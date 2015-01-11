@@ -34,7 +34,7 @@ struct NeuralNet {
   std::vector<std::vector<updater::IAsyncUpdater<xpu>*> > updaters;
   /*! \brief random number generator */
   mshadow::Random<xpu> rnd;
-  /*! \brief stream for this  */  
+  /*! \brief stream for this  */
   mshadow::Stream<xpu> *stream;
   // constructor do nothing
   NeuralNet(const NetConfig &cfg,
@@ -160,7 +160,7 @@ struct NeuralNet {
     }
   }
   // create the updaters
-  inline void InitUpdaters(mshadow::ps::IParamServer<xpu, real_t> *ps, int devid) {    
+  inline void InitUpdaters(mshadow::ps::IParamServer<xpu, real_t> *ps, int devid) {
     int key_base = 0;
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       std::vector<updater::IAsyncUpdater<xpu>*> out;
@@ -207,7 +207,7 @@ struct NeuralNet {
       for (size_t j = 0; j < info.nindex_out.size(); ++j) {
         c.nodes_out.push_back(&nodes[info.nindex_out[j]]);
       }
-      if (c.type == layer::kSharedLayer) {        
+      if (c.type == layer::kSharedLayer) {
         utils::Assert(info.primary_layer_index >=0, "primary_layer_index problem");
         utils::Check(info.primary_layer_index < static_cast<int>(connections.size()),
                      "shared layer primary_layer_index exceed bound");
@@ -293,7 +293,7 @@ class NeuralNetThread {
       : cfg(cfg), pserver(ps),
         device_id(device_id), batch_size(batch_size),
         seed(seed), new_thread(new_thread) {
-    net_ = NULL;    
+    net_ = NULL;
     if (new_thread) {
       destroy_signal = false;
       job_start.Init(0);
@@ -371,10 +371,10 @@ class NeuralNetThread {
     net_->label_info = label_info;
     iparam_batch = batch;
     iparam_flag = prop_to_input;
-    oparam_node = out_data;    
+    oparam_node = out_data;
     iparam_need_sync = need_sync;
     iparam_need_update = need_update;
-    iparam_epoch = update_epoch;    
+    iparam_epoch = update_epoch;
     this->task = kTrainProp;
     this->ExecTask();
   }
@@ -429,8 +429,8 @@ class NeuralNetThread {
       this->TaskDispatch();
       job_end.Post();
     }
-    mshadow::DeleteStream(stream);
     delete net_;
+    mshadow::DeleteStream(stream);
     if (!xpu::kDevCPU) {
       mshadow::ShutdownTensorEngine();
     }
