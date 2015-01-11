@@ -44,7 +44,6 @@ struct NeuralNet {
       : cfg(cfg), rnd(seed), stream(stream) {
     // set maximum batch
     this->max_batch = batch_size;
-    stream = mshadow::NewStream<xpu>();
     rnd.set_stream(stream);
   }
   ~NeuralNet(void) {
