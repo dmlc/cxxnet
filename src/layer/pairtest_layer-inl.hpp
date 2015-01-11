@@ -45,14 +45,16 @@ class PairTestLayer : public ILayer<xpu> {
       mshadow::AllocSpace(&snodes_in_[i].data);
       slave_.nodes_in[i] = &snodes_in_[i];
     }
+    for (size_t i = 0; i < nodes_out.size(); ++i) {
+      slave_.nodes_out[i] = &snodes_out_[i];
+    }
     slave_.layer->InitConnection(slave_.nodes_in,
                                  slave_.nodes_out,
-                                 &slave_.state);    
-    for (size_t i = 0; i < nodes_out.size(); ++i) {
+                                 &slave_.state);   
+    for (size_t i = 0; i < nodes_out.size(); ++i) { 
       utils::Check(snodes_out_[i].data.shape_ == nodes_out[i]->data.shape_,
                    "PairTestLayer.InitConnection: shape inconsistent");          
       mshadow::AllocSpace(&snodes_out_[i].data);
-      slave_.nodes_out[i] = &snodes_out_[i];
     }
   }
   
