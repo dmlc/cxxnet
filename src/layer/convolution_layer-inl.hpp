@@ -147,7 +147,7 @@ class ConvolutionLayer : public ILayer<xpu> {
       
       if (param_.pad_x == 0 && param_.pad_y == 0) {
         temp_col_ = unpack_patch2col(in.Slice(i, i + step), param_.kernel_height, param_.kernel_width, param_.stride);
-      }else{
+      } else {
         temp_col_ = unpack_patch2col(pad(in.Slice(i,i + step),param_.pad_y, param_.pad_x), param_.kernel_height, param_.kernel_width, param_.stride);
       }
       

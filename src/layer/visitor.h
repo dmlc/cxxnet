@@ -133,13 +133,14 @@ class SetWeightVisitor : public ILayer<xpu>::IVisitor {
   inline void Visit_(const char *field_name,
                      mshadow::Tensor<xpu, dim> weight,
                      mshadow::Tensor<xpu, dim> grad) {
+    using mshadow::expr::reshape;
     if (strncmp(prefix_.c_str(), field_name, prefix_.length()) != 0) return;
     utils::Check(counter_ < data_.size(),
                  "SetWeightVisitor: not enough input data");
     if (mode_ == 0) {
-      mshadow::Copy(weight.FlatTo2D(), data_[counter_], weight.stream_);
+      weight = reshape(data_[counter_], weight_.shape_); 
     } else {
-      mshadow::Copy(grad.FlatTo2D(), data_[counter_], grad.stream_);
+      grad = reshape(data_[counter_], grad_.shape_); 
     }
     counter_ += 1;
   }
