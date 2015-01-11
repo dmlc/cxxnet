@@ -2,9 +2,10 @@
 export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
-export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -fopenmp -DMSHADOW_FORCE_STREAM
+export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -I/opt/intel/mkl/include -I/usr/local/cuda-6.0/include/ -L/opt/intel/mkl/lib/intel64 -L/opt/intel/lib/intel64 -L/usr/local/cuda-6.0/lib64 -fopenmp -DMSHADOW_FORCE_STREAM
 export blas=0
 export noopencv=1
+export usecaffe=0
 ifeq ($(blas),1)
  LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
@@ -22,6 +23,13 @@ else
 	LDFLAGS+= `pkg-config --libs opencv`
 endif
 
+ifeq ($(usecaffe), 1)
+	LDFLAGS+= -L./caffe/ -lcaffe -lglog -lprotobuf
+	CFLAGS+= -DCXXNET_USE_CAFFE_ADAPTOR=1 -I./caffe/include -I/home/winsty/glog-0.3.3/src -I/home/winsty/leveldb-master/include
+else
+	CFLAGS+= -DCXXNET_USE_CAFFE_ADAPTOR=0
+endif
+
 export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
 
 # specify tensor path
@@ -33,7 +41,7 @@ CUBIN =
 
 all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 
-layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu src/layer/*.h src/layer/*.hpp src/utils/*.h
+layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
 updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_impl.cu src/layer/layer.h src/updater/*.hpp src/updater/*.h src/utils/*.h
 nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h
 data.o: src/io/data.cpp src/io/*.hpp

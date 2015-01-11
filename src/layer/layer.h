@@ -246,6 +246,7 @@ const int kLRN = 15;
 const int kBias = 17;
 const int kConcat = 18;
 const int kXelu = 19;
+const int kCaffe = 20;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -272,6 +273,9 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "lrn")) return kLRN;
   if (!strcmp(type, "concat")) return kConcat;
   if (!strcmp(type, "xelu")) return kXelu;
+  #if CXXNET_USE_CAFFE_ADAPTOR
+  if (!strcmp(type, "caffe")) return kCaffe;
+  #endif
   if (!strncmp(type, "pairtest-", 9)) {
     char tmaster[256], tslave[256];
     sscanf(type + 9, "%[^-]-%[^:]", tmaster, tslave);

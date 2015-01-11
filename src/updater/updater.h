@@ -62,8 +62,6 @@ class IUpdater {
 template<typename xpu>
 class IAsyncUpdater : public IUpdater<xpu> {
  public:
-  /**/
-  virtual void BeforeBackProp() = 0;
   /*!
    * \brief block until update is finished
    * if there were no update or update was already finished

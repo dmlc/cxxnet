@@ -18,7 +18,9 @@
 #include "./pairtest_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
 #include "./xelu_layer-inl.hpp"
-
+#if CXXNET_USE_CAFFE_ADAPTOR
+#include "../plugin/caffe_adapter-inl.hpp"
+#endif
 namespace cxxnet {
 namespace layer {
 template<typename xpu>
@@ -45,7 +47,10 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
     case kConcat: return new ConcatLayer<xpu>();
     case kXelu: return new XeluLayer<xpu>();
-    default: utils::Error("unknown layer type"); return NULL;
+    #if CXXNET_USE_CAFFE_ADAPTOR
+    case kCaffe: return new CaffeLayer<xpu>();
+    #endif
+    default: utils::Error("unknown layer type id : \"%d\"", type); return NULL;
   }
 }
 

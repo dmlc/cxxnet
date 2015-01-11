@@ -39,7 +39,8 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
       : mode_(0), prefix_(prefix) {
     if (!strcmp(data_type, "weight")) mode_ = 0;
     if (!strcmp(data_type, "grad")) mode_ = 1;
-    utils::Error("GetWeightVisitor: do not support data_type %s", data_type);
+    utils::Assert(mode_ == 0 || mode_ == 1,
+      "GetWeightVisitor: do not support data_type %s", data_type);
   } 
   // visit
   virtual void Visit(const char *field_name,
@@ -101,7 +102,8 @@ class SetWeightVisitor : public ILayer<xpu>::IVisitor {
       : data_(data), prefix_(prefix), counter_(0) {
     if (!strcmp(data_type, "weight")) mode_ = 0;
     if (!strcmp(data_type, "grad")) mode_ = 1;
-    utils::Error("SetWeightVisitor: do not support data_type %s", data_type);
+    utils::Assert(mode_ == 0 || mode_ == 1,
+      "SetWeightVisitor: do not support data_type %s", data_type);
   }
   // visit
   virtual void Visit(const char *field_name,
@@ -138,9 +140,9 @@ class SetWeightVisitor : public ILayer<xpu>::IVisitor {
     utils::Check(counter_ < data_.size(),
                  "SetWeightVisitor: not enough input data");
     if (mode_ == 0) {
-      weight = reshape(data_[counter_], weight_.shape_); 
+      weight = reshape(data_[counter_], weight.shape_); 
     } else {
-      grad = reshape(data_[counter_], grad_.shape_); 
+      grad = reshape(data_[counter_], grad.shape_); 
     }
     counter_ += 1;
   }
