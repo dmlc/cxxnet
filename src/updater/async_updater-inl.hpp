@@ -60,7 +60,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       local_batch_size = in.size(0);
       utils::Check(local_batch_size <= total_batch_size,
                    "local_batch_size bigger than total_batch_size");
-      utils::Check(local_batch_size % total_batch_size == 0,
+      utils::Check(total_batch_size % local_batch_size == 0,
                    "when you use fullc_gather mode, the batch_size "\
                    "must be multiple of number of devices");
       mshadow::Copy(tin.Slice(0, local_batch_size), in, tnode.stream_);
