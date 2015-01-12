@@ -19,10 +19,11 @@ void CreateAsyncUpdaters<cpu>(int data_key_base,
                               mshadow::ps::IParamServer<cpu, real_t> *param_server,
                               const char *type,
                               mshadow::Random<cpu> *p_rnd,
+                              layer::LayerType layer_type,
                               layer::ILayer<cpu> *p_layer,
                               std::vector<IAsyncUpdater<cpu>*> *out_updaters) {
   CreateAsyncUpdaterVisitor<cpu> visitor(data_key_base, device_id, param_server,
-                                         type, p_rnd, out_updaters);  
+                                         type, p_rnd, layer_type, out_updaters);  
   p_layer->ApplyVisitor(&visitor);  
 }
 }  // namespace updater

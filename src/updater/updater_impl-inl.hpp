@@ -34,11 +34,12 @@ CreateAsyncUpdater_(int data_key,
                     mshadow::ps::IParamServer<xpu, real_t> *pserver,
                     const char *type,
                     mshadow::Random<xpu> *p_rnd,
+                    layer::LayerType layer_type,
                     mshadow::Tensor<xpu,dim> weight,
                     mshadow::Tensor<xpu,dim> wgrad,
                     const char *tag) {
   return new AsyncUpdater<xpu>(data_key, devid, priority,
-                               weight.FlatTo2D(), wgrad.FlatTo2D(),
+                               weight.FlatTo2D(), wgrad.FlatTo2D(), layer_type, tag,
                                pserver, CreateUpdater_(type, p_rnd, weight, wgrad, tag));
 }
 
@@ -85,6 +86,8 @@ struct CreateAsyncUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   const char *type;
   // random number generator
   mshadow::Random<xpu> *p_rnd;
+  // layer type;
+  layer::LayerType layer_type;
   // output updaters
   std::vector<IAsyncUpdater<xpu>*> *out_updaters;
   // constructor
@@ -94,30 +97,36 @@ struct CreateAsyncUpdaterVisitor : public IUpdater<xpu>::IVisitor {
    mshadow::ps::IParamServer<xpu, real_t> *pserver,
    const char *type,
    mshadow::Random<xpu> *p_rnd,
+   layer::LayerType layer_type,
    std::vector<IAsyncUpdater<xpu>*> *out_updaters)
       : data_key(data_key),
         devid(devid),
         pserver(pserver),
-        type(type), p_rnd(p_rnd), out_updaters(out_updaters) {}
+        type(type), p_rnd(p_rnd),
+        layer_type(layer_type),
+        out_updaters(out_updaters) {}
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,1> weight,
                      mshadow::Tensor<xpu,1> grad) {
     out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
-                                                type, p_rnd, weight, grad, field_name));
+                                                type, p_rnd, layer_type,
+                                                weight, grad, field_name));
     data_key += 1;
   }
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,2> weight,
                      mshadow::Tensor<xpu,2> grad) {
     out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
-                                                type, p_rnd, weight, grad, field_name));
+                                                type, p_rnd, layer_type,
+                                                weight, grad, field_name));
     data_key += 1;
   }
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,3> weight,
                      mshadow::Tensor<xpu,3> grad) {
     out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
-                                                type, p_rnd, weight, grad, field_name));
+                                                type, p_rnd, layer_type,
+                                                weight, grad, field_name));
     data_key += 1;
   }
 };

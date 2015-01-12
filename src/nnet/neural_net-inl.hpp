@@ -109,10 +109,8 @@ struct NeuralNet {
     mshadow::Copy(nodes[0].data, batch, stream);
     for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
-      if (need_sync && updaters[i].size() != 0) {
-        for (size_t j = 0; j < updaters[i].size(); ++j) {
-          updaters[i][j]->UpdateWait();
-        }
+      for (size_t j = 0; j < updaters[i].size(); ++j) {
+        updaters[i][j]->UpdateWait();
       }
       c.layer->Forward(is_train, c.nodes_in, c.nodes_out, &c.state);
     }
@@ -125,15 +123,16 @@ struct NeuralNet {
                        bool need_update,
                        long update_epoch) {
     for (size_t i = connections.size(); i > 0; --i) {
-      layer::Connection<xpu> &c = connections[i - 1];
+      layer::Connection<xpu> &c = connections[i - 1];      
+      for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
+        updaters[i - 1][j]->BeforeBackprop(c.nodes_in, c.nodes_out);
+      }
       c.layer->Backprop(i != 1 || prop_to_input,
                         c.nodes_in, c.nodes_out, &c.state);
-      if (need_update && updaters[i - 1].size() != 0) {
-        // wait backprop to complete before call update
-        stream->Wait();
-        for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
-          updaters[i - 1][j]->Update(update_epoch);
-        }
+      // wait backprop to complete before call update
+      if (updaters[i - 1].size() != 0) stream->Wait();
+      for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
+        updaters[i - 1][j]->AfterBackprop(need_update, update_epoch);
       }
     }
   }
@@ -168,7 +167,9 @@ struct NeuralNet {
         updater::CreateAsyncUpdaters
             (key_base, devid, ps,
              cfg.updater_type.c_str(),
-             &rnd, connections[i].layer, &out);
+             &rnd, cfg.layers[i].type,
+             connections[i].layer,
+             &out);
         for (size_t k = 0; k < out.size(); ++k) {
           for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
             out[k]->SetParam(cfg.defcfg[j].first.c_str(),

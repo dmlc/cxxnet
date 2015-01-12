@@ -13,10 +13,13 @@ namespace layer {
 template<typename xpu>
 class FullConnectLayer : public ILayer<xpu> {
  public:
-  FullConnectLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {}
+  FullConnectLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {
+    fullc_gather = 0;
+  }
   virtual ~FullConnectLayer(void) {}
   virtual void SetParam(const char *name, const char* val) {
     param_.SetParam(name, val);
+    if (!strcmp(name, "fullc_gather")) fullc_gather = atoi(val);
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("wmat", wmat_, gwmat_);
@@ -109,7 +112,9 @@ class FullConnectLayer : public ILayer<xpu> {
     mshadow::Tensor<xpu, 2> m_in = pnode_in->mat();
     mshadow::Tensor<xpu, 2> m_out = pnode_out->mat();
     // accumulate gradient
-    gwmat_ += dot(m_out.T(), m_in);
+    if (fullc_gather == 0) {
+      gwmat_ += dot(m_out.T(), m_in);
+    }
     if (param_.no_bias == 0) {
       gbias_ += sum_rows(m_out);
     }
@@ -129,10 +134,11 @@ class FullConnectLayer : public ILayer<xpu> {
   mshadow::TensorContainer<xpu,1> bias_;
   /*! \brief accumulates the gradient of weight matrix */
   mshadow::TensorContainer<xpu,2> gwmat_;
-  /*! \brief accumulates the gradient of bias */
+  /*! \brief accumulates the gradient of bias */  
   mshadow::TensorContainer<xpu,1> gbias_;
+  /*! \brief use gather to do fullc */
+  int fullc_gather;
 };
-
 }  // namespace layer
 }  // namespace cxxnet
 #endif  // LAYER_FULLC_LAYER_INL_HPP_

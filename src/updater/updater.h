@@ -49,25 +49,42 @@ class IUpdater {
    *        epoch is number of mini-batches passed, 
    *        while round is one pass over training data
    */
-  virtual void Update(long epoch) = 0;
+  virtual void Update(long epoch) = 0;  
   /*!\ brief set parameters that could be spefic to this updater */
   virtual void SetParam(const char *name, const char *val) = 0;
 };
 
 /*!
- * \brief asynchronize updater, basically same as updater
- * however, the Update function in asynchronize update directly returns
+ * \brief asynchronize updater,
+ * BeforeBackprop and AfterBackprop are asynchronize functions calls
  * and user need to call UpdateWait to wait the update to finish
  */
 template<typename xpu>
 class IAsyncUpdater : public IUpdater<xpu> {
  public:
   /*!
+   * \brief this function is called before calling backprop
+   * used by updater in case updater want to recover gradient by itself,
+   * instead of calculated by the ILayer
+   */
+  virtual void BeforeBackprop(const std::vector<layer::Node<xpu>*> &nodes_in,
+                              const std::vector<layer::Node<xpu>*> &nodes_out) = 0;
+  /*!
+   * \brief this function is called after calling backprop
+   * \param do_update whether an update is performed in this iteration
+   * \param epoch the update epoch if doing update
+   */  
+  virtual void AfterBackprop(bool do_update, long epoch) = 0;  
+  /*!
    * \brief block until update is finished
    * if there were no update or update was already finished
    * this function will directly return
    */
   virtual void UpdateWait(void) = 0;
+  // disable update function
+  virtual void Update(long epoch) {
+    utils::Error("IAsyncUpdater.Update call AfterBackprop instead");
+  }
 };
 /*!
  * \brief factory: create updaters for a given layer, push_back them to out_updaters
@@ -91,6 +108,7 @@ void CreateUpdaters(const char *type,
  * \param param_server parameter server that could be used by async updater
  * \param type indicate the type of updater
  * \param p_rnd pointer to random number generator
+ * \param layer_type the type of the layer
  * \param p_layer pointer to the layer object, where the data is going to be pulled from
  * \param out_updaters vector to hold outputs, if there is already elements in out_updaters, 
  *                     the function is going to push new updaters to the back of the vector
@@ -101,6 +119,7 @@ void CreateAsyncUpdaters(int data_key_base,
                          mshadow::ps::IParamServer<xpu, real_t> *param_server,
                          const char *type,
                          mshadow::Random<xpu> *p_rnd,
+                         layer::LayerType layer_type,
                          layer::ILayer<xpu> *p_layer,
                          std::vector<IAsyncUpdater<xpu>*> *out_updaters);
 }  // namespace updater
