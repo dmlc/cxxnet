@@ -62,6 +62,7 @@ class CuDNNPoolingLayer : public ILayer<xpu> {
       init_cudnn_ = true;
       mshadow::Tensor<gpu, 4, float> &sgt = nodes_in[0]->data;
       mshadow::Tensor<gpu, 4, float> &dgt = tmp;
+      CUDA_CHECK(cudnnSetStream(handle_, nodes_out[0]->data.stream_->stream_));
       CUDA_CHECK(cudnnSetTensor4dDescriptorEx(in_desc_,CUDNN_DATA_FLOAT,
                                    sgt.shape_[0], sgt.shape_[1], sgt.shape_[2], sgt.shape_[3],
                                    sgt.stride_ * sgt.shape_[1] * sgt.shape_[2],
