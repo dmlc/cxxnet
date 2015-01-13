@@ -34,7 +34,7 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
   virtual void InitModel(void) {
     wmat_.Resize(mshadow::Shape4(param_.num_channel, param_.num_input_channel, \
                                  param_.kernel_height, param_.kernel_width), false);
-    bias_.Resize(mshadow::Shape4(1, param_.num_channel, oheight_, owidth_), false);
+    bias_.Resize(mshadow::Shape4(1, param_.num_channel, 1, 1), false);
     param_.RandInitWeight(this->prnd_, wmat_, wmat_.size(0), wmat_.size(1));
     bias_ = param_.init_bias;
     gwmat_.Resize(wmat_.shape_, false);
@@ -149,10 +149,11 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
                             filter_desc_, wmat_.dptr_,
                             conv_desc_, algo_, temp_.dptr_, workspace_size_, &beta_,
                             out_desc_, nodes_out[0]->data.dptr_));
-    // Bug here
-    // CUDA_CHECK(cudnnAddTensor(handle_, CUDNN_ADD_FEATURE_MAP, &alpha_,
-    //                bias_desc_, bias_.dptr_, &beta_,
-    //                out_desc_, nodes_out[0]->data.dptr_));
+    if (param_.no_bias == 0) {
+      CUDA_CHECK(cudnnAddTensor(handle_, CUDNN_ADD_SAME_C, &alpha_,
+                    bias_desc_, bias_.dptr_, &beta_,
+                    out_desc_, nodes_out[0]->data.dptr_));
+    }
   }
   virtual void Backprop(bool prop_grad,
                         const std::vector<Node<xpu>*> &nodes_in,
@@ -168,11 +169,12 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
                                  out_desc_, nodes_out[0]->data.dptr_,
                                  conv_desc_, &beta_,
                                  in_desc_, nodes_in[0]->data.dptr_));
-    // Bug here
-    // CUDA_CHECK(cudnnConvolutionBackwardBias(handle_, &alpha_,
-    //                              out_desc_, nodes_out[0]->data.dptr_,
-    //                              &beta_,
-    //                              bias_desc_, gbias_.dptr_));
+    if (param_.no_bias == 0) {
+      CUDA_CHECK(cudnnConvolutionBackwardBias(handle_, &alpha_,
+                                  out_desc_, nodes_out[0]->data.dptr_,
+                                  &beta_,
+                                  bias_desc_, gbias_.dptr_));
+    }
   }
 
  private:
