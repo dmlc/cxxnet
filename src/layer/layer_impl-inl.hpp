@@ -17,7 +17,10 @@
 #include "./softmax_layer-inl.hpp"
 #include "./pairtest_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
-#include "./xelu_layer-inl.hpp"
+#ifdef __CUDACC__
+#include "./cudnn_pooling_layer-inl.hpp"
+#include "./cudnn_convolution_layer-inl.hpp"
+#endif
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
 #endif
@@ -46,7 +49,11 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>();
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
     case kConcat: return new ConcatLayer<xpu>();
-    case kXelu: return new XeluLayer<xpu>();
+#ifdef __CUDACC__
+    //case kXelu: return new CUConvolutionLayer<xpu>(p_rnd);
+    case kCuDNNConv: return new CuDNNConvolutionLayer<xpu>(p_rnd);
+    case kCuDNNMaxPooling: return new CuDNNPoolingLayer<mshadow::red::maximum, false, xpu>();
+#endif
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
     #endif

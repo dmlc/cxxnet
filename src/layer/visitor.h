@@ -19,7 +19,7 @@ namespace layer {
  *     GetWeightVisitor vs("weight");
  *     layer->ApplyVisitor(&vs);
  *     std::vector<mshadow::Tensor<xpu, 2> > weights = vs.data;
- * 
+ *
  * \tparam xpu the device the data contents lies on
  */
 template<typename xpu>
@@ -41,7 +41,7 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
     if (!strcmp(data_type, "grad")) mode_ = 1;
     utils::Assert(mode_ == 0 || mode_ == 1,
       "GetWeightVisitor: do not support data_type %s", data_type);
-  } 
+  }
   // visit
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu, 1> weight,
@@ -56,6 +56,11 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu, 3> weight,
                      mshadow::Tensor<xpu, 3> grad) {
+    this->Visit_(field_name, weight, grad);
+  }
+  virtual void Visit(const char *field_name,
+                     mshadow::Tensor<xpu, 4> weight,
+                     mshadow::Tensor<xpu, 4> grad) {
     this->Visit_(field_name, weight, grad);
   }
 
@@ -85,7 +90,7 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
  *  Usage Example:
  *     GetSetVisitor vs(data, "weight");
  *     layer->ApplyVisitor(&vs);
- * 
+ *
  * \tparam xpu the device the data contents lies on
  */
 template<typename xpu>
@@ -121,6 +126,11 @@ class SetWeightVisitor : public ILayer<xpu>::IVisitor {
                      mshadow::Tensor<xpu, 3> grad) {
     this->Visit_(field_name, weight, grad);
   }
+  virtual void Visit(const char *field_name,
+                     mshadow::Tensor<xpu, 4> weight,
+                     mshadow::Tensor<xpu, 4> grad) {
+    this->Visit_(field_name, weight, grad);
+  }
 
  private:
   /*! \brief the weight contents of the layer */
@@ -140,9 +150,9 @@ class SetWeightVisitor : public ILayer<xpu>::IVisitor {
     utils::Check(counter_ < data_.size(),
                  "SetWeightVisitor: not enough input data");
     if (mode_ == 0) {
-      weight = reshape(data_[counter_], weight.shape_); 
+      weight = reshape(data_[counter_], weight.shape_);
     } else {
-      grad = reshape(data_[counter_], grad.shape_); 
+      grad = reshape(data_[counter_], grad.shape_);
     }
     counter_ += 1;
   }

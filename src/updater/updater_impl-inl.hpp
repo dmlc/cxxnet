@@ -52,7 +52,7 @@ struct CreateUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   // output updaters
   std::vector<IUpdater<xpu>*> *out_updaters;
   // constructor
-  CreateUpdaterVisitor(const char *type, 
+  CreateUpdaterVisitor(const char *type,
                        mshadow::Random<xpu> *p_rnd,
                        std::vector<IUpdater<xpu>*> *out_updaters)
       : type(type), p_rnd(p_rnd), out_updaters(out_updaters) {}
@@ -69,6 +69,11 @@ struct CreateUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   virtual void Visit(const char *field_name,
                      mshadow::Tensor<xpu,3> weight,
                      mshadow::Tensor<xpu,3> grad) {
+    out_updaters->push_back(CreateUpdater_(type, p_rnd, weight, grad, field_name));
+  }
+  virtual void Visit(const char *field_name,
+                     mshadow::Tensor<xpu,4> weight,
+                     mshadow::Tensor<xpu,4> grad) {
     out_updaters->push_back(CreateUpdater_(type, p_rnd, weight, grad, field_name));
   }
 };
@@ -129,6 +134,15 @@ struct CreateAsyncUpdaterVisitor : public IUpdater<xpu>::IVisitor {
                                                 weight, grad, field_name));
     data_key += 1;
   }
+  virtual void Visit(const char *field_name,
+                     mshadow::Tensor<xpu,4> weight,
+                     mshadow::Tensor<xpu,4> grad) {
+    out_updaters->push_back(CreateAsyncUpdater_(data_key, devid, -data_key, pserver,
+                                                type, p_rnd, layer_type,
+                                                weight, grad, field_name));
+    data_key += 1;
+  }
+
 };
 
 }  // namespace updater
