@@ -9,7 +9,8 @@
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "iter_mnist-inl.hpp"
-#include "iter_proc-inl.hpp"
+#include "iter_augment_proc-inl.hpp"
+#include "iter_batch_proc-inl.hpp"
 #include "iter_sparse-inl.hpp"
 //#include "iter_thread_npybin-inl.hpp"
 
@@ -36,7 +37,8 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       #if CXXNET_USE_OPENCV
       if (!strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
-        it = new BatchAdaptIterator(new ThreadImagePageIterator()); continue;
+        it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIterator()));
+        continue;
       }
       #endif
 
@@ -71,6 +73,8 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
         it = new Dense2SparseAdapter(it);
         continue;
       }
+
+     
       utils::Error("unknown iterator type");
     }
 
