@@ -10,6 +10,9 @@
 #include "../global.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
+#if CXXNET_USE_CUDNN == 1
+ #include <cudnn.h>
+#endif
 
 /*! \brief namespace of cxxnet */
 namespace cxxnet {
@@ -31,7 +34,7 @@ struct Node {
   mshadow::Tensor<xpu, 4> data;
   /*! \brief whether the underlying data must be contiguous */
   bool must_contiguous;
-  // constructor 
+  // constructor
   Node(void) : must_contiguous(false) {
     data.shape_ = mshadow::Shape4(0,0,0,0);
   }
@@ -265,7 +268,6 @@ const int kXelu = 19;
 const int kCaffe = 20;
 // first apply relu then maxpooling
 const int kReluMaxPooling = 27;
-const int kCuDNNConv = 21;
 const int kCuDNNMaxPooling = 22;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
@@ -294,7 +296,6 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "lrn")) return kLRN;
   if (!strcmp(type, "concat")) return kConcat;
   if (!strcmp(type, "xelu")) return kXelu;
-  if (!strcmp(type, "cuconv")) return kCuDNNConv;
   if (!strcmp(type, "cumax_pooling")) return kCuDNNMaxPooling;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
