@@ -29,7 +29,10 @@ struct Node {
    *     matrix (batch_size, 1, 1, length-of-vector)
    */
   mshadow::Tensor<xpu, 4> data;
-  Node(void) {
+  /*! \brief whether the underlying data must be contiguous */
+  bool must_contiguous;
+  // constructor 
+  Node(void) : must_contiguous(false) {
     data.shape_ = mshadow::Shape4(0,0,0,0);
   }
   /*! \brief matrix view of the node */
@@ -40,8 +43,18 @@ struct Node {
   inline bool is_mat(void) const {
     return data.size(1) == 1 && data.size(2) == 1;
   }
+  /*! \brief helper rountine to free space */
   inline void FreeSpace(void) {
     mshadow::FreeSpace(&data);
+  }
+  /*! \brief helper rountine to allocate space */
+  inline void AllocSpace(void) {
+    if (must_contiguous) {
+      mshadow::AllocSpace(&data, false);
+      utils::Assert(data.CheckContiguous(), "contiguous");
+    } else {
+      mshadow::AllocSpace(&data);
+    }
   }
 }; // struct Node
 
