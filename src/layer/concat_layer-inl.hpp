@@ -20,9 +20,9 @@ class ConcatLayer : public ILayer<xpu> {
     mshadow::Shape<4> oshape = nodes_in[0]->data.shape_;
     mshadow::index_t out_ch = 0;
     for (mshadow::index_t i = 0; i < nodes_in.size(); ++i) {
-      out_ch += nodes_in[i]->data.shape_[1];
+      out_ch += nodes_in[i]->data.shape_[3];
     }
-    oshape[1] = out_ch;
+    oshape[3] = out_ch;
     nodes_out[0]->data.shape_ = oshape;
   }
   virtual void Forward(bool is_train,
@@ -32,15 +32,15 @@ class ConcatLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     switch(nodes_in.size()) {
     case 2:
-      nodes_out[0]->data = concat<1>(nodes_in[0]->data, nodes_in[1]->data);
+      nodes_out[0]->data = concat<3>(nodes_in[0]->data, nodes_in[1]->data);
       break;
     case 3:
-      nodes_out[0]->data = concat<1>(nodes_in[0]->data,
-                                     concat<1>(nodes_in[1]->data, nodes_in[2]->data));
+      nodes_out[0]->data = concat<3>(nodes_in[0]->data,
+                                     concat<3>(nodes_in[1]->data, nodes_in[2]->data));
       break;
     case 4:
-      nodes_out[0]->data = concat<1>(concat<1>(nodes_in[0]->data, nodes_in[1]->data),
-                                     concat<1>(nodes_in[2]->data, nodes_in[3]->data));
+      nodes_out[0]->data = concat<3>(concat<3>(nodes_in[0]->data, nodes_in[1]->data),
+                                     concat<3>(nodes_in[2]->data, nodes_in[3]->data));
       break;
     };
   }
@@ -52,15 +52,15 @@ class ConcatLayer : public ILayer<xpu> {
     if (prop_grad) {
       switch(nodes_in.size()) {
       case 2:
-        concat<1>(nodes_in[0]->data, nodes_in[1]->data) = nodes_out[0]->data;
+        concat<3>(nodes_in[0]->data, nodes_in[1]->data) = nodes_out[0]->data;
         break;
       case 3:
-        concat<1>(nodes_in[0]->data,
-                  concat<1>(nodes_in[1]->data, nodes_in[2]->data)) = nodes_out[0]->data;
+        concat<3>(nodes_in[0]->data,
+                  concat<3>(nodes_in[1]->data, nodes_in[2]->data)) = nodes_out[0]->data;
         break;
       case 4:
-        concat<1>(concat<1>(nodes_in[0]->data, nodes_in[1]->data),
-                  concat<1>(nodes_in[2]->data, nodes_in[3]->data)) = nodes_out[0]->data;
+        concat<3>(concat<3>(nodes_in[0]->data, nodes_in[1]->data),
+                  concat<3>(nodes_in[2]->data, nodes_in[3]->data)) = nodes_out[0]->data;
         break;
       };
     }

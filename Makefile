@@ -4,7 +4,7 @@ export CXX = g++
 export NVCC =nvcc
 export CFLAGS = -Wall -g -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I./mshadow/ -I/opt/intel/mkl/include -I/usr/local/cuda-6.0/include/ -L/opt/intel/mkl/lib/intel64 -L/opt/intel/lib/intel64 -L/usr/local/cuda-6.0/lib64 -fopenmp -DMSHADOW_FORCE_STREAM
 export blas=0
-export noopencv=1
+export noopencv=0
 export usecaffe=0
 ifeq ($(blas),1)
  LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas

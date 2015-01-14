@@ -64,9 +64,9 @@ class FullConnectLayer : public ILayer<xpu> {
                               const std::vector<Node<xpu>*> &nodes_out,
                               ConnectState<xpu> *p_cstate) {
     utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
-                 "DropoutLayer Layer only support 1-1 connection");
-    utils::Check(nodes_in[0]->is_mat(), "input need to be a matrix");
-    utils::Check(param_.num_hidden > 0, "must set nhidden correctly");
+                 "FullcLayer: Layer only support 1-1 connection");
+    utils::Check(nodes_in[0]->is_mat(), "FullcLayer: input need to be a matrix");
+    utils::Check(param_.num_hidden > 0, "FullcLayer: must set nhidden correctly");
     // we change matrix convention
     nodes_out[0]->data.shape_ =
         mshadow::Shape4(nodes_in[0]->data.size(0), 1, 1, param_.num_hidden);

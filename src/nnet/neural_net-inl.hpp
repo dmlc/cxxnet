@@ -238,7 +238,7 @@ struct NeuralNet {
   inline void InitNodes(void) {
     for (size_t i = 0; i < nodes.size(); ++ i) {
       mshadow::Shape<4> s = nodes[i].data.shape_;
-      mshadow::AllocSpace(&nodes[i].data);
+      nodes[i].AllocSpace();
       printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[0], s[1], s[2], s[3]);
     }
   }
