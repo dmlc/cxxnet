@@ -157,6 +157,7 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
       CUDA_CHECK(cudnnAddTensor(handle_, CUDNN_ADD_SAME_C, &alpha_,
                     bias_desc_, bias_.dptr_, &beta_,
                     out_desc_, nodes_out[0]->data.dptr_));
+      beta_ = 0.0f;
     }
   }
   virtual void Backprop(bool prop_grad,
