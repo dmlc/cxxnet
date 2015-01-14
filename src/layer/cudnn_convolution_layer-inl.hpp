@@ -33,12 +33,12 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
   }
   virtual void InitModel(void) {
     wmat_.Resize(mshadow::Shape4(param_.num_channel, param_.num_input_channel, \
-                                 param_.kernel_height, param_.kernel_width), false);
+                                 param_.kernel_height, param_.kernel_width));
     bias_.Resize(mshadow::Shape4(1, param_.num_channel, 1, 1), false);
     param_.RandInitWeight(this->prnd_, wmat_, wmat_.size(0), wmat_.size(1));
     bias_ = param_.init_bias;
-    gwmat_.Resize(wmat_.shape_, false);
-    gbias_.Resize(bias_.shape_, false);
+    gwmat_.Resize(wmat_.shape_);
+    gbias_.Resize(bias_.shape_);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
   virtual void SaveModel(utils::IStream &fo) const {
@@ -136,7 +136,9 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
                                    1));
 
       CUDA_CHECK(cudnnSetTensor4dDescriptor(bias_desc_, CUDNN_TENSOR_NCHW, dtype_,
-                                   bias_.shape_[0],bias_.shape_[1],bias_.shape_[2],bias_.shape_[3]));
+                                  bias_.shape_[0], bias_.shape_[1],
+                                  bias_.shape_[2], bias_.shape_[3]));
+
 
       CUDA_CHECK(cudnnGetConvolutionForwardWorkspaceSize(handle_, in_desc_,
                                               filter_desc_, conv_desc_,
@@ -144,12 +146,14 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
                                               &workspace_size_));
       temp_.Resize(mshadow::Shape1(workspace_size_ / sizeof(float) + 1), 0.0f);
     }
+    beta_ = 0.0f;
     CUDA_CHECK(cudnnConvolutionForward(handle_, &alpha_,
                             in_desc_, nodes_in[0]->data.dptr_,
                             filter_desc_, wmat_.dptr_,
                             conv_desc_, algo_, temp_.dptr_, workspace_size_, &beta_,
                             out_desc_, nodes_out[0]->data.dptr_));
     if (param_.no_bias == 0) {
+      beta_ = 1.0f;
       CUDA_CHECK(cudnnAddTensor(handle_, CUDNN_ADD_SAME_C, &alpha_,
                     bias_desc_, bias_.dptr_, &beta_,
                     out_desc_, nodes_out[0]->data.dptr_));
@@ -159,6 +163,13 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
                         const std::vector<Node<xpu>*> &nodes_in,
                         const std::vector<Node<xpu>*> &nodes_out,
                         ConnectState<xpu> *p_cstate) {
+    if (param_.no_bias == 0) {
+      CUDA_CHECK(cudnnConvolutionBackwardBias(handle_, &alpha_,
+                                  out_desc_, nodes_out[0]->data.dptr_,
+                                  &beta_,
+                                  bias_desc_, gbias_.dptr_));
+    }
+
     CUDA_CHECK(cudnnConvolutionBackwardFilter(handle_, &alpha_,
                              in_desc_, nodes_in[0]->data.dptr_,
                              out_desc_, nodes_out[0]->data.dptr_,
@@ -169,12 +180,7 @@ class CuDNNConvolutionLayer : public ILayer<xpu> {
                                  out_desc_, nodes_out[0]->data.dptr_,
                                  conv_desc_, &beta_,
                                  in_desc_, nodes_in[0]->data.dptr_));
-    if (param_.no_bias == 0) {
-      CUDA_CHECK(cudnnConvolutionBackwardBias(handle_, &alpha_,
-                                  out_desc_, nodes_out[0]->data.dptr_,
-                                  &beta_,
-                                  bias_desc_, gbias_.dptr_));
-    }
+
   }
 
  private:
