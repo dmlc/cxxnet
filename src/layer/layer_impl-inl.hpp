@@ -41,6 +41,8 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd);
     case kLRN: return new LRNLayer<xpu>();
     case kFlatten: return new FlattenLayer<xpu>();
+    case kReluMaxPooling: return
+        new PoolingLayer<mshadow::red::maximum, false, xpu, false, op::relu, op::relu_grad>();
     case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>();
     case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>();
     case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>();

@@ -11,6 +11,18 @@
 namespace cxxnet {
 /*! \brief operations for ActivationLayer */
 namespace op {
+/*! \brief Rectified Linear Operation */
+struct identity {
+  MSHADOW_XINLINE static real_t Map(real_t a) {
+    return a;
+  }
+};
+struct identity_grad {
+  MSHADOW_XINLINE static real_t Map(real_t a) {
+    return 1.0f;
+  }
+};
+
 /*! \brief sigmoid unit */
 struct sigmoid {
   MSHADOW_XINLINE static real_t Map(real_t a) {

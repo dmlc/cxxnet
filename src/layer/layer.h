@@ -247,6 +247,8 @@ const int kBias = 17;
 const int kConcat = 18;
 const int kXelu = 19;
 const int kCaffe = 20;
+// first apply relu then maxpooling
+const int kReluMaxPooling = 27;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -267,6 +269,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "flatten")) return kFlatten;
   if (!strcmp(type, "dropout")) return kDropout;
   if (!strcmp(type, "conv")) return kConv;
+  if (!strcmp(type, "relu_max_pooling")) return kReluMaxPooling;
   if (!strcmp(type, "max_pooling")) return kMaxPooling;
   if (!strcmp(type, "sum_pooling")) return kSumPooling;
   if (!strcmp(type, "avg_pooling")) return kAvgPooling;

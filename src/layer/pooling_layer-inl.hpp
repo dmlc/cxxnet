@@ -8,7 +8,12 @@
 namespace cxxnet {
 namespace layer {
 
-template<typename Reducer, bool scalebysize, typename xpu>
+template<typename Reducer,
+         bool scalebysize,
+         typename xpu,
+         bool is_identity = true,
+         typename ForwardOp = op::identity,
+         typename BackOp = op::identity_grad>
 class PoolingLayer : public ILayer<xpu> {
  public:
   virtual ~PoolingLayer(void) {}
@@ -50,6 +55,9 @@ class PoolingLayer : public ILayer<xpu> {
     const int ksize_y = param_.kernel_height;
     const int ksize_x = param_.kernel_width;
     mshadow::Shape<2> pshape = nodes_out[0]->data[0][0].shape_;
+    if (!is_identity) {
+      nodes_in[0]->data = F<ForwardOp>(nodes_in[0]->data);
+    }
     if (!scalebysize) {
       tmp = pool<Reducer>(nodes_in[0]->data, pshape, ksize_y, ksize_x, param_.stride);
     }else{
@@ -67,11 +75,22 @@ class PoolingLayer : public ILayer<xpu> {
     if (prop_grad) {
       const int ksize_y = param_.kernel_height;
       const int ksize_x = param_.kernel_width;
-      if (!scalebysize) {
-        nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride);
-      }else{
-        nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
-            * (1.0f / (ksize_y * ksize_x));
+      if (is_identity) {
+        if (!scalebysize) {
+          nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride);
+        }else{
+          nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
+              * (1.0f / (ksize_y * ksize_x));
+        }
+      }  else {
+        if (!scalebysize) {
+          nodes_in[0]->data = F<BackOp>(nodes_in[0]->data) * 
+              unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride);
+        }else{
+          nodes_in[0]->data = F<BackOp>(nodes_in[0]->data) *
+              unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
+              * (1.0f / (ksize_y * ksize_x));
+        }
       }
     }
   }
