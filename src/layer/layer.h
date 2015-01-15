@@ -11,7 +11,9 @@
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #if CXXNET_USE_CUDNN == 1
- #include <cudnn.h>
+ #ifdef __CUDACC__
+  #include <cudnn.h>
+ #endif
 #endif
 
 /*! \brief namespace of cxxnet */
@@ -268,7 +270,6 @@ const int kXelu = 19;
 const int kCaffe = 20;
 // first apply relu then maxpooling
 const int kReluMaxPooling = 27;
-const int kCuDNNMaxPooling = 22;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -296,7 +297,6 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "lrn")) return kLRN;
   if (!strcmp(type, "concat")) return kConcat;
   if (!strcmp(type, "xelu")) return kXelu;
-  if (!strcmp(type, "cumax_pooling")) return kCuDNNMaxPooling;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
   #endif
