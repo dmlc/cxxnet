@@ -37,6 +37,7 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
                          ConnectState<xpu> *p_cstate) {
       mshadow::Tensor<xpu,4> &tmp = p_cstate->states[0];
       if (!init_cudnn_) {
+        init_cudnn_ = true;
         CUDA_CHECK(cudnnSetStream(handle_, nodes_out[0]->data.stream_->stream_));
         mshadow::Tensor<gpu, 4, float> &in = nodes_in[0]->data;
         mshadow::Tensor<gpu, 4, float> &out = nodes_out[0]->data;
