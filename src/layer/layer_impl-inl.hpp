@@ -19,6 +19,7 @@
 #include "./concat_layer-inl.hpp"
 #include "./cudnn_convolution_layer-inl.hpp"
 #include "./cudnn_pooling_layer-inl.hpp"
+#include "./xelu_layer-inl.hpp"
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
 #endif
@@ -49,6 +50,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kAvgPooling: return new CuDNNPoolingLayer<mshadow::red::sum, kAvgPooling, xpu>();
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
     case kConcat: return new ConcatLayer<xpu>();
+    case kXelu: return new XeluLayer<xpu>();
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
     #endif
