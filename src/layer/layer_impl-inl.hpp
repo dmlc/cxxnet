@@ -18,10 +18,9 @@
 #include "./pairtest_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
 #include "./cudnn_convolution_layer-inl.hpp"
- #include "./split_layer-inl.hpp"
-#ifdef __CUDACC__
+#include "./split_layer-inl.hpp"
 #include "./cudnn_pooling_layer-inl.hpp"
-#endif
+#include "./xelu_layer-inl.hpp"
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
 #endif
@@ -47,16 +46,13 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kFlatten: return new FlattenLayer<xpu>();
     case kReluMaxPooling: return
         new PoolingLayer<mshadow::red::maximum, false, xpu, false, op::relu, op::relu_grad>();
-    case kMaxPooling: return new PoolingLayer<mshadow::red::maximum, false, xpu>();
-    case kSumPooling: return new PoolingLayer<mshadow::red::sum, false, xpu>();
-    case kAvgPooling: return new PoolingLayer<mshadow::red::sum, true, xpu>();
+    case kMaxPooling: return new CuDNNPoolingLayer<mshadow::red::maximum, kMaxPooling, xpu>();
+    case kSumPooling: return new PoolingLayer<mshadow::red::sum, kSumPooling, xpu>();
+    case kAvgPooling: return new CuDNNPoolingLayer<mshadow::red::sum, kAvgPooling, xpu>();
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
     case kConcat: return new ConcatLayer<xpu>();
-#ifdef __CUDACC__
-    //case kXelu: return new CUConvolutionLayer<xpu>(p_rnd);
-    case kCuDNNMaxPooling: return new CuDNNPoolingLayer<mshadow::red::maximum, false, xpu>();
-#endif
     case kSplit: return new SplitLayer<xpu>();
+    case kXelu: return new XeluLayer<xpu>();
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
     #endif

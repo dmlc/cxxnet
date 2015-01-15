@@ -14,9 +14,10 @@ namespace layer {
 template <typename xpu>
 class XeluLayer : public ILayer<xpu> {
  public:
+  XeluLayer() { b_ = 5.0f; }
   virtual ~XeluLayer(void) {}
   virtual void SetParam(const char *name, const char* val) {
-    param_.SetParam(name, val);
+    if (!strcmp(name, "b")) b_ = atof(val);
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
@@ -31,8 +32,8 @@ class XeluLayer : public ILayer<xpu> {
                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
     // InitConnection is already called, no need to check size again
-    nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, param_.xelu);
-    mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data);
+    nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, b_);
+    mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data, nodes_out[0]->data.stream_);
   }
   virtual void Backprop(bool prop_grad,
                         const std::vector<Node<xpu>*> &nodes_in,
@@ -40,12 +41,12 @@ class XeluLayer : public ILayer<xpu> {
                         ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
     if (prop_grad) {
-      nodes_in[0]->data = F<op::xelu_grad>(nodes_in[0]->data, param_.xelu) * nodes_out[0]->data;
+      nodes_in[0]->data = F<op::xelu_grad>(nodes_in[0]->data, b_) * nodes_out[0]->data;
     }
   }
  private:
   /*! \brief parameters that potentially be useful */
-  LayerParam param_;
+  float b_;
 };
 
 } // namespace layer

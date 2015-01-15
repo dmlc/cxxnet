@@ -11,7 +11,9 @@
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #if CXXNET_USE_CUDNN == 1
- #include <cudnn.h>
+ #ifdef __CUDACC__
+  #include <cudnn.h>
+ #endif
 #endif
 
 /*! \brief namespace of cxxnet */
