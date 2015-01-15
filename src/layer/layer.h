@@ -267,8 +267,9 @@ const int kConcat = 18;
 const int kXelu = 19;
 const int kCaffe = 20;
 // first apply relu then maxpooling
-const int kReluMaxPooling = 27;
+const int kReluMaxPooling = 21;
 const int kCuDNNMaxPooling = 22;
+const int kSplit = 23;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -297,6 +298,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "concat")) return kConcat;
   if (!strcmp(type, "xelu")) return kXelu;
   if (!strcmp(type, "cumax_pooling")) return kCuDNNMaxPooling;
+  if (!strcmp(type, "split")) return kSplit;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
   #endif

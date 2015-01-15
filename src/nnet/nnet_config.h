@@ -198,27 +198,27 @@ struct NetConfig {
   // extend this later to support multiple connections
   inline LayerInfo GetLayerInfo(const char *name, const char *val, int top_node, int cfg_layer_index) {
     LayerInfo inf;
-    int a, b, num;
+    int a, b;
     int byte_now = 0;
-    const char* pointer = name;
     char ltype[256], tag[256];
+    char src[256];
     if (sscanf(name, "layer[+%d]", &b) == 1) {
       a = top_node; b += top_node;
       inf.nindex_in.push_back(a);
       inf.nindex_out.push_back(b);    
-    } else if (sscanf(name, "layer[%d->%d]", &a, &b) == 2) {
-      inf.nindex_in.push_back(a);
-      inf.nindex_out.push_back(b);
-    } else if (sscanf(name, "layer[%d:%n", &num, &byte_now) == 1) {
-        pointer += byte_now;
-        for (int i = 0; i < num; ++i){
-          sscanf(pointer, "%d%n", &a, &byte_now);
-          inf.nindex_in.push_back(a);
-          pointer += byte_now + 1;
-        }
-        pointer -= 1;
-        sscanf(pointer, "->%d", &b);
+    } else if (sscanf(name, "layer[%s", src) == 1) {
+      char* dst = strchr(src, '-');
+      dst += 2;
+      const char* pt = src;
+      while (sscanf(pt, "%d%n", &a, &byte_now) == 1){
+        inf.nindex_in.push_back(a);
+        pt += byte_now + 1;
+      }
+      pt = dst;
+      while (sscanf(pt, "%d%n", &b, &byte_now) == 1){
         inf.nindex_out.push_back(b);
+        pt += byte_now + 1;
+      }
     } else {
       utils::Error("invalid layer format %s", name);
     }

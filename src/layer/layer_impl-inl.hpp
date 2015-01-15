@@ -18,6 +18,7 @@
 #include "./pairtest_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
 #include "./cudnn_convolution_layer-inl.hpp"
+ #include "./split_layer-inl.hpp"
 #ifdef __CUDACC__
 #include "./cudnn_pooling_layer-inl.hpp"
 #endif
@@ -55,6 +56,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     //case kXelu: return new CUConvolutionLayer<xpu>(p_rnd);
     case kCuDNNMaxPooling: return new CuDNNPoolingLayer<mshadow::red::maximum, false, xpu>();
 #endif
+    case kSplit: return new SplitLayer<xpu>();
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
     #endif
