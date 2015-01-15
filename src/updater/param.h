@@ -46,11 +46,14 @@ struct UpdaterParam {
   float base_momentum_;
   /*! \brief final momentum */
   float final_momentum_;
+  /*! \brief saturation momentum epoch */
+  long saturation_epoch_;
+
   /*! \brief constructor that sets default parameters */
   UpdaterParam(void) {
     base_lr_ = 0.01f;
     base_momentum_ = 0.5f;
-    final_momentum_ = 0.65f;
+    final_momentum_ = 0.90f;
     momentum_schedule = 0;
     lr_schedule = 0;
     lr_step = 1;
@@ -65,10 +68,6 @@ struct UpdaterParam {
   }
   /*! \brief do learning rate or other parameter schedule at round epoch */
   inline void ScheduleEpoch(long epoch) {
-    if (epoch < start_epoch) {
-      learning_rate = base_lr_;
-      return;
-    }
     switch (lr_schedule) {
       case 0: learning_rate = base_lr_; break;
       case 1: learning_rate = base_lr_ * powf(lr_gamma, epoch / lr_step); break;
@@ -76,7 +75,16 @@ struct UpdaterParam {
       case 3: learning_rate = base_lr_ * powf(lr_factor, epoch / lr_step); break;
       default: utils::Error("unknown schedule type");
     }
+    if (momentum_schedule && saturation_epoch_) {
+      momentum += (final_momentum_ - base_momentum_) / saturation_epoch_ * epoch + base_momentum_;
+    }
+    momentum = momentum < final_momentum_ ? momentum : final_momentum_;
     learning_rate = learning_rate < lr_minimum ? lr_minimum : learning_rate;
+    if (epoch < start_epoch) {
+      learning_rate = base_lr_;
+      return;
+    }
+
   }
   /*!
    * \brief Set param for the layer from string
@@ -94,7 +102,10 @@ struct UpdaterParam {
     if (!strcmp(name, "wd")) wd = (float)atof(val);
     if (!strcmp(name, "momentum")) momentum = (float)atof(val);
     if (!strcmp(name, "silent")) silent = atoi(val);
-    
+    if (!strcmp(name, "momentum_schedule")) momentum_schedule = atoi(val);
+    if (!strcmp(name, "final_momentum")) final_momentum_ = atof(val);
+    if (!strcmp(name, "base_momentum")) base_momentum_ = atof(val);
+    if (!strcmp(name, "saturation_epoch")) saturation_epoch_ = atol(val);
     if (!strncmp(name, "lr:", 3) || !strncmp(name, "eta:",4)) {
       if (!strncmp(name, "lr:", 3)) name += 3;
       else name += 4;
