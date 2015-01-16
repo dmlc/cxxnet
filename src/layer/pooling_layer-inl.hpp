@@ -47,6 +47,8 @@ class PoolingLayer : public ILayer<xpu> {
     }else if (mode == kAvgPooling) {
       tmp = pool<Reducer>(nodes_in[0]->data, pshape, ksize_y, ksize_x, param_.stride)
           * (1.0f / (ksize_y*ksize_x));
+    } else {
+      utils::Error("Unknown pooling mode");
     }
     mshadow::Copy(nodes_out[0]->data, tmp, nodes_out[0]->data.stream_);
   }
@@ -65,6 +67,8 @@ class PoolingLayer : public ILayer<xpu> {
         }else if (mode == kAvgPooling) {
           nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
               * (1.0f / (ksize_y * ksize_x));
+        } else {
+          utils::Error("Unknown pooling mode");
         }
       }  else {
         if (mode == kMaxPooling || mode == kSumPooling) {
@@ -74,6 +78,8 @@ class PoolingLayer : public ILayer<xpu> {
           nodes_in[0]->data = F<BackOp>(nodes_in[0]->data) *
               unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
               * (1.0f / (ksize_y * ksize_x));
+        } else {
+          utils::Error("Unknown pooling mode");
         }
       }
     }
@@ -100,7 +106,7 @@ class PoolingLayer : public ILayer<xpu> {
                std::min(ishape[3] - ksize_x + kstride-1, ishape[3] - 1) / kstride + 1);
     nodes_out[0]->data.shape_ = oshape;
     // use 1 temp state to store pooled result
-    p_cstate->states.resize(1);
+    p_cstate->states.push_back(mshadow::TensorContainer<xpu,4>(false));
     p_cstate->states[0].Resize(oshape);
   }
   /*! \brief parameters that potentially be useful */

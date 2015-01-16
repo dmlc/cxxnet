@@ -31,6 +31,7 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
       CUDA_CHECK(cudnnDestroyPoolingDescriptor(pooling_desc_));
       CUDA_CHECK(cudnnDestroy(handle_));
     }
+
     virtual void Forward(bool is_train,
                          const std::vector<Node<xpu>*> &nodes_in,
                          const std::vector<Node<xpu>*> &nodes_out,
@@ -50,11 +51,15 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
       }
       float alpha = 1.0f;
       float beta = 0.0f;
+      utils::Assert(nodes_in[0]->data.CheckContiguous(), "contiguous in conv");
+      utils::Assert(nodes_out[0]->data.CheckContiguous(), "contiguous in conv");
+      utils::Assert(tmp.CheckContiguous(), "contiguous in conv");
       CUDA_CHECK(cudnnPoolingForward(handle_, pooling_desc_, &alpha,
                                      in_desc_, nodes_in[0]->data.dptr_, &beta,
                                      out_desc_, tmp.dptr_));
       mshadow::Copy(nodes_out[0]->data, tmp, nodes_out[0]->data.stream_);
     }
+
     virtual void Backprop(bool prop_grad,
                           const std::vector<Node<xpu>*> &nodes_in,
                           const std::vector<Node<xpu>*> &nodes_out,
@@ -74,31 +79,21 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
     inline void InitCuDNN() {
       init_cudnn_ = false;
       dtype_ = CUDNN_DATA_FLOAT;
+      switch(mode) {
+       case kMaxPooling: mode_ = CUDNN_POOLING_MAX; break;
+       case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE; break;
+       default: utils::Error("This should not happen -,-"); break;
+      }
       CUDA_CHECK(cudnnCreate(&handle_));
       CUDA_CHECK(cudnnCreateTensorDescriptor(&in_desc_));
       CUDA_CHECK(cudnnCreateTensorDescriptor(&out_desc_));
       CUDA_CHECK(cudnnCreatePoolingDescriptor(&pooling_desc_));
-      switch(mode) {
-      case kMaxPooling:
-        CUDA_CHECK(cudnnSetPooling2dDescriptor(pooling_desc_, CUDNN_POOLING_MAX,
-                                               Parent::param_.kernel_height,
-                                               Parent::param_.kernel_width,
-                                               0, 0,
-                                               Parent::param_.stride,
-                                               Parent::param_.stride));
-        break;
-      case kAvgPooling:
-        CUDA_CHECK(cudnnSetPooling2dDescriptor(pooling_desc_, CUDNN_POOLING_AVERAGE,
-                                               Parent::param_.kernel_height,
-                                               Parent::param_.kernel_width,
-                                               0, 0,
-                                               Parent::param_.stride,
-                                               Parent::param_.stride));
-        break;
-      default:
-        utils::Error("This should not happen -,-");
-      }
-
+      CUDA_CHECK(cudnnSetPooling2dDescriptor(pooling_desc_, mode_,
+                                             Parent::param_.kernel_height,
+                                             Parent::param_.kernel_width,
+                                             0, 0,
+                                             Parent::param_.stride,
+                                             Parent::param_.stride));
 
     }
     /*! \brief cudnn init state flag*/

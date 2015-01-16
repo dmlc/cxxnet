@@ -69,6 +69,8 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
                                                          &workspace_size_));
       temp_.Resize(mshadow::Shape1(workspace_size_ / sizeof(float) + 1), 0.0f);
     }
+    utils::Assert(nodes_in[0]->data.CheckContiguous(), "contiguous in conv");
+    utils::Assert(nodes_out[0]->data.CheckContiguous(), "contiguous in conv");
     CUDA_CHECK(cudnnConvolutionForward(handle_, &alpha,
                                        in_desc_, nodes_in[0]->data.dptr_,
                                        filter_desc_, Parent::wmat_.dptr_,
