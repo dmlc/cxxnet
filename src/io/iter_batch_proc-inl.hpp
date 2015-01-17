@@ -42,8 +42,8 @@ public:
                     "input_shape must be three consecutive integers without space example: 1,1,200 ");
     }
     if (!strcmp(name, "round_batch")) round_batch_ = atoi(val);
-    if (!strcmp(name, "silent"))      silent_ = atoi(val);
-    if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
+    if (!strcmp(name, "silent")) silent_ = atoi(val);
+    if (!strcmp(name, "test_skipread")) test_skipread_ = atoi(val);
   }
   virtual void Init(void) {
     base_->Init();

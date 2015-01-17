@@ -24,10 +24,10 @@ class MNISTIterator: public IIterator<DataBatch> {
     if (img_.dptr_ != NULL) delete []img_.dptr_;
   }
   virtual void SetParam(const char *name, const char *val) {
-    if (!strcmp(name, "silent"))       silent_ = atoi(val);            
+    if (!strcmp(name, "silent")) silent_ = atoi(val);
     if (!strcmp(name, "batch_size"))   batch_size_ = (index_t)atoi(val); 
     if (!strcmp(name, "input_flat"))   mode_ = atoi(val);
-    if (!strcmp(name, "shuffle"))      shuffle_ = atoi(val);
+    if (!strcmp(name, "shuffle")) shuffle_ = atoi(val);
     if (!strcmp(name, "index_offset")) inst_offset_ = atoi(val);
     if (!strcmp(name, "path_img"))     path_img = val;
     if (!strcmp(name, "path_label"))   path_label = val;            

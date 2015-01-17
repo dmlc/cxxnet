@@ -19,12 +19,14 @@ class DenseBufferIterator : public IIterator<DataBatch> {
       : base_(base) {
     max_nbatch_ = 100;
     data_index_ = 0;
+    silent_ = 0;
   }
   virtual void SetParam(const char *name, const char *val) {
     base_->SetParam(name, val);
     if (!strcmp(name, "max_nbatch")) {
       max_nbatch_ = static_cast<size_t>(atol(val));
     }
+    if (!strcmp(name, "silent")) silent_ = atoi(val);
   }
   virtual void Init(void) {
     base_->Init();
@@ -36,6 +38,10 @@ class DenseBufferIterator : public IIterator<DataBatch> {
       v.CopyFromDense(batch);
       buffer_.push_back(v);
       if (buffer_.size() >= max_nbatch_) break;
+    }
+    if (silent_ == 0) {
+      printf("DenseBufferIterator: load %d batches\n",
+             static_cast<int>(buffer_.size()));
     }
   }
   virtual void BeforeFirst(void) {
@@ -56,6 +62,8 @@ class DenseBufferIterator : public IIterator<DataBatch> {
   }  
   
  private:
+  // silent
+  int silent_;
   // maximum number of batch in buffer
   size_t max_nbatch_;
   // data index 
