@@ -25,6 +25,7 @@ class LRNLayer : public ILayer<xpu> {
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     tmp_in.set_stream(stream);
+    p_cstates->state[0].data.set_stream(stream);
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,

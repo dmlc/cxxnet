@@ -136,7 +136,10 @@ private:
         cv::Point2f pt(len / 2.0f, len / 2.0f);
         cv::Mat r = cv::getRotationMatrix2D(pt, angle, 1.0);
         cv::Mat temp;
-        cv::warpAffine(res, temp, r, cv::Size(len, len));
+        cv::warpAffine(res, temp, r, cv::Size(len, len),
+              cv::INTER_CUBIC, 
+              cv::BORDER_CONSTANT, 
+              cv::Scalar(255, 255, 255));
         res = temp;
       }
       if (min_crop_size_ > 0 && max_crop_size_ > 0) {

@@ -25,20 +25,22 @@ class NAGUpdater : public IUpdater<xpu> {
       printf("NAGUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum);
     }
     m_w.Resize(w.shape_, 0.0f);
+    old_m_w.Resize(w.shape_, 0.0f);
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     w.set_stream(stream);
+    dw.set_stream(stream);
     m_w.set_stream(stream);
+    old_m_w.set_stream(stream);
   }
   virtual void Update(long epoch) {
     param.ScheduleEpoch(epoch);
-    w -= (param.learning_rate) * (dw + param.wd * w);
-    m_w += (-param.learning_rate) * (dw + param.wd * w);
+    mshadow::Copy(old_m_w, m_w, old_m_w.stream_);
     m_w *= param.momentum;
-    w += m_w;
+    m_w += (-param.learning_rate) * (dw + param.wd * w);
+    w += (1 + param.momentum) * m_w - param.momentum * old_m_w;
     // dw accumulate gradient instead of storing them, updater need to reset then to 0 after each update
     dw = 0.0f;
-
   }
   virtual void StartRound(int round) {
     param.round = round;
@@ -55,7 +57,7 @@ class NAGUpdater : public IUpdater<xpu> {
   // variales
   mshadow::Tensor<xpu,dim> w, dw;
   // momentum variable
-  mshadow::TensorContainer<xpu,dim> m_w;
+  mshadow::TensorContainer<xpu,dim> m_w, old_m_w;
 };  // class SGDUpdater
 }  // namespace updater
 }  // namespace cxxnet
