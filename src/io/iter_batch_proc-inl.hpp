@@ -1,14 +1,12 @@
-#ifndef ITER_BATCH_PROC_INL_HPP
-#define ITER_BATCH_PROC_INL_HPP
-#pragma once
+#ifndef CXXNET_ITER_BATCH_PROC_INL_HPP_
+#define CXXNET_ITER_BATCH_PROC_INL_HPP_
 /*!
- * \file cxxnet_iter_proc-inl.hpp
+ * \file iter_batch_proc-inl.hpp
  * \brief definition of preprocessing iterators that takes an iterator and do some preprocessing
  * \author Tianqi Chen
  */
-#include "mshadow/tensor.h"
-#include "mshadow/tensor_container.h"
-#include "data.h"
+#include <mshadow/tensor.h>
+#include "./data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "../utils/global_random.h"
@@ -131,9 +129,7 @@ private:
   // number of overflow instances that readed in round_batch mode
   int num_overflow_;
 }; // class BatchAdaptIterator
-}; // namespace cxxnet
 
-namespace cxxnet {
 /*! \brief thread buffer iterator */
 class ThreadBufferIterator: public IIterator< DataBatch > {
 public :
@@ -218,5 +214,5 @@ private:
   DataBatch out_;
   utils::ThreadBuffer<DataBatch, Factory> itr;
 }; // class ThreadBufferIterator
-}; // namespace cxxnet
-#endif
+}  // namespace cxxnet
+#endif  // CXXNET_ITER_BATCH_PROC_INL_HPP_

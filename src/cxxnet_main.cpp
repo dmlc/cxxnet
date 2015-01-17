@@ -13,7 +13,7 @@
 namespace cxxnet{
 using namespace nnet;
 
-class CXXNetLearnTask{
+class CXXNetLearnTask {
  public:
   CXXNetLearnTask(void) {
     this->task = "train";
@@ -154,15 +154,6 @@ class CXXNetLearnTask{
   }
   // create a neural net
   inline INetTrainer* CreateNet(void) {
-    if (!strncmp(device.c_str(), "gpu", 3)) {
-      //int devid;
-      //if (sscanf(device.c_str(), "gpu:%d", &devid) == 1) {
-      //this->device = "gpu";
-      //mshadow::InitTensorEngine(devid);
-      //}else{
-      ////mshadow::InitTensorEngine(0);
-      //}
-    }
     if (reset_net_type != -1) {
       net_type = reset_net_type;
     }
@@ -402,7 +393,7 @@ class CXXNetLearnTask{
   /*! \brief file name to write prediction */
   std::string name_pred;
 };
-};
+}  // namespace cxxnet
 
 int main(int argc, char *argv[]) {
   cxxnet::CXXNetLearnTask tsk;

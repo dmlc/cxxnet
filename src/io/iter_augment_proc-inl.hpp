@@ -1,13 +1,11 @@
-#ifndef ITER_PROC_INL_HPP
-#define ITER_PROC_INL_HPP
-#pragma once
+#ifndef CXXNET_ITER_PROC_INL_HPP_
+#define CXXNET_ITER_PROC_INL_HPP_
 /*!
- * \file cxxnet_iter_proc-inl.hpp
- * \brief definition of preprocessing iterators that takes an iterator and do some preprocessing
- * \author Tianqi Chen
+ * \file iter_augment_proc-inl.hpp
+ * \brief processing unit to do data augmention
+ * \author Tianqi Chen, Bing Xu, Naiyan Wang
  */
-#include "mshadow/tensor.h"
-#include "mshadow/tensor_container.h"
+#include <mshadow/tensor.h>
 #include "data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
@@ -243,14 +241,10 @@ private:
 private:
   // base iterator
   IIterator<DataInst> *base_;
-  // batch size
-  index_t batch_size_;
   // input shape
   mshadow::Shape<4> shape_;
   // output data
   DataInst out_;
-  // on first
-  int head_;
   // skip read
   int test_skipread_;
   // silent
@@ -286,6 +280,6 @@ private:
   float mean_g_;
   float mean_b_;
   bool meanfile_ready_;
-}; // class AugmentIterator
-}; // namespace cxxnet
+};  // class AugmentIterator
+}  // namespace cxxnet
 #endif

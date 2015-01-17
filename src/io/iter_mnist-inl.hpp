@@ -1,8 +1,11 @@
-#ifndef MNIST_ITER_INL_HPP
-#define MNIST_ITER_INL_HPP
-#pragma once
-
-#include "mshadow/tensor_container.h"
+#ifndef CXXNET_ITER_MNIST_INL_HPP_
+#define CXXNET_ITER_MNIST_INL_HPP_
+/*!
+ * \file iter_mnist-inl.hpp
+ * \brief iterator that takes mnist dataset
+ * \author Tianqi Chen
+ */
+#include <mshadow/tensor.h>
 #include "data.h"
 #include "../utils/io.h"
 #include "../utils/global_random.h"
@@ -142,5 +145,5 @@ class MNISTIterator: public IIterator<DataBatch> {
   // instance index
   std::vector<unsigned> inst_; 
 }; //class MNISTIterator
-}; // namespace cxxnet
-#endif // CXXNET_MNIST_HPP
+}  // namespace cxxnet
+#endif  // CXXNET_ITER_MNIST_INL_HPP_

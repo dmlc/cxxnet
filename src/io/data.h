@@ -110,8 +110,8 @@ public:
   /*! \brief auxiliary  functionto allocate space, if needed */
   inline void AllocSpaceDense(mshadow::Shape<4> shape, mshadow::index_t batch_size, bool pad = false) {
     data = mshadow::NewTensor<mshadow::cpu>(shape, 0.0f, pad);
-    labels = new float[ batch_size ];
-    inst_index = new unsigned[ batch_size ];
+    labels = new float[batch_size];
+    inst_index = new unsigned[batch_size];
     this->batch_size = batch_size;
   }
   /*! \brief auxiliary function to free space, if needed, dense only */
@@ -149,13 +149,10 @@ public:
     return inst;
   }
 }; // struct DataBatch
-}; // namespace cxxnet
-
-namespace cxxnet {
 /*!
  * \brief create iterator from configure settings
  * \param cfg configure settings key=vale pair
  */
 IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, std::string> > &cfg);
-}; // namespace cxxnet
+}  // namespace cxxnet
 #endif
