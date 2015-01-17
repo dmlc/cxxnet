@@ -28,6 +28,7 @@ class SGDUpdater : public IUpdater<xpu> {
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     w.set_stream(stream);
+    dw.set_stream(stream);
     m_w.set_stream(stream);
   }
   virtual void Update(long epoch) {
