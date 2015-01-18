@@ -1,19 +1,18 @@
-#ifndef ITER_THREAD_IMBIN_INL_HPP
-#define ITER_THREAD_IMBIN_INL_HPP
-#pragma once
+#ifndef CXXNET_ITER_THREAD_IMBIN_INL_HPP_
+#define CXXNET_ITER_THREAD_IMBIN_INL_HPP_
 /*!
- * \file cxxnet_iter_thread_imbin-inl.hpp
- * \brief threaded version of page iterator
+ * \file iter_thread_imbin-inl.hpp
+ * \brief threaded version of image binary iterator
  * \author Tianqi Chen
  */
-#include "data.h"
 #include <opencv2/opencv.hpp>
+#include "./data.h"
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
 
 namespace cxxnet {
 /*! \brief thread buffer iterator */
-class ThreadImagePageIterator: public IIterator< DataInst > {
+class ThreadImagePageIterator: public IIterator<DataInst> {
 public:
   ThreadImagePageIterator(void) {
     img_.set_pad(false);
@@ -28,9 +27,9 @@ public:
     if (fplst_ != NULL) fclose(fplst_);
   }
   virtual void SetParam(const char *name, const char *val) {
-    if (!strcmp(name, "image_list"))    path_imglst_ = val;
-    if (!strcmp(name, "image_bin"))     path_imgbin_ = val;
-    if (!strcmp(name, "silent"))      silent_ = atoi(val);
+    if (!strcmp(name, "image_list")) path_imglst_ = val;
+    if (!strcmp(name, "image_bin")) path_imgbin_ = val;
+    if (!strcmp(name, "silent")) silent_ = atoi(val);
   }
   virtual void Init(void) {
     fplst_  = utils::FopenCheck(path_imglst_.c_str(), "r");
@@ -139,5 +138,4 @@ protected:
   utils::ThreadBuffer<PagePtr, Factory> itr;
 }; // class ThreadImagePageIterator
 }; // namespace cxxnet
-#endif
-
+#endif  // CXXNET_THREAD_IMBIN_INL_HPP_

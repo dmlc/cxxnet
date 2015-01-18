@@ -3,23 +3,18 @@
 
 #include <string>
 #include <vector>
-#include "mshadow/tensor.h"
-#include "data.h"
+#include <mshadow/tensor.h>
+#include "./data.h"
 #include "../global.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
 #include "iter_mnist-inl.hpp"
 #include "iter_augment_proc-inl.hpp"
 #include "iter_batch_proc-inl.hpp"
-#include "iter_sparse-inl.hpp"
-//#include "iter_thread_npybin-inl.hpp"
+#include "iter_mem_buffer-inl.hpp"
 
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
-#endif
-
-#if CXXNET_ADAPT_XGBOOST
-#include "../plugin/cxxnet_xgboost_iter-inl.hpp"
 #endif
 
 namespace cxxnet {
@@ -41,43 +36,18 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
         continue;
       }
       #endif
-
-      #if CXXNET_ADAPT_XGBOOST
-      if (!strcmp(val, "xgboost")) {
-        utils::Assert(it == NULL);
-        //it = new SparseBatchAdapter(new XGBoostPageIterator()); continue;
-      }
-      if (!strcmp(val, "xgboostdense")) {
-        utils::Assert(it == NULL, "xgboost dense must not be empty");
-        //it = new BatchAdaptIterator(new Sparse2DenseIterator(new XGBoostPageIterator())); continue;
-      }
-      #endif
-
-      if (!strcmp(val, "sparsebin")) {
-        utils::Assert(it == NULL, "sparsebin can not chain over other iterator");
-        //it = new SparseBatchAdapter(new ThreadSparsePageIterator()); continue;
-      }
-
-      if (!strcmp(val, "npybin")) {
-        utils::Assert(it == NULL, "npybin can not chain over other iterator");
-        //it = new BatchAdaptIterator(new ThreadNpyPageIterator()); continue;
-      }
       if (!strcmp(val, "threadbuffer")) {
         utils::Assert(it != NULL, "must specify input of threadbuffer");
         it = new ThreadBufferIterator(it);
         continue;
       }
-
-      if (!strcmp(val, "d2sparse")) {
-        utils::Assert(it != NULL, "must specify input of threadbuffer");
-        it = new Dense2SparseAdapter(it);
+      if (!strcmp(val, "membuffer")) {
+        utils::Assert(it != NULL, "must specify input of memory buffer");
+        it = new DenseBufferIterator(it);
         continue;
       }
-
-     
-      utils::Error("unknown iterator type");
+      utils::Error("unknown iterator type %s", val);
     }
-
     if (it != NULL) {
       it->SetParam(name, val);
     }
@@ -85,4 +55,4 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
   utils::Assert(it != NULL, "must specify iterator by iter=itername");
   return it;
 }
-}; // namespace cxxnet
+} // namespace cxxnet

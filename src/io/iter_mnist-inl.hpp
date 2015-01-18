@@ -1,8 +1,11 @@
-#ifndef MNIST_ITER_INL_HPP
-#define MNIST_ITER_INL_HPP
-#pragma once
-
-#include "mshadow/tensor_container.h"
+#ifndef CXXNET_ITER_MNIST_INL_HPP_
+#define CXXNET_ITER_MNIST_INL_HPP_
+/*!
+ * \file iter_mnist-inl.hpp
+ * \brief iterator that takes mnist dataset
+ * \author Tianqi Chen
+ */
+#include <mshadow/tensor.h>
 #include "data.h"
 #include "../utils/io.h"
 #include "../utils/global_random.h"
@@ -21,10 +24,10 @@ class MNISTIterator: public IIterator<DataBatch> {
     if (img_.dptr_ != NULL) delete []img_.dptr_;
   }
   virtual void SetParam(const char *name, const char *val) {
-    if (!strcmp(name, "silent"))       silent_ = atoi(val);            
+    if (!strcmp(name, "silent")) silent_ = atoi(val);
     if (!strcmp(name, "batch_size"))   batch_size_ = (index_t)atoi(val); 
     if (!strcmp(name, "input_flat"))   mode_ = atoi(val);
-    if (!strcmp(name, "shuffle"))      shuffle_ = atoi(val);
+    if (!strcmp(name, "shuffle")) shuffle_ = atoi(val);
     if (!strcmp(name, "index_offset")) inst_offset_ = atoi(val);
     if (!strcmp(name, "path_img"))     path_img = val;
     if (!strcmp(name, "path_label"))   path_label = val;            
@@ -142,5 +145,5 @@ class MNISTIterator: public IIterator<DataBatch> {
   // instance index
   std::vector<unsigned> inst_; 
 }; //class MNISTIterator
-}; // namespace cxxnet
-#endif // CXXNET_MNIST_HPP
+}  // namespace cxxnet
+#endif  // CXXNET_ITER_MNIST_INL_HPP_
