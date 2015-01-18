@@ -25,7 +25,6 @@ class LRNLayer : public ILayer<xpu> {
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     tmp_in.set_stream(stream);
-    p_cstates->state[0].data.set_stream(stream);
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
@@ -67,7 +66,7 @@ class LRNLayer : public ILayer<xpu> {
     const real_t salpha = alpha_ / nsize_;
     if (prop_grad) {
       // backup input data
-      mshadow::Copy(tmp_in, nodes_in[0]->data);
+      mshadow::Copy(tmp_in, nodes_in[0]->data, tmp_in.stream_);
       // first gradient to a[i], will be 1 / normalizer
       nodes_in[0]->data = nodes_out[0]->data * F<op::power>(tmp_norm, -beta_);
       // gradient to normalizer
