@@ -106,6 +106,13 @@ struct NeuralNet {
     this->AdjustBatchSize(batch.size(0));
     // copy data into node
     mshadow::Copy(nodes[0].data, batch, stream);
+    // setup updater notification
+    for (size_t i = connections.size(); i != 0; --i) {
+      for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
+        updaters[i - 1][j]->BeforeForward();
+      }
+    }
+    // start forward prop
     for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
       for (size_t j = 0; j < updaters[i].size(); ++j) {

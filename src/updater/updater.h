@@ -74,7 +74,12 @@ class IAsyncUpdater : public IUpdater<xpu> {
    * \param do_update whether an update is performed in this iteration
    * \param epoch the update epoch if doing update
    */  
-  virtual void AfterBackprop(bool do_update, long epoch) = 0;  
+  virtual void AfterBackprop(bool do_update, long epoch) = 0;
+  /*!
+   * \brief this function will be called before
+   * the forwardprop of all layers being calls
+   */
+  virtual void BeforeForward(void) = 0;
   /*!
    * \brief block until update is finished
    * if there were no update or update was already finished

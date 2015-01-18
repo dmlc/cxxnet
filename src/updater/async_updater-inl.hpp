@@ -26,6 +26,9 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     fullc_gather = 0;
     local_batch_size = 0;
     total_batch_size = 0;
+    pull_at_backprop = 1;
+    bigarray_bound = 1000 * 1000;
+    pull_not_issued = false;
     total = 0;
   }
   virtual ~AsyncUpdater(void) {
@@ -77,9 +80,13 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       if (do_update) {
         this->update_epoch = epoch;
         pserver->Push(dw, data_key, devid, priority);
-        pserver->PullReq(dw, data_key, devid, priority,
-                         ApplyUpdate_,
-                         this);
+        if (pull_at_backprop != 0) {
+          pserver->PullReq(dw, data_key, devid, priority,
+                           ApplyUpdate_,
+                           this);      
+        } else {
+          pull_not_issued = true;
+        }
       }
     } else {
       this->do_update = do_update;
@@ -91,6 +98,14 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       pserver->Push(tnode.Slice(0, local_batch_size), data_key, devid, priority);
       pserver->PullReq(tnode, data_key, devid, priority,
                        ApplyGatherUpdate_, this);
+    }
+  }
+  virtual void BeforeForward(void) {
+    if (pull_not_issued) {
+      pserver->PullReq(dw, data_key, devid, priority,                     
+                       ApplyUpdate_,
+                       this);
+      pull_not_issued = false;
     }
   }
   virtual void UpdateWait(void) {
@@ -113,6 +128,16 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     }
     if (!strcmp(name, "batch_size")) {
       total_batch_size = static_cast<index_t>(atoi(val));
+    }
+    if (!strcmp(name, "pull_at_backprop")) {
+      if (!strcmp(val, "auto")) {
+        pull_at_backprop = w.MSize() < bigarray_bound;
+      } else {
+        pull_at_backprop = atoi(val);
+      }
+    }
+    if (!strcmp(name, "bigarray_bound")) {
+      bigarray_bound = static_cast<size_t>(atol(val));
     }
   }
   virtual void ApplyVisitor(typename IUpdater<xpu>::IVisitor *pvisitor) {
@@ -151,6 +176,12 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   std::string tag;
   mshadow::ps::IParamServer<xpu, real_t> *pserver;
   IUpdater<xpu> *updater;
+  // whether issue pull request at backprop
+  int pull_at_backprop;
+  // whether there is un-issued pullreq
+  bool pull_not_issued;
+  // big array bound
+  int bigarray_bound;
   // the following data structure are used to support fullc_gather
   // use gather update for fullc layer
   int fullc_gather;
