@@ -26,7 +26,6 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     fullc_gather = 0;
     local_batch_size = 0;
     total_batch_size = 0;
-    total = 0;
   }
   virtual ~AsyncUpdater(void) {
     delete updater;
@@ -95,13 +94,9 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   }
   virtual void UpdateWait(void) {
     if (pserver == NULL) return;
-    double begin = cxxnet::utils::GetTime();
     pserver->PullWait(data_key, devid);
-    double end = cxxnet::utils::GetTime();
-    total += end - begin;
   }
   virtual void StartRound(int round) {
-    printf("Round %d: %f\n", round, total);
     updater->StartRound(round);
   }
   virtual void SetParam(const char *name, const char *val) {
@@ -162,7 +157,6 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   index_t local_batch_size, total_batch_size;
   // temporal result 
   mshadow::TensorContainer<xpu, 2> tnode; 
-  double total; 
 };
 }  // updater
 }  // cxxnet

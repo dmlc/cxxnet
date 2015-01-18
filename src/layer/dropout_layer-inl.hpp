@@ -41,10 +41,12 @@ class DropoutLayer : public ILayer<xpu> {
                        ConnectState<xpu> *p_cstate) {
     using namespace mshadow::expr;
     mshadow::TensorContainer<xpu,4> &mask = p_cstate->states[0];
+    const real_t pkeep = 1.0f - dropout_threshold;
     if (is_train) {
-      const real_t pkeep = 1.0f - dropout_threshold;
-      mask = F<op::threshold>(prnd_->uniform(mask.shape_), pkeep) * (1.0f / pkeep);
+      mask = F<op::threshold>(prnd_->uniform(mask.shape_), pkeep);
       nodes_out[0]->data = nodes_out[0]->data * mask;
+    } else {
+      nodes_out[0]->data *= pkeep;
     }
   }
   virtual void Backprop(bool prop_grad,

@@ -154,6 +154,8 @@ private:
         } else {
           y /= 2; x /= 2;
         }
+        if (crop_y_start_ != -1) y = crop_y_start_;
+        if (crop_x_start_ != -1) x = crop_x_start_;
         cv::Rect roi(y, x, crop_size_y, crop_size_x);
         res = res(roi);
         crop_y_start_ = crop_x_start_ = 0;
