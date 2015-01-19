@@ -182,8 +182,13 @@ private:
       } else {
         yy /= 2; xx /= 2;
       }
-      if (cut) yy = 0;
-      if (cut) xx = 0;
+      if (cut) {
+        yy = 0;
+        xx = 0;
+      } else {
+        if (crop_y_start_ != -1) yy = crop_y_start_;
+        if (crop_x_start_ != -1) xx = crop_x_start_;
+      }
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
         d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
         if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
