@@ -109,6 +109,7 @@ public:
 private:
   inline void SetData(const DataInst &d) {
     using namespace mshadow::expr;
+    bool cut = false;
     out_.label = d.label;
     out_.index = d.index;
     img_.Resize(mshadow::Shape3(d.data.shape_[0], shape_[1], shape_[2]));
@@ -135,8 +136,8 @@ private:
         cv::Mat r = cv::getRotationMatrix2D(pt, angle, 1.0);
         cv::Mat temp;
         cv::warpAffine(res, temp, r, cv::Size(len, len),
-              cv::INTER_CUBIC, 
-              cv::BORDER_CONSTANT, 
+              cv::INTER_CUBIC,
+              cv::BORDER_CONSTANT,
               cv::Scalar(255, 255, 255));
         res = temp;
       }
@@ -158,7 +159,7 @@ private:
         if (crop_x_start_ != -1) x = crop_x_start_;
         cv::Rect roi(y, x, crop_size_y, crop_size_x);
         res = res(roi);
-        crop_y_start_ = crop_x_start_ = 0;
+        cut = true;
         cv::resize(res, res, cv::Size(shape_[1], shape_[2]));
         out_h = shape_[1];
         out_w = shape_[2];
@@ -181,8 +182,8 @@ private:
       } else {
         yy /= 2; xx /= 2;
       }
-      if (crop_y_start_ != -1) yy = crop_y_start_;
-      if (crop_x_start_ != -1) xx = crop_x_start_;
+      if (cut) yy = 0;
+      if (cut) xx = 0;
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
         d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
         if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
