@@ -5,18 +5,16 @@ export NVCC =nvcc
 # all tge possible warning tread
 export WARNFLAGS= -Wall -Wno-unused-parameter -Wno-unknown-pragmas
 export IFLAGS=-I/opt/intel/mkl/include -I/usr/local/cuda-6.0/include/ -L/opt/intel/mkl/lib/intel64 -L/opt/intel/lib/intel64 -L/usr/local/cuda-6.0/lib64 
-export CFLAGS = -g -O3 -msse3 -funroll-loops -I./mshadow/  -fopenmp -DMSHADOW_FORCE_STREAM $(IFLAGS) $(WARNFLAGS) -DMSHADOW_DIST_PS_=0
+export CFLAGS = -g -O3 -msse3 -funroll-loops -I./mshadow/  -fopenmp -DMSHADOW_FORCE_STREAM $(IFLAGS) $(WARNFLAGS) 
 export blas=0
 export noopencv=0
 export usecaffe=0
+
 ifeq ($(blas),1)
  LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
 else
  LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz
-endif
-ifeq ($(xgboost),1)
-	CFLAGS+= -DCXXNET_ADAPT_XGBOOST=1 -I../xgboost
 endif
 
 ifeq ($(noopencv),1)
@@ -41,6 +39,14 @@ OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 .PHONY: clean all
+
+ifeq ($(ps),1)
+	CFLAGS += -DMSHADOW_DIST_PS_=1
+	BIN += bin/cxxnet.ps
+else
+	CFLAGS += -DMSHADOW_DIST_PS_=0	
+endif
+
 
 all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 
