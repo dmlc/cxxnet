@@ -27,6 +27,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     local_batch_size = 0;
     total_batch_size = 0;
     pull_at_backprop = 1;
+    update_on_server = 0;
     bigarray_bound = 1000 * 1000;
     pull_not_issued = false;
   }
@@ -34,7 +35,13 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     delete updater;
   }
   virtual void Init(void) {
-    updater->Init();
+    if (update_on_server != 0) {
+      utils::Check(pserver != NULL,
+                   "parameter server must not be empty");
+      delete updater; updater = NULL;
+    } else {
+      updater->Init();
+    }
     if (fullc_gather != 0 && pserver != NULL) {
       char name[32];
       sprintf(name, "push_op[%d]", data_key);
@@ -42,12 +49,13 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     }
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
-    updater->SetStream(stream);
+    if (updater != NULL) updater->SetStream(stream);
     tnode.set_stream(stream);
   }
   virtual void BeforeBackprop(const std::vector<layer::Node<xpu>*> &nodes_in,
                               const std::vector<layer::Node<xpu>*> &nodes_out) {
     if (fullc_gather != 0) {
+      utils::Check(update_on_server == 0, "GatherUpdate can not use update_on_server");
       utils::Check(nodes_in.size() == 1, "fullc_gather can only work with fullc");
       utils::Check(nodes_out.size() == 1, "fullc_gather can only work with fullc");
       mshadow::Tensor<xpu, 2> in = nodes_in[0]->mat();
@@ -79,15 +87,21 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       if (do_update) {
         this->update_epoch = epoch;
         pserver->Push(dw, data_key, devid, priority);
-        if (pull_at_backprop != 0) {
-          pserver->PullReq(dw, data_key, devid, priority,
-                           ApplyUpdate_,
-                           this);      
+        if (update_on_server == 0) {
+          if (pull_at_backprop != 0) {          
+            pserver->PullReq(dw, data_key, devid, priority,
+                             ApplyUpdate_,
+                             this);
+          } else {
+            pull_not_issued = true;
+          }
         } else {
-          pull_not_issued = true;
+          // pull weight directly from server
+          pserver->PullReq(w, data_key, devid, priority);
         }
       }
     } else {
+      utils::Check(update_on_server == 0, "GatherUpdate can not use update_on_server");
       this->do_update = do_update;
       this->update_epoch = epoch;
       if (do_update && pserver == NULL) {
@@ -152,12 +166,15 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   }
   inline static void ApplyUpdate_(mshadow::Stream<xpu> *stream, void *arg) {
     AsyncUpdater<xpu> *up = static_cast<AsyncUpdater<xpu>*>(arg);
-    up->updater->SetStream(stream);
-    up->updater->Update(up->update_epoch);
+    if (up->update_on_server == 0) {
+      up->updater->SetStream(stream);
+      up->updater->Update(up->update_epoch);
+    }
   }
   
-  inline static void ApplyGatherUpdate_(mshadow::Stream<xpu> *stream, void *arg) {
+  inline static void ApplyGatherUpdate_(mshadow::Stream<xpu> *stream, void *arg) {    
     AsyncUpdater<xpu> *up = static_cast<AsyncUpdater<xpu>*>(arg);
+    utils::Check(up->update_on_server == 0, "GatherUpdate can not use update_on_server");
     up->CalcDelta(stream);
     if (up->do_update) {
       up->updater->SetStream(stream);
@@ -176,7 +193,9 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   // whether there is un-issued pullreq
   bool pull_not_issued;
   // big array bound
-  int bigarray_bound;
+  size_t bigarray_bound;
+  // perform update on server side
+  int update_on_server;
   // the following data structure are used to support fullc_gather
   // use gather update for fullc layer
   int fullc_gather;

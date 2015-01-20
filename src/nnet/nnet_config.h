@@ -53,11 +53,13 @@ struct NetConfig {
      *  this field is only used when layer type is kSharedLayer
      */
     int primary_layer_index;
+    /*! \brief layer name */
+    std::string name;
     /*! \brief input node index */
     std::vector<int> nindex_in;
     /*! \brief output node node index */    
     std::vector<int> nindex_out;
-    LayerInfo(void) : primary_layer_index(-1) {
+    LayerInfo(void) : primary_layer_index(-1), name() {
     }
     /*! \brief equality check */
     inline bool operator==(const LayerInfo &b) const {
@@ -65,6 +67,7 @@ struct NetConfig {
           primary_layer_index != b.primary_layer_index ||
           nindex_in.size() != b.nindex_in.size() ||
           nindex_out.size() != b.nindex_out.size())  return false;
+      if (name != b.name) return false;
       for (size_t i = 0; i < nindex_in.size(); ++i) {
         if (nindex_in[i] != b.nindex_in[i]) return false;
       }
@@ -111,9 +114,10 @@ struct NetConfig {
     for (int i = 0; i < param.num_layers; ++i) {
       fo.Write(&layers[i].type, sizeof(layer::LayerType));
       fo.Write(&layers[i].primary_layer_index, sizeof(int));
+      fo.Write(layers[i].name);
       fo.Write(layers[i].nindex_in);
       fo.Write(layers[i].nindex_out);
-    } 
+    }
   }
   /*!
    * \brief save network structure from input
@@ -126,13 +130,22 @@ struct NetConfig {
                  "NetConfig: invalid model file");
     layers.resize(param.num_layers);
     layercfg.resize(param.num_layers);
+    layer_name_map.clear();
     for (int i = 0; i < param.num_layers; ++i) {
       utils::Check(fi.Read(&layers[i].type, sizeof(layer::LayerType)) != 0,
                  "NetConfig: invalid model file");
       utils::Check(fi.Read(&layers[i].primary_layer_index, sizeof(int)) != 0,
-                 "NetConfig: invalid model file");                   
+                 "NetConfig: invalid model file");
+      utils::Check(fi.Read(&layers[i].name), "NetConfig: invalid model file");
       utils::Check(fi.Read(&layers[i].nindex_in), "NetConfig: invalid model file");
       utils::Check(fi.Read(&layers[i].nindex_out), "NetConfig: invalid model file");
+      if (layers[i].type == layer::kSharedLayer) { 
+        utils::Check(layers[i].name.length() == 0, "SharedLayer must not have name");
+      } else {
+        utils::Check(layer_name_map.count(layers[i].name) == 0,
+                     "NetConfig: invalid model file, duplicated layer name");
+        layer_name_map[layers[i].name] = i;
+      }
     }
     this->ClearConfig();
   }
@@ -236,9 +249,14 @@ struct NetConfig {
       inf.primary_layer_index = layer_name_map[s_tag];
     } else {
       if (s_tag.length() != 0) {
-        utils::Check(layer_name_map.count(s_tag) == 0, 
-                     "layer tag %s is already defined", s_tag.c_str());
-        layer_name_map[s_tag] = cfg_layer_index;
+        if (layer_name_map.count(s_tag) != 0) {
+          utils::Check(layer_name_map[s_tag] == cfg_layer_index,
+                       "layer name in the configuration file do not "\
+                       "match the name stored in model");
+        } else {
+          layer_name_map[s_tag] = cfg_layer_index;
+        }
+        inf.name = s_tag;
       }
     }
     return inf;
