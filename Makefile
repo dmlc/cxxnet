@@ -9,7 +9,7 @@ export CFLAGS = -g -O3 -msse3 -funroll-loops -I./mshadow/  -fopenmp -DMSHADOW_FO
 export blas=0
 export noopencv=0
 export usecaffe=0
-
+export usecudnn=1
 ifeq ($(blas),1)
  LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas
  CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
@@ -31,6 +31,10 @@ else
 	CFLAGS+= -DCXXNET_USE_CAFFE_ADAPTOR=0
 endif
 
+ifeq ($(usecudnn), 1)
+	CFLAGS+= -DCXXNET_USE_CUDNN=1 -I/home/winsty/cudnn
+	LDFLAGS+= -L/home/winsty/cudnn -lcudnn
+endif
 export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
 
 # specify tensor path

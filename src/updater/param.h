@@ -70,7 +70,7 @@ struct UpdaterParam {
   inline void ScheduleEpoch(long epoch) {
     switch (lr_schedule) {
       case 0: learning_rate = base_lr_; break;
-      case 1: learning_rate = base_lr_ * powf(lr_gamma, epoch / lr_step); break;
+      case 1: learning_rate = base_lr_ * powf(lr_gamma, float(epoch) / lr_step); break;
       case 2: learning_rate = base_lr_ * powf(1.0f + (epoch/lr_step) * lr_gamma, -lr_alpha); break;
       case 3: learning_rate = base_lr_ * powf(lr_factor, epoch / lr_step); break;
       default: utils::Error("unknown schedule type");
