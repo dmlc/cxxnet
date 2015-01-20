@@ -395,7 +395,8 @@ class CXXNetLearnTask {
 };
 }  // namespace cxxnet
 
-int main(int argc, char *argv[]) {
+// general main for PS
+int PSMain(int argc, char *argv[]) {
   cxxnet::CXXNetLearnTask tsk;
   return tsk.Run(argc, argv);
 }

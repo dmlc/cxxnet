@@ -37,7 +37,7 @@ export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
 
 # specify tensor path
 BIN = bin/cxxnet
-OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o
+OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 .PHONY: clean all
@@ -48,11 +48,13 @@ layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu src/la
 updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_impl.cu src/layer/layer.h src/updater/*.hpp src/updater/*.h src/utils/*.h
 nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h
 data.o: src/io/data.cpp src/io/*.hpp
+main.o: src/cxxnet_main.cpp 
 
-bin/cxxnet: src/cxxnet_main.cpp $(OBJ) $(CUOBJ)
+bin/cxxnet: src/local_main.cpp $(OBJ) $(CUOBJ)
+bin/cxxnet.ps: $(OBJ) $(CUOBJ) libps.a libps_main.a
 
 $(BIN) :
-	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c, $^) $(LDFLAGS)
+	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)
 
 $(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )
