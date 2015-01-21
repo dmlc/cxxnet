@@ -13,11 +13,13 @@ class SoftmaxLayer: public ILayer<xpu> {
   SoftmaxLayer(const LabelInfo *label_info) : stream(NULL) {
     this->plabelinfo = label_info;
     update_period = 1;
+    weight = 1.0;
   }
   virtual ~SoftmaxLayer(void) {}
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "batch_size")) batch_size = atoi(val);
-    if (!strcmp(name, "update_period")) update_period = atoi(val);    
+    if (!strcmp(name, "update_period")) update_period = atoi(val);
+    if (!strcmp(name, "weight")) weight = atof(val);  
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     this->stream = stream;
@@ -52,7 +54,7 @@ class SoftmaxLayer: public ILayer<xpu> {
     }
     mshadow::Copy(nodes_in[0]->mat(), tnode, stream);
     // scale gradient by dividing global batch size
-    nodes_in[0]->mat() *= (1.0f / (batch_size * update_period));
+    nodes_in[0]->mat() *= (1.0f / (batch_size * update_period)) * weight;
   }
   
  protected:
@@ -70,6 +72,8 @@ class SoftmaxLayer: public ILayer<xpu> {
   mshadow::TensorContainer<cpu,2> tnode;
   /*! \brief reference to label information */
   const LabelInfo *plabelinfo;
+  /*! \brief weight of the loss */
+  float weight;
 };
 }  // namespace layer
 }  // namespace cxxnet
