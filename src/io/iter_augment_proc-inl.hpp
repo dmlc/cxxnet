@@ -44,6 +44,7 @@ public:
     mean_r_ = 0.0f;
     mean_g_ = 0.0f;
     mean_b_ = 0.0f;
+    flip_ = 0;
   }
   virtual ~AugmentIterator(void) {
     delete base_;
@@ -68,6 +69,7 @@ public:
     if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
     if (!strcmp(name, "min_crop_size"))     min_crop_size_ = atoi(val);
     if (!strcmp(name, "max_crop_size"))     max_crop_size_ = atoi(val);
+    if (!strcmp(name, "flip")) flip_ = atoi(val);
     if (!strcmp(name, "mean_value")) {
       utils::Assert(sscanf(val, "%f,%f,%f", &mean_b_, &mean_g_, &mean_r_) == 3,
                     "mean value must be three consecutive float without space example: 128,127.5,128.2 ");
@@ -191,7 +193,7 @@ private:
       }
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
         d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
-        if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
+        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || flip_ == 1) {
           img_ = mirror(crop(d.data, img_[0].shape_, yy, xx)) * scale_;
         } else {
           img_ = crop(d.data, img_[0].shape_, yy, xx) * scale_ ;
@@ -204,7 +206,7 @@ private:
         }
       } else {
         // substract mean image
-        if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
+        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || flip_ == 1) {
           if (d.data.shape_ == meanimg_.shape_){
             img_ = mirror(crop(d.data - meanimg_, img_[0].shape_, yy, xx)) * scale_;
           } else {
@@ -291,6 +293,7 @@ private:
   float mean_g_;
   float mean_b_;
   bool meanfile_ready_;
+  int flip_;
 };  // class AugmentIterator
 }  // namespace cxxnet
 #endif
