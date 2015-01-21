@@ -1,25 +1,25 @@
-#ifndef CXXNET_ITER_THREAD_IMBIN_INL_HPP_
-#define CXXNET_ITER_THREAD_IMBIN_INL_HPP_
+#ifndef ITER_THREAD_IMBIN_INL_HPP
+#define ITER_THREAD_IMBIN_INL_HPP
+#pragma once
 /*!
- * \file iter_thread_imbin-inl.hpp
- * \brief threaded version of image binary iterator
+ * \file cxxnet_iter_thread_imbin-inl.hpp
+ * \brief threaded version of page iterator
  * \author Tianqi Chen
  */
+#include "data.h"
 #include <opencv2/opencv.hpp>
-#include "./data.h"
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
 
 namespace cxxnet {
 /*! \brief thread buffer iterator */
-class ThreadImagePageIterator: public IIterator<DataInst> {
+class ThreadImagePageIterator: public IIterator< DataInst > {
 public:
   ThreadImagePageIterator(void) {
+    idx_ = 0;
     img_.set_pad(false);
     fplst_ = NULL;
     silent_ = 0;
-    path_imglst_ = "img.lst";
-    path_imgbin_ = "img.bin";
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
   }
@@ -27,16 +27,38 @@ public:
     if (fplst_ != NULL) fclose(fplst_);
   }
   virtual void SetParam(const char *name, const char *val) {
-    if (!strcmp(name, "image_list")) path_imglst_ = val;
-    if (!strcmp(name, "image_bin")) path_imgbin_ = val;
-    if (!strcmp(name, "silent")) silent_ = atoi(val);
+    if (!strcmp(name, "image_list")) {
+      raw_imglst_ += val;
+      int bias = 0;
+      char buf[1024];
+      while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imglst_.size()) {
+        printf("Set List: %s\n", buf);
+        std::string v(buf);
+        path_imglst_.push_back(v);
+        bias += v.size() + 1;
+      }
+    }
+    if (!strcmp(name, "image_bin")) {
+      raw_imgbin_ += val;
+      int bias = 0;
+      char buf[1024];
+      while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imgbin_.size()) {
+        printf("Set Bin:%s\n", buf);
+        std::string v(buf);
+        path_imgbin_.push_back(v);
+        bias += v.size() + 1;
+      }
+    }
+    if (!strcmp(name, "silent"))      silent_ = atoi(val);
   }
   virtual void Init(void) {
-    fplst_  = utils::FopenCheck(path_imglst_.c_str(), "r");
+    fplst_  = utils::FopenCheck(path_imglst_[0].c_str(), "r");
     if (silent_ == 0) {
-      printf("ThreadImagePageIterator:image_list=%s, bin=%s\n", path_imglst_.c_str(), path_imgbin_.c_str());
+      printf("ThreadImagePageIterator:image_list=%s, bin=%s\n", raw_imglst_.c_str(), raw_imgbin_.c_str());
     }
-    itr.get_factory().fi.Open(path_imgbin_.c_str(), "rb");
+    utils::Check(path_imgbin_.size() == path_imglst_.size(), "List/Bin number not consist");
+    itr.get_factory().path_imgbin = path_imgbin_;
+    itr.get_factory().Ready();
     itr.Init();
     this->BeforeFirst();
   }
@@ -51,7 +73,14 @@ public:
       this->LoadImage(img_, out_, buf_);
       return true;
     }
-    return false;
+    idx_ += 1;
+    idx_ %= path_imglst_.size();
+    if (idx_ == 0 || path_imglst_.size() == 1) return false;
+    else {
+      if (fplst_) fclose(fplst_);
+      fplst_  = utils::FopenCheck(path_imglst_[idx_].c_str(), "r");
+      return Next();
+    }
   }
   virtual const DataInst &Value(void) const {
     return out_;
@@ -91,6 +120,7 @@ protected:
     ptop_ = 0;
   }
 protected:
+  int idx_;
   // output data
   DataInst out_;
   // silent
@@ -98,7 +128,8 @@ protected:
   // file pointer to list file, information file
   FILE *fplst_;
   // prefix path of image binary, path to input lst, format: imageid label path
-  std::string path_imgbin_, path_imglst_;
+  std::vector<std::string> path_imgbin_, path_imglst_;
+  std::string raw_imglst_, raw_imgbin_;
   // temp storage for image
   mshadow::TensorContainer<cpu, 3> img_;
   // temp memory buffer
@@ -110,14 +141,30 @@ private:
   struct Factory {
   public:
     utils::StdFile fi;
+    std::vector<std::string> path_imgbin;
+    int idx;
   public:
-    Factory() {}
+    Factory() : idx(0) {}
     inline bool Init() {
       return true;
     }
     inline void SetParam(const char *name, const char *val) {}
+    inline void Ready() {
+      fi.Open(path_imgbin[idx].c_str(), "rb");
+    }
     inline bool LoadNext(PagePtr &val) {
-      return val.page->Load(fi);
+      bool res = val.page->Load(fi);
+      if (res) return res;
+      else {
+        idx += 1;
+        idx %= path_imgbin.size();
+        if (idx == 0) return false;
+        else {
+          fi.Close();
+          fi.Open(path_imgbin[idx].c_str(), "rb");
+          return val.page->Load(fi);
+        }
+      }
     }
     inline PagePtr Create(void) {
       PagePtr a; a.page = new utils::BinaryPage();
@@ -138,4 +185,5 @@ protected:
   utils::ThreadBuffer<PagePtr, Factory> itr;
 }; // class ThreadImagePageIterator
 }; // namespace cxxnet
-#endif  // CXXNET_THREAD_IMBIN_INL_HPP_
+#endif
+
