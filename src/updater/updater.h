@@ -119,7 +119,6 @@ void CreateUpdaters(const char *type,
                     mshadow::Random<xpu> *p_rnd,
                     layer::ILayer<xpu> *p_layer,
                     std::vector<IUpdater<xpu>*> *out_updaters);
-
 /*!
  * \brief factory: create updaters for a given layer, push_back them to out_updaters
  * \param data_key_base used to index the updaters, each new updater will

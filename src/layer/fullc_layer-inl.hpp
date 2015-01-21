@@ -20,6 +20,11 @@ class FullConnectLayer : public ILayer<xpu> {
   virtual void SetParam(const char *name, const char* val) {
     param_.SetParam(name, val);
     if (!strcmp(name, "fullc_gather")) fullc_gather = atoi(val);
+    // support force contiguous option
+    if (!strcmp(name, "force_contiguous") && atoi(val) != 0) {
+      wmat_.set_pad(false); gwmat_.set_pad(false);
+      bias_.set_pad(false); gbias_.set_pad(false);
+    }
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("wmat", wmat_, gwmat_);

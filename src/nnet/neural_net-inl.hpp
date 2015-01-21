@@ -74,7 +74,6 @@ struct NeuralNet {
         connections[i].layer->InitModel();
       }
     }
-    this->InitNodes();
   }
   /*! \brief load model from stream */
   inline void LoadModel(utils::IStream &fi) {
@@ -92,7 +91,6 @@ struct NeuralNet {
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
       c.SetStream(stream);
     }
-    this->InitNodes();
   }
   /*!
    * \brief forward prop
@@ -195,7 +193,14 @@ struct NeuralNet {
     utils::Assert(updaters.size() == connections.size(),
                   "updater size do not match number of layers");
   }
-
+  // intialize the space of nodes
+  inline void InitNodes(void) {
+    for (size_t i = 0; i < nodes.size(); ++ i) {
+      mshadow::Shape<4> s = nodes[i].data.shape_;
+      nodes[i].AllocSpace();
+      printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[0], s[1], s[2], s[3]);
+    }
+  }
  private:
   // intialize the neural net data structure
   inline void InitNet(void) {
@@ -239,14 +244,6 @@ struct NeuralNet {
         connections[i].layer->SetParam(cfg.layercfg[i][j].first.c_str(),
                                        cfg.layercfg[i][j].second.c_str());
       }
-    }
-  }
-  // intialize the space of nodes
-  inline void InitNodes(void) {
-    for (size_t i = 0; i < nodes.size(); ++ i) {
-      mshadow::Shape<4> s = nodes[i].data.shape_;
-      nodes[i].AllocSpace();
-      printf("node[%lu].shape: %u,%u,%u,%u\n", i, s[0], s[1], s[2], s[3]);
     }
   }
   // adjust batch size to a new value, the batch_size must be smaller than max_batch
@@ -455,12 +452,14 @@ class NeuralNetThread {
       case kInitModel: {
         net_->InitModel();
         net_->InitUpdaters(pserver, device_id);
+        net_->InitNodes();
         stream->Wait();
         return;
       }
       case kLoadModel: {
         net_->LoadModel(*iparam_fp);
         net_->InitUpdaters(pserver, device_id);
+        net_->InitNodes();
         stream->Wait();
         return;
       }
@@ -532,4 +531,4 @@ class NeuralNetThread {
 };
 }  // namespace nnet
 }  // namespace cxxnet
-#endif
+#endif  // CXXNET_NNET_NEURAL_NET_INL_HPP_

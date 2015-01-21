@@ -59,7 +59,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
-  virtual void InitModel(void) {    
+  virtual void InitModel(void) {
     this->InitNet();
     nets_[0]->InitModel();
     nets_[0]->WaitJob();
