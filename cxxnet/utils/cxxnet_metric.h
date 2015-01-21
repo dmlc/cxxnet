@@ -177,6 +177,18 @@ namespace cxxnet{
             std::vector< std::pair<float,index_t> > vec;
             int topn;
         };
+        
+        /*! \brief logloss */
+        struct MetricLogloss : public MetricBase{
+        public:
+            MetricLogloss( void ): MetricBase("logloss"){
+            }
+        protected:
+            virtual float CalcMetric( const mshadow::Tensor<cpu,1> &pred, float label ) {
+                utils::Assert( pred.shape[0] > (index_t)label,"logloss must contain a prediction for every label" );
+                return -1*log(pred[(index_t)label]);
+            }
+        };
 
         /*! \brief a set of evaluators */
         struct MetricSet{
@@ -191,6 +203,7 @@ namespace cxxnet{
                 if( !strcmp( name, "error") ) evals_.push_back( new MetricError() );
                 if( !strcmp( name, "r2") )    evals_.push_back( new MetricCorrSqr() );
                 if( !strncmp( name, "rec@",4) )  evals_.push_back( new MetricRecall( name ) );
+                if( !strcmp( name, "logloss") )  evals_.push_back( new MetricLogloss() );
                 // simple way to enforce uniqueness, not a good way, not ok here
                 std::sort( evals_.begin(), evals_.end(), CmpName );
                 evals_.resize( std::unique( evals_.begin(), evals_.end(), EqualName ) - evals_.begin() );
