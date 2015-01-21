@@ -34,13 +34,16 @@ class NAGUpdater : public IUpdater<xpu> {
     old_m_w.set_stream(stream);
   }
   virtual void Update(long epoch) {
-    param.ScheduleEpoch(epoch);
-    mshadow::Copy(old_m_w, m_w, old_m_w.stream_);
-    m_w *= param.momentum;
-    m_w += (-param.learning_rate) * (dw + param.wd * w);
-    w += (1 + param.momentum) * m_w - param.momentum * old_m_w;
-    // dw accumulate gradient instead of storing them, updater need to reset then to 0 after each update
+    this->ApplyUpdate(epoch, dw);
+    // dw accumulate gradient instead of storing them
+    // updater need to reset then to 0 after each update
     dw = 0.0f;
+  }
+  virtual void Update(long epoch, mshadow::Tensor<xpu, 2> grad) {
+    utils::Assert(grad.shape_ == w.shape_.FlatTo2D(),
+                  "SGDUpdater: grad must be generated from source of same shape");
+    this->ApplyUpdate(epoch, mshadow::Tensor<xpu, dim>
+                      (grad.dptr_, w.shape_, grad.stride_, w.stream_));
   }
   virtual void StartRound(int round) {
     param.round = round;
@@ -58,6 +61,15 @@ class NAGUpdater : public IUpdater<xpu> {
   mshadow::Tensor<xpu,dim> w, dw;
   // momentum variable
   mshadow::TensorContainer<xpu,dim> m_w, old_m_w;
+  
+  inline void ApplyUpdate(long epoch,
+                          mshadow::Tensor<xpu, dim> grad) {
+    param.ScheduleEpoch(epoch);
+    mshadow::Copy(old_m_w, m_w, old_m_w.stream_);
+    m_w *= param.momentum;
+    m_w += (-param.learning_rate) * (grad + param.wd * w);
+    w += (1 + param.momentum) * m_w - param.momentum * old_m_w;
+  }
 };  // class SGDUpdater
 }  // namespace updater
 }  // namespace cxxnet

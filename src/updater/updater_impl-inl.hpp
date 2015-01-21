@@ -6,7 +6,6 @@
  * \author Tianqi Chen
  */
 #include "./sgd_updater-inl.hpp"
-#include "./ext_updater-inl.hpp"
 #include "./async_updater-inl.hpp"
 #include "./nag_updater-inl.hpp"
 namespace cxxnet {
@@ -22,8 +21,6 @@ inline IUpdater<xpu>* CreateUpdater_(const char *type,
                                      const char *tag) {
   if(!strcmp(type, "sgd")) return new SGDUpdater<xpu,dim>(weight, wgrad, tag);
   if(!strcmp(type, "nag")) return new NAGUpdater<xpu, dim>(weight, wgrad, tag);
-  if(!strcmp(type, "sghmc")) return new SGHMCUpdater<xpu,dim>(p_rnd, weight, wgrad, tag);
-  if(!strcmp(type, "noise_sgd")) return new NoiseSGDUpdater<xpu, dim>(weight, wgrad, tag, p_rnd);
   utils::Error("unknown updater type %s", type);
   return NULL;
 }

@@ -49,7 +49,18 @@ class IUpdater {
    *        epoch is number of mini-batches passed, 
    *        while round is one pass over training data
    */
-  virtual void Update(long epoch) = 0;  
+  virtual void Update(long epoch) = 0;
+  /*!
+   * \brief update the parameter, provides the
+   *        gradient value from outside 
+   * \param epoch what current epoch is
+   *        epoch is number of mini-batches passed, 
+   *        while round is one pass over training data
+   * \param grad the pointer to pass in gradient value
+   *        to minimize the interface, FlatTo2D should
+   *        be called before passing in the gradient value
+   */
+  virtual void Update(long epoch, mshadow::Tensor<xpu, 2> grad) = 0;
   /*!\ brief set parameters that could be spefic to this updater */
   virtual void SetParam(const char *name, const char *val) = 0;
 };
@@ -88,6 +99,10 @@ class IAsyncUpdater : public IUpdater<xpu> {
   virtual void UpdateWait(void) = 0;
   // disable update function
   virtual void Update(long epoch) {
+    utils::Error("IAsyncUpdater.Update call AfterBackprop instead");
+  }
+  // disable update function
+  virtual void Update(long epoch, mshadow::Tensor<xpu, 2> grad) {
     utils::Error("IAsyncUpdater.Update call AfterBackprop instead");
   }
 };
