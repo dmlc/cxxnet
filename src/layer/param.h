@@ -114,7 +114,6 @@ struct LayerParam {
   inline void RandInitWeight(mshadow::Random<xpu> *prng,
                              mshadow::Tensor<xpu, dim> mat,
                              index_t in_num, index_t out_num) {
-
     if (random_type == 0) {
       // gaussian initialization
       prng->SampleGaussian(&mat, 0.0f, init_sigma);

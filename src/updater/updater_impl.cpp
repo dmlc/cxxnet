@@ -6,15 +6,15 @@
 namespace cxxnet {
 namespace updater {
 template<>
-void CreateUpdaters<cpu>(const char *type,
-                         mshadow::Random<cpu> *p_rnd,
-                         layer::ILayer<cpu> *p_layer,
-                         std::vector<IUpdater<cpu>*> *out_updaters) {
-  CreateUpdaterVisitor<cpu> visitor(type, p_rnd, out_updaters);
-  p_layer->ApplyVisitor(&visitor);
+IUpdater<cpu>* CreateUpdater<>(const char *type,
+                               mshadow::Random<cpu> *p_rnd,
+                               mshadow::Tensor<cpu, 2> weight,
+                               mshadow::Tensor<cpu, 2> wgrad,
+                               const char *tag) {
+  return CreateUpdater_(type, p_rnd, weight, wgrad, tag);
 }
 template<>
-void CreateAsyncUpdaters<cpu>(int data_key_base,
+void CreateAsyncUpdaters<cpu>(int layer_index,
                               int device_id,
                               mshadow::ps::IParamServer<cpu, real_t> *param_server,
                               const char *type,
@@ -22,7 +22,7 @@ void CreateAsyncUpdaters<cpu>(int data_key_base,
                               layer::LayerType layer_type,
                               layer::ILayer<cpu> *p_layer,
                               std::vector<IAsyncUpdater<cpu>*> *out_updaters) {
-  CreateAsyncUpdaterVisitor<cpu> visitor(data_key_base, device_id, param_server,
+  CreateAsyncUpdaterVisitor<cpu> visitor(layer_index, device_id, param_server,
                                          type, p_rnd, layer_type, out_updaters);  
   p_layer->ApplyVisitor(&visitor);  
 }

@@ -1,34 +1,71 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_DEPRECATE
 
+#include <map>
 #include "./nnet_config.h"
-#include "../layer/visitor.h"
-#include "./neural_net-inl.hpp"
+#include "../updater/updater.h"
 
 namespace cxxnet {
 namespace nnet {
 class NetServer {
  public:
-  NetServer(void) : net(NULL) {
-    this->SetParam("force_contiguous", "1");
+  NetServer(void) : rnd(0) {
+  }
+  ~NetServer(void) {
+    for (std::map<int, UpdaterEntry*>::iterator
+             it = updaters.begin(); it != updaters.end(); ++it) {
+      delete it->second;
+    }
   }
   virtual void SetParam(const char *name, const char *val) {
     cfgvec.push_back(std::make_pair(std::string(name), std::string(val)));
   }
   virtual void InitModel(void) {
     cfg.Configure(cfgvec);
-    net = new NeuralNet<cpu>(cfg, batch_size, 0, NULL);
-    net->InitModel();
-    this->InitUpdaters();
+    // todo
+    rnd.Seed(0);
   }
 
+  virtual void InitKey(int key, real_t *dptr, size_t size) {
+    updaters[key] = new UpdaterEntry();
+    UpdaterEntry &e = *updaters[key];
+    e.key = key;
+    e.weight = mshadow::Tensor<cpu, 1>
+        (dptr, mshadow::Shape1(size)).FlatTo2D();
+    e.updater = updater::CreateUpdater<cpu>
+        (cfg.updater_type.c_str(),
+         &rnd, e.weight, e.weight,
+         updater::DecodeTag(key));
+    const int i = key / updater::kDataKeyStep;
+    for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
+      e.SetParam(cfg.defcfg[j].first.c_str(),
+                 cfg.defcfg[j].second.c_str());
+    }
+    for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
+      e.SetParam(cfg.layercfg[i][j].first.c_str(),
+                 cfg.layercfg[i][j].second.c_str());
+    }
+    e.Init();
+  }
+  
  protected:
   struct UpdaterEntry {
     int key;
     long epoch;
     updater::IUpdater<cpu> *updater;
     mshadow::Tensor<cpu, 2> weight;
-    UpdaterEntry() : epoch(0) {      
+    UpdaterEntry(void) : epoch(0) {
+      updater = NULL;
+    }
+    ~UpdaterEntry(void) {
+      delete updater;
+    }
+    inline void SetParam(const char *name,
+                         const char *val) {
+      updater->SetParam(name, val);
+    }
+    inline void Init(void) {
+      // TODO
     }
     // update given gradient
     inline void Update(real_t *grad, size_t size) {
@@ -46,57 +83,17 @@ class NetServer {
   virtual void Update(int key, real_t *grad, size_t size) {
     utils::Assert(static_cast<size_t>(key) < updaters.size(),
                   "key exceed bound");
-    updaters[key].Update(grad, size);
-  }
-  inline void InitUpdaters(void) {
-    for (int i = 0; i < cfg.param.num_layers; ++i) {
-      layer::Connection<cpu> &c = net->connections[i];
-      std::vector<updater::IUpdater<cpu>*> out;
-      if (c.type != layer::kSharedLayer) {
-        updater::CreateUpdaters(cfg.updater_type.c_str(),
-                                &net->rnd, c.layer, &out);
-        for (size_t k = 0; k < out.size(); ++k) {
-          for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
-            out[k]->SetParam(cfg.defcfg[j].first.c_str(),
-                             cfg.defcfg[j].second.c_str());
-          }
-          for (size_t j = 0; j < cfg.layercfg[i].size(); ++j) {
-            out[k]->SetParam(cfg.layercfg[i][j].first.c_str(),
-                             cfg.layercfg[i][j].second.c_str());
-          }
-          out[k]->Init();
-          layer::GetWeightVisitor<cpu> vs("weight");
-          out[k]->ApplyVisitor(&vs);
-          utils::Assert(vs.data.size() == 1,
-                        "updater must get exactly one weight");
-          UpdaterEntry e;
-          e.key = static_cast<int>(updaters.size());
-          e.updater = out[k];
-          e.weight = vs.data[0];
-          utils::Assert(e.weight.CheckContiguous(),
-                        "Layer weight do not implement force_contiguous");
-          updaters.push_back(e);
-          this->Register(e.key, e.weight.dptr_, e.weight.MSize());
-        }
-      }
-    }
+    updaters[key]->Update(grad, size);
   }
   
  private:
-  // underlying net code
-  NeuralNet<cpu> *net;
+  mshadow::Random<cpu> rnd;
   // updaters
-  std::vector<UpdaterEntry> updaters;
-  // batch size
-  mshadow::index_t batch_size;
-  /*! \brief serialized model in CPU */
-  std::string model_blob;
+  std::map<int, UpdaterEntry*> updaters;
   /*! \brief network configuration type */
   NetConfig cfg;
   /*! \brief history of configurations */
   std::vector< std::pair<std::string, std::string> > cfgvec;
 };
-
 }  // namespace nnet
 }  // namespace cxxnet
-

@@ -51,7 +51,7 @@ struct NeuralNet {
   }
   /*! \brief save model to file */
   inline void SaveModel(utils::IStream &fo) const {
-    for (index_t i = 0; i < connections.size(); ++ i) {
+    for (index_t i = 0; i < connections.size(); ++i) {
       for (size_t j = 0; j < updaters[i].size(); ++j) {
         updaters[i][j]->UpdateWait();
       }
@@ -64,12 +64,12 @@ struct NeuralNet {
   inline void InitModel(void) {
     this->InitNet();
     this->ConfigConntions();
-    for (size_t i = 0; i < connections.size(); ++ i) {
+    for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
       c.SetStream(stream);
     }
-    for (size_t i = 0; i < connections.size(); ++ i) {
+    for (size_t i = 0; i < connections.size(); ++i) {
       if (connections[i].type != layer::kSharedLayer) {
         connections[i].layer->InitModel();
       }
@@ -80,13 +80,13 @@ struct NeuralNet {
     this->FreeSpace();
     this->InitNet();
     this->ConfigConntions();
-    for (size_t i = 0; i < connections.size(); ++ i) {
+    for (size_t i = 0; i < connections.size(); ++i) {
       if (connections[i].type != layer::kSharedLayer) {
         connections[i].SetStream(stream);
         connections[i].layer->LoadModel(fi);
       }
     }
-    for (size_t i = 0; i < connections.size(); ++ i) {
+    for (size_t i = 0; i < connections.size(); ++i) {
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
       c.SetStream(stream);
@@ -164,12 +164,11 @@ struct NeuralNet {
   }
   // create the updaters
   inline void InitUpdaters(mshadow::ps::IParamServer<xpu, real_t> *ps, int devid) {
-    int key_base = 0;
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       std::vector<updater::IAsyncUpdater<xpu>*> out;
       if (connections[i].type != layer::kSharedLayer) {
         updater::CreateAsyncUpdaters
-            (key_base, devid, ps,
+            (i, devid, ps,
              cfg.updater_type.c_str(),
              &rnd, cfg.layers[i].type,
              connections[i].layer,
@@ -187,7 +186,6 @@ struct NeuralNet {
           out[k]->Init();
         }
       }
-      key_base += static_cast<int>(out.size());
       updaters.push_back(out);
     }
     utils::Assert(updaters.size() == connections.size(),

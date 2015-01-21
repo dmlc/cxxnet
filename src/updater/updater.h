@@ -107,22 +107,22 @@ class IAsyncUpdater : public IUpdater<xpu> {
   }
 };
 /*!
- * \brief factory: create updaters for a given layer, push_back them to out_updaters
- * \param type indicate the type of updater
- * \param p_rnd pointer to random number generator
- * \param p_layer pointer to the layer object, where the data is going to be pulled from
- * \param out_updaters vector to hold outputs, if there is already elements in out_updaters, 
- *                     the function is going to push new updaters to the back of the vector
+ * \brief factory: create an upadater algorithm of given type
+ * \param type the type of updater
+ * \param p_rnd the random number generator
+ * \param weight the weight to be updated, Flattened to 2D
+ * \param wgrad the tensor to hold the gradient value
+ * \param tag the tag of the weight type
  */
 template<typename xpu>
-void CreateUpdaters(const char *type,
-                    mshadow::Random<xpu> *p_rnd,
-                    layer::ILayer<xpu> *p_layer,
-                    std::vector<IUpdater<xpu>*> *out_updaters);
+IUpdater<xpu>* CreateUpdater(const char *type,
+                             mshadow::Random<xpu> *p_rnd,
+                             mshadow::Tensor<xpu, 2> weight,
+                             mshadow::Tensor<xpu, 2> wgrad,
+                             const char *tag);
 /*!
  * \brief factory: create updaters for a given layer, push_back them to out_updaters
- * \param data_key_base used to index the updaters, each new updater will
- *                      take data_key_base as their id, and increase it by 1
+ * \param layer_index layer index
  * \param device_id the device id where the async updater lies
  * \param param_server parameter server that could be used by async updater
  * \param type indicate the type of updater
@@ -133,7 +133,7 @@ void CreateUpdaters(const char *type,
  *                     the function is going to push new updaters to the back of the vector
  */
 template<typename xpu>
-void CreateAsyncUpdaters(int data_key_base,
+void CreateAsyncUpdaters(int layer_index,
                          int device_id,
                          mshadow::ps::IParamServer<xpu, real_t> *param_server,
                          const char *type,
@@ -141,6 +141,36 @@ void CreateAsyncUpdaters(int data_key_base,
                          layer::LayerType layer_type,
                          layer::ILayer<xpu> *p_layer,
                          std::vector<IAsyncUpdater<xpu>*> *out_updaters);
+/*!
+ * \brief constant used to encode key index of parameter server
+ *   data_key = layer_index * kDataKeyStep
+ *   key(layer[i].bias) == i * kDataKeyStep + 1
+ *   key(layer[i].bias) == i * kDataKeyStep + 1
+ */
+static const int kDataKeyStep = 4;
+/*!
+ * \brief encode layer index and weight tag into the unique key 
+ * \param layer_index index of layer
+ * \param tag the tag of weight type
+ */
+inline int EncodeDataKey(int layer_index, const char *tag) {
+  if (!strcmp(tag, "bias")) return layer_index * kDataKeyStep + 1; 
+  if (!strcmp(tag, "wmat")) return layer_index * kDataKeyStep + 0;
+  utils::Error("EncodeDataKey: only support weight tag: wmat or bias");
+  return 0;
+}
+/*!
+ * \brief decode tag name from key
+ * \param key the data key
+ * \return tag name
+ */
+inline const char *DecodeTag(int key) {
+  switch (key % updater::kDataKeyStep) {
+    case 0: return "wmat";
+    case 1: return "bias";
+    default: utils::Error("invalid key"); return "";
+  }
+}
 }  // namespace updater
 }  // namespace cxxnet
 #endif  // UPDATER_UPDATER_H_
