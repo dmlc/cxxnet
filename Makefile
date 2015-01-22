@@ -62,7 +62,7 @@ data.o: src/io/data.cpp src/io/*.hpp
 main.o: src/cxxnet_main.cpp 
 
 bin/cxxnet: src/local_main.cpp $(OBJ) $(CUOBJ)
-bin/cxxnet.ps: $(OBJ) $(CUOBJ) libps.a libps_main.a
+bin/cxxnet.ps: src/dist_ps_server.cpp $(OBJ) $(CUOBJ) libps.a libps_main.a
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)
