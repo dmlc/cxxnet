@@ -2,30 +2,39 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
 #include <map>
+#include <sstream>
+#include <mshadow-ps/ps.h>
 #include "./nnet_config.h"
+#include "../layer/param.h"
+#include "../utils/config.h"
 #include "../updater/updater.h"
 
 namespace cxxnet {
 namespace nnet {
-class NetServer {
+class NetServer : public mshadow::ps::ICustomServer<real_t> {
  public:
   NetServer(void) : rnd(0) {
   }
-  ~NetServer(void) {
+  virtual ~NetServer(void) {
     for (std::map<int, UpdaterEntry*>::iterator
              it = updaters.begin(); it != updaters.end(); ++it) {
       delete it->second;
     }
   }
   virtual void SetParam(const char *name, const char *val) {
+    if (!strcmp(name, "seed")) seed = atoi(val);
     cfgvec.push_back(std::make_pair(std::string(name), std::string(val)));
   }
-  virtual void InitModel(void) {
+  virtual void Init(int rank, const std::string &conf) {
+    std::stringstream ss(conf);
+    utils::ConfigStreamReader reader(ss);
+    while (reader.Next()) {
+      this->SetParam(reader.name(), reader.val());
+    }
+    // start configure settings
     cfg.Configure(cfgvec);
-    // todo
-    rnd.Seed(0);
+    rnd.Seed(seed + rank * 17);
   }
-
   virtual void InitKey(int key, real_t *dptr, size_t size) {
     updaters[key] = new UpdaterEntry();
     UpdaterEntry &e = *updaters[key];
@@ -36,7 +45,9 @@ class NetServer {
         (cfg.updater_type.c_str(),
          &rnd, e.weight, e.weight,
          updater::DecodeTag(key));
+    e.is_bias = !strcmp(updater::DecodeTag(key), "bias");
     const int i = key / updater::kDataKeyStep;
+    e.layer_type = cfg.layers[i].type;
     for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
       e.SetParam(cfg.defcfg[j].first.c_str(),
                  cfg.defcfg[j].second.c_str());
@@ -45,15 +56,30 @@ class NetServer {
       e.SetParam(cfg.layercfg[i][j].first.c_str(),
                  cfg.layercfg[i][j].second.c_str());
     }
-    e.Init();
+    e.Init(&rnd);
   }
-  
- protected:
+  virtual void Update(int key, real_t *dptr, size_t size) {
+    std::map<int, UpdaterEntry*>::iterator it
+        = updaters.find(key);
+    utils::Assert(it != updaters.end() && it->first == key,
+                  "must call initkey first before calling update");
+    it->second->Update(dptr, size);
+  }
+
+ private:
   struct UpdaterEntry {
     int key;
+    // whether this is bias
+    bool is_bias;
+    // type of layer
+    layer::LayerType layer_type;
+    // epoch we run
     long epoch;
+    // parameters
+    layer::LayerParam param;
     updater::IUpdater<cpu> *updater;
     mshadow::Tensor<cpu, 2> weight;
+    // constructor
     UpdaterEntry(void) : epoch(0) {
       updater = NULL;
     }
@@ -63,9 +89,20 @@ class NetServer {
     inline void SetParam(const char *name,
                          const char *val) {
       updater->SetParam(name, val);
+      param.SetParam(name, val);
     }
-    inline void Init(void) {
-      // TODO
+    inline void Init(mshadow::Random<cpu> *p_rnd) {
+      if (is_bias) {
+        weight = param.init_bias;
+      } else {
+        if (layer_type == layer::kConv) {
+          param.RandInitWeight(p_rnd, weight, param.num_channel, param.kernel_height *param.kernel_width);
+        } else {
+          utils::Check(param.random_type != 1 || param.init_uniform > 0.0f,
+                       "xavier not supported in PS");
+          param.RandInitWeight(p_rnd, weight, param.num_hidden, param.num_hidden);
+        }
+      }
     }
     // update given gradient
     inline void Update(real_t *grad, size_t size) {
@@ -76,17 +113,9 @@ class NetServer {
       epoch += 1;
     }
   };
-  // register weights to ps
-  virtual void Register(int key, real_t *dptr, size_t size) {
-  }
-  // callback to handle update
-  virtual void Update(int key, real_t *grad, size_t size) {
-    utils::Assert(static_cast<size_t>(key) < updaters.size(),
-                  "key exceed bound");
-    updaters[key]->Update(grad, size);
-  }
   
  private:
+  int seed;
   mshadow::Random<cpu> rnd;
   // updaters
   std::map<int, UpdaterEntry*> updaters;
@@ -97,3 +126,12 @@ class NetServer {
 };
 }  // namespace nnet
 }  // namespace cxxnet
+
+namespace mshadow {
+namespace ps {
+template<>
+ICustomServer<cxxnet::real_t> *CreateServer<cxxnet::real_t>(void) {
+  return new cxxnet::nnet::NetServer();
+}
+}  // namespace ps
+}  // namespace mshadow

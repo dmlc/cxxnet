@@ -163,6 +163,7 @@ class ILayer {
  public:
   /*! \brief virtual destructor */
   virtual ~ILayer(void) {}
+
   /*!
    * \brief initialize the connection, this function takes charge of two shings
    *   (1) setup the shape of output nodes in nodes_out, given the

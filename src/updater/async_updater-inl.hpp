@@ -47,6 +47,11 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       sprintf(name, "push_op[%d]", data_key);
       pserver->SetParam(name, "gather");
     }
+    pserver->InitKey(dw.shape_, data_key, devid);
+    // pull back weight directly if update on server
+    if (update_on_server != 0) {
+      pserver->PullReq(w, data_key, devid, priority);
+    }
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     if (updater != NULL) updater->SetStream(stream);
