@@ -23,6 +23,7 @@ public:
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
     flag_ = true;
+    img_conf_ = "";
   }
   virtual ~ThreadImagePageIterator(void) {
     if (fplst_ != NULL) fclose(fplst_);
@@ -30,24 +31,39 @@ public:
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "image_list")) {
       raw_imglst_ += val;
-      unsigned int bias = 0;
-      char buf[1024];
-      while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imglst_.size()) {
-        // printf("Set List: %s\n", buf);
-        std::string v(buf);
-        path_imglst_.push_back(v);
-        bias += v.size() + 1;
-      }
+      raw_imglst_ += ",";
+      std::string v(val);
+      path_imglst_.push_back(v);
     }
     if (!strcmp(name, "image_bin")) {
       raw_imgbin_ += val;
-      unsigned int bias = 0;
-      char buf[1024];
-      while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imgbin_.size()) {
-        // printf("Set Bin:%s\n", buf);
-        std::string v(buf);
-        path_imgbin_.push_back(v);
-        bias += v.size() + 1;
+      raw_imgbin_ += ",";
+      std::string v(val);
+      path_imgbin_.push_back(v);
+    }
+    if (!strcmp(name, "image_conf")) {
+      img_conf_ += val;
+    }
+    if (!strcmp(name, "idlist")) {
+      int loc = 0;
+      int sz = strlen(val);
+      std::string buf = 0;
+      char name[256];
+      while (loc < sz) {
+        if (val[loc] == ' ' || val[loc] == '\t') continue;
+        else if (val[loc] == ',') {
+          sprintf(name,  img_conf_.c_str(), atoi(buf.c_str()));
+          buf = name;
+          std::string v = buf + ".lst";
+          path_imglst_.push_back(v);
+          v = buf + ".bin";
+          path_imgbin_.push_back(v);
+          buf.clear();
+        } else if (isdigit(val[loc])) {
+          buf += val[loc];
+        } else {
+          utils::Error("Unexpected char in idlist");
+        }
       }
     }
     if (!strcmp(name, "silent"))      silent_ = atoi(val);
@@ -142,7 +158,7 @@ protected:
   FILE *fplst_;
   // prefix path of image binary, path to input lst, format: imageid label path
   std::vector<std::string> path_imgbin_, path_imglst_;
-  std::string raw_imglst_, raw_imgbin_;
+  std::string raw_imglst_, raw_imgbin_, img_conf_;
   // temp storage for image
   mshadow::TensorContainer<cpu, 3> img_;
   // temp memory buffer
