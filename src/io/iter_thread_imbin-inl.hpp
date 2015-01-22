@@ -22,6 +22,7 @@ public:
     silent_ = 0;
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
+    flag_ = true;
   }
   virtual ~ThreadImagePageIterator(void) {
     if (fplst_ != NULL) fclose(fplst_);
@@ -29,10 +30,10 @@ public:
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "image_list")) {
       raw_imglst_ += val;
-      int bias = 0;
+      unsigned int bias = 0;
       char buf[1024];
       while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imglst_.size()) {
-        printf("Set List: %s\n", buf);
+        // printf("Set List: %s\n", buf);
         std::string v(buf);
         path_imglst_.push_back(v);
         bias += v.size() + 1;
@@ -40,10 +41,10 @@ public:
     }
     if (!strcmp(name, "image_bin")) {
       raw_imgbin_ += val;
-      int bias = 0;
+      unsigned int bias = 0;
       char buf[1024];
       while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imgbin_.size()) {
-        printf("Set Bin:%s\n", buf);
+        // printf("Set Bin:%s\n", buf);
         std::string v(buf);
         path_imgbin_.push_back(v);
         bias += v.size() + 1;
@@ -63,11 +64,20 @@ public:
     this->BeforeFirst();
   }
   virtual void BeforeFirst(void) {
-    fseek(fplst_ , 0, SEEK_SET);
+    if (path_imglst_.size() == 1) {
+      fseek(fplst_ , 0, SEEK_SET);
+
+    } else {
+      if (fplst_) fclose(fplst_);
+      idx_ = 0;
+      fplst_  = utils::FopenCheck(path_imglst_[0].c_str(), "r");
+    }
     itr.BeforeFirst();
     this->LoadNextPage();
+    flag_ = true;
   }
   virtual bool Next(void) {
+    if (!flag_) return flag_;
     while (fscanf(fplst_, "%u%f%*[^\n]\n", &out_.index, &out_.label) == 2) {
       this->NextBuffer(buf_);
       this->LoadImage(img_, out_, buf_);
@@ -75,8 +85,10 @@ public:
     }
     idx_ += 1;
     idx_ %= path_imglst_.size();
-    if (idx_ == 0 || path_imglst_.size() == 1) return false;
-    else {
+    if (idx_ == 0 || path_imglst_.size() == 1) {
+      flag_ = false;
+      return flag_;
+    } else {
       if (fplst_) fclose(fplst_);
       fplst_  = utils::FopenCheck(path_imglst_[idx_].c_str(), "r");
       return Next();
@@ -120,6 +132,7 @@ protected:
     ptop_ = 0;
   }
 protected:
+  bool flag_;
   int idx_;
   // output data
   DataInst out_;
@@ -143,8 +156,9 @@ private:
     utils::StdFile fi;
     std::vector<std::string> path_imgbin;
     int idx;
+    bool flag;
   public:
-    Factory() : idx(0) {}
+    Factory() : idx(0), flag(true) {}
     inline bool Init() {
       return true;
     }
@@ -153,13 +167,16 @@ private:
       fi.Open(path_imgbin[idx].c_str(), "rb");
     }
     inline bool LoadNext(PagePtr &val) {
+      if (!flag) return flag;
       bool res = val.page->Load(fi);
       if (res) return res;
       else {
         idx += 1;
         idx %= path_imgbin.size();
-        if (idx == 0) return false;
-        else {
+        if (idx == 0) {
+          flag = false;
+          return flag;
+        } else {
           fi.Close();
           fi.Open(path_imgbin[idx].c_str(), "rb");
           return val.page->Load(fi);
@@ -174,9 +191,17 @@ private:
       delete a.page;
     }
     inline void Destroy() {
+      fi.Close();
     }
     inline void BeforeFirst() {
-      fi.Seek(0);
+      if (path_imgbin.size() == 1) {
+        fi.Seek(0);
+      } else {
+        idx = 0;
+        fi.Close();
+        fi.Open(path_imgbin[idx].c_str(), "rb");
+      }
+      flag = true;
     }
   };
 protected:
