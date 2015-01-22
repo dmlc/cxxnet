@@ -38,7 +38,6 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     if (update_on_server != 0) {
       utils::Check(pserver != NULL,
                    "parameter server must not be empty");
-      delete updater; updater = NULL;
     } else {      
       updater->Init();
     }
@@ -51,7 +50,8 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       pserver->InitKey(dw.shape_, data_key, devid);
       // pull back weight directly if update on server
       if (update_on_server != 0) {
-        pserver->PullReq(w, data_key, devid, priority);
+        pserver->PullReq(w, data_key, devid, priority,
+                         CleanGrad_, this);
       }
     }
   }
@@ -97,14 +97,14 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
         if (update_on_server == 0) {
           if (pull_at_backprop != 0) {          
             pserver->PullReq(dw, data_key, devid, priority,
-                             ApplyUpdate_,
-                             this);
+                             ApplyUpdate_, this);
           } else {
             pull_not_issued = true;
           }
         } else {
           // pull weight directly from server
-          pserver->PullReq(w, data_key, devid, priority);
+          pserver->PullReq(w, data_key, devid, priority,
+                           CleanGrad_, this);
         }
       }
     } else {
@@ -122,9 +122,13 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   }
   virtual void BeforeForward(void) {
     if (pull_not_issued) {
-      pserver->PullReq(dw, data_key, devid, priority,                     
-                       ApplyUpdate_,
-                       this);
+      if (update_on_server == 0) { 
+        pserver->PullReq(dw, data_key, devid, priority,
+                         ApplyUpdate_, this);
+      } else {
+        pserver->PullReq(w, data_key, devid, priority,
+                         CleanGrad_, this);
+      }
       pull_not_issued = false;
     }
   }
@@ -133,10 +137,10 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     pserver->PullWait(data_key, devid);
   }
   virtual void StartRound(int round) {
-    updater->StartRound(round);
+    if (updater != NULL) updater->StartRound(round);
   }
   virtual void SetParam(const char *name, const char *val) {
-    updater->SetParam(name, val);
+    if (updater != NULL) updater->SetParam(name, val);
     if (!strcmp(name, "fullc_gather")) {
       if (tag == "wmat" && layer_type == layer::kFullConnect) {
         fullc_gather = atoi(val);
@@ -155,6 +159,9 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     if (!strcmp(name, "bigarray_bound")) {
       bigarray_bound = static_cast<size_t>(atol(val));
     }
+    if (!strcmp(name, "update_on_server")) {
+      update_on_server = atoi(val);
+    }
   }
   virtual void ApplyVisitor(typename IUpdater<xpu>::IVisitor *pvisitor) {
     updater->ApplyVisitor(pvisitor);
@@ -171,14 +178,19 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
                                  tnode.stride_, stream);
     dw += dot(tout.T(), tin);
   }
+  inline static void CleanGrad_(mshadow::Stream<xpu> *stream, void *arg) {
+    AsyncUpdater<xpu> *up = static_cast<AsyncUpdater<xpu>*>(arg);    
+    utils::Assert(up->update_on_server !=0, "update_on_server consistency");
+    up->dw.set_stream(stream);
+    up->dw = 0.0f;
+  }
   inline static void ApplyUpdate_(mshadow::Stream<xpu> *stream, void *arg) {
     AsyncUpdater<xpu> *up = static_cast<AsyncUpdater<xpu>*>(arg);
     if (up->update_on_server == 0) {
       up->updater->SetStream(stream);
       up->updater->Update(up->update_epoch);
     }
-  }
-  
+  }  
   inline static void ApplyGatherUpdate_(mshadow::Stream<xpu> *stream, void *arg) {    
     AsyncUpdater<xpu> *up = static_cast<AsyncUpdater<xpu>*>(arg);
     utils::Check(up->update_on_server == 0, "GatherUpdate can not use update_on_server");
