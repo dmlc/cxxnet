@@ -47,6 +47,7 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
          updater::DecodeTag(key));
     e.is_bias = !strcmp(updater::DecodeTag(key), "bias");
     const int i = key / updater::kDataKeyStep;
+    utils::Assert(i < cfg.param.num_layers, "layer index exceed bound");
     e.layer_type = cfg.layers[i].type;
     for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
       e.SetParam(cfg.defcfg[j].first.c_str(),
@@ -92,6 +93,7 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
       param.SetParam(name, val);
     }
     inline void Init(mshadow::Random<cpu> *p_rnd) {
+      updater->Init();
       if (is_bias) {
         weight = param.init_bias;
       } else {

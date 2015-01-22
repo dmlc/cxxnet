@@ -39,18 +39,20 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       utils::Check(pserver != NULL,
                    "parameter server must not be empty");
       delete updater; updater = NULL;
-    } else {
+    } else {      
       updater->Init();
     }
-    if (fullc_gather != 0 && pserver != NULL) {
-      char name[32];
-      sprintf(name, "push_op[%d]", data_key);
-      pserver->SetParam(name, "gather");
-    }
-    pserver->InitKey(dw.shape_, data_key, devid);
-    // pull back weight directly if update on server
-    if (update_on_server != 0) {
-      pserver->PullReq(w, data_key, devid, priority);
+    if (pserver != NULL) {
+      if (fullc_gather != 0) {
+        char name[32];
+        sprintf(name, "push_op[%d]", data_key);
+        pserver->SetParam(name, "gather");
+      }
+      pserver->InitKey(dw.shape_, data_key, devid);
+      // pull back weight directly if update on server
+      if (update_on_server != 0) {
+        pserver->PullReq(w, data_key, devid, priority);
+      }
     }
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
