@@ -47,8 +47,9 @@ typedef long int64_t;
 #include <inttypes.h>
 #endif
 
-
+#ifndef CHECK
 #define CHECK(ARGS) cxxnet::utils::Check(ARGS, "Assert Error at %s: %d", __FILE__, __LINE__);
+#endif
 #define CUDA_CHECK(ARGS) CHECK(ARGS==0);
 
 namespace cxxnet {

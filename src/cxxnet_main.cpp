@@ -54,6 +54,7 @@ class CXXNetLearnTask {
       printf("Usage: <config>\n");
       return 0;
     }
+
     utils::ConfigIterator itr(argv[1]);
     while (itr.Next()) {
       this->SetParam(itr.name(), itr.val());
