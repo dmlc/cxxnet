@@ -60,17 +60,24 @@ class CXXNetThreadTrainer : public INetTrainer {
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
   virtual void InitModel(void) {
+    DD << "xxx";
     this->InitNet();
+    DD << "xxx";
     nets_[0]->InitModel();
+    DD << "xxx";
     nets_[0]->WaitJob();
+    DD << "xxx";
     this->Save2ModelBlob();
+    DD << "xxx";
     for(size_t i = 1; i < nets_.size(); ++i) {
       utils::MemoryBufferStream fs(&model_blob_);
       nets_[i]->LoadModel(fs);
       nets_[i]->WaitJob();
     }
+    DD << "xxx";
     this->InitTemp();
 
+    DD << "xxx";
   }
   virtual void SaveModel(utils::IStream &fo) {
     this->Save2ModelBlob();
@@ -101,13 +108,13 @@ class CXXNetThreadTrainer : public INetTrainer {
     mshadow::Shape<4> oshape = out_temp.shape_;
     oshape[0] = data.batch_size;
     out_temp.Resize(oshape);
-    
+
     const size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
-    
+
     bool need_sync = sample_counter % update_period == 0;
     bool need_update = (sample_counter + 1) % update_period == 0;
-    
+
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
@@ -227,7 +234,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     utils::Assert(nets_.size() == 0, "net must be empty before this");
     net_cfg.Configure(cfg);
     if (devices_.size() == 0) devices_.push_back(0);
-    size_t ndevice = devices_.size(); 
+    size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
     while (step * (devices_.size() - 1) >= batch_size) {
       devices_.pop_back();

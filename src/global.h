@@ -27,4 +27,8 @@ typedef mshadow::index_t index_t;
 typedef mshadow::default_real_t real_t;
 } // namespace cxxnet
 
+// debug
+#include "glog/logging.h"
+#define DD LOG(ERROR)
+
 #endif  // CXXNET_GLOBAL_H_

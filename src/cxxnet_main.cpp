@@ -55,6 +55,7 @@ class CXXNetLearnTask {
       return 0;
     }
 
+    printf("%s\n", argv[1]);
     utils::ConfigIterator itr(argv[1]);
     while (itr.Next()) {
       this->SetParam(itr.name(), itr.val());
@@ -65,6 +66,7 @@ class CXXNetLearnTask {
         this->SetParam(name, val);
       }
     }
+    for (auto r : cfg) printf("%s\t%s\n", r.first.c_str(), r.second.c_str());
     this->Init();
     if (!silent) {
       printf("initializing end, start working\n");
@@ -107,6 +109,7 @@ class CXXNetLearnTask {
         this->LoadModel();
       }
     }
+    DD << "..";
     this->CreateIterators();
   }
   // load in latest model from model_folder

@@ -127,7 +127,7 @@ struct NeuralNet {
                        bool need_update,
                        long update_epoch) {
     for (size_t i = connections.size(); i > 0; --i) {
-      layer::Connection<xpu> &c = connections[i - 1];      
+      layer::Connection<xpu> &c = connections[i - 1];
       for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
         updaters[i - 1][j]->BeforeBackprop(c.nodes_in, c.nodes_out);
       }

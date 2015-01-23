@@ -14,12 +14,13 @@
 #include "../layer/layer.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
+// #include "glog/logging.h"
 
 namespace cxxnet {
 namespace nnet {
 /*!
  * \brief this is an object that records the configuration of a neural net
- *    it is used to store the network structure, and reads in configuration 
+ *    it is used to store the network structure, and reads in configuration
  *    that associates with each of the layers
  */
 struct NetConfig {
@@ -39,7 +40,7 @@ struct NetConfig {
     NetParam(void) {
       memset(reserved, 0, sizeof(reserved));
       num_nodes = 0;
-      num_layers = 0;      
+      num_layers = 0;
       input_shape = mshadow::Shape3(0, 0, 0);
       init_end = 0;
     }
@@ -48,8 +49,8 @@ struct NetConfig {
   struct LayerInfo {
     /*! \brief type of layer */
     layer::LayerType type;
-    /*! 
-     * \brief the index of primary layer, 
+    /*!
+     * \brief the index of primary layer,
      *  this field is only used when layer type is kSharedLayer
      */
     int primary_layer_index;
@@ -57,7 +58,7 @@ struct NetConfig {
     std::string name;
     /*! \brief input node index */
     std::vector<int> nindex_in;
-    /*! \brief output node node index */    
+    /*! \brief output node node index */
     std::vector<int> nindex_out;
     LayerInfo(void) : primary_layer_index(-1), name() {
     }
@@ -139,7 +140,7 @@ struct NetConfig {
       utils::Check(fi.Read(&layers[i].name), "NetConfig: invalid model file");
       utils::Check(fi.Read(&layers[i].nindex_in), "NetConfig: invalid model file");
       utils::Check(fi.Read(&layers[i].nindex_out), "NetConfig: invalid model file");
-      if (layers[i].type == layer::kSharedLayer) { 
+      if (layers[i].type == layer::kSharedLayer) {
         utils::Check(layers[i].name.length() == 0, "SharedLayer must not have name");
       } else {
         utils::Check(layer_name_map.count(layers[i].name) == 0,
@@ -150,20 +151,23 @@ struct NetConfig {
     this->ClearConfig();
   }
   /*!
-   * \brief setup configuration, using the config string pass in 
+   * \brief setup configuration, using the config string pass in
    */
   inline void Configure(const std::vector< std::pair<std::string, std::string> > &cfg) {
+    // LOG(ERROR) << this;
+    // for (auto c : cfg)  LOG(ERROR) << c.first << "\t" << c.second;
     this->ClearConfig();
     // whether in net config mode
     int netcfg_mode = 0;
     // remembers what is the last top node
     int cfg_top_node = 0;
     // current configuration layer index
-    int cfg_layer_index = 0;   
+    int cfg_layer_index = 0;
     for (size_t i = 0; i < cfg.size(); ++i) {
       const char *name = cfg[i].first.c_str();
       const char *val = cfg[i].second.c_str();
-      if (param.init_end == 0) { 
+      // printf("%s \t %s \n", name, val);
+      if (param.init_end == 0) {
         if (!strcmp( name, "input_shape")) {
           unsigned x, y, z;
           utils::Check(sscanf(val, "%u,%u,%u", &z, &y, &x) == 3,
@@ -174,7 +178,7 @@ struct NetConfig {
       if (netcfg_mode != 2) {
         if (!strcmp(name, "updater")) updater_type = val;
         if (!strcmp(name, "sync")) sync_type = val;
-      }      
+      }
       if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
       if (!strcmp(name, "netconfig") && !strcmp(val, "end")) netcfg_mode = 0;
       if (!strncmp(name, "layer[", 6)) {
@@ -185,7 +189,7 @@ struct NetConfig {
           layers.push_back(info);
           layercfg.resize(layers.size());
         } else {
-          utils::Check(cfg_layer_index < static_cast<int>(layers.size()), "config layer index exceed bound");         
+          utils::Check(cfg_layer_index < static_cast<int>(layers.size()), "config layer index exceed bound");
           utils::Check(info == layers[cfg_layer_index],
                        "config setting does not match existing network structure");
         }
@@ -205,7 +209,7 @@ struct NetConfig {
     }
     if (param.init_end == 0) this->InitNet();
   }
-  
+
  private:
   // configuration parser to parse layer info, support one to to one connection for now
   // extend this later to support multiple connections
@@ -218,7 +222,7 @@ struct NetConfig {
     if (sscanf(name, "layer[+%d]", &b) == 1) {
       a = top_node; b += top_node;
       inf.nindex_in.push_back(a);
-      inf.nindex_out.push_back(b);    
+      inf.nindex_out.push_back(b);
     } else if (sscanf(name, "layer[%s", src) == 1) {
       char* dst = strchr(src, '-');
       dst += 2;
@@ -244,17 +248,20 @@ struct NetConfig {
     }
     if (inf.type == layer::kSharedLayer) {
       utils::Check(s_tag.length() != 0, "shared layer must specify tag of layer to share with");
-      utils::Check(layer_name_map.count(s_tag) != 0, 
+      utils::Check(layer_name_map.count(s_tag) != 0,
                    "shared layer tag %s is not defined before", s_tag.c_str());
       inf.primary_layer_index = layer_name_map[s_tag];
     } else {
       if (s_tag.length() != 0) {
         if (layer_name_map.count(s_tag) != 0) {
+          // LOG(ERROR) << layer_name_map[s_tag] << " " << cfg_layer_index << " " <<  s_tag.c_str();
+          CHECK_EQ(layer_name_map[s_tag],cfg_layer_index);
           utils::Check(layer_name_map[s_tag] == cfg_layer_index,
                        "layer name in the configuration file do not "\
                        "match the name stored in model");
         } else {
           layer_name_map[s_tag] = cfg_layer_index;
+          // LOG(ERROR) << layer_name_map[s_tag] << " " << cfg_layer_index << " " <<  s_tag.c_str();
         }
         inf.name = s_tag;
       }

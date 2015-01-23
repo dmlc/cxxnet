@@ -14,6 +14,7 @@ namespace cxxnet {
 class MNISTIterator: public IIterator<DataBatch> {
  public:
   MNISTIterator(void) {
+    DD  << "..";
     img_.dptr_ = NULL;
     mode_ = 1;
     inst_offset_ = 0;
@@ -25,15 +26,16 @@ class MNISTIterator: public IIterator<DataBatch> {
   }
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "silent")) silent_ = atoi(val);
-    if (!strcmp(name, "batch_size"))   batch_size_ = (index_t)atoi(val); 
+    if (!strcmp(name, "batch_size"))   batch_size_ = (index_t)atoi(val);
     if (!strcmp(name, "input_flat"))   mode_ = atoi(val);
     if (!strcmp(name, "shuffle")) shuffle_ = atoi(val);
     if (!strcmp(name, "index_offset")) inst_offset_ = atoi(val);
     if (!strcmp(name, "path_img"))     path_img = val;
-    if (!strcmp(name, "path_label"))   path_label = val;            
+    if (!strcmp(name, "path_label"))   path_label = val;
   }
   // intialize iterator loads data in
   virtual void Init(void) {
+    DD << "init";
     this->LoadImage();
     this->LoadLabel();
     if (mode_ == 1) {
@@ -47,7 +49,7 @@ class MNISTIterator: public IIterator<DataBatch> {
     if (shuffle_) this->Shuffle();
     if (silent_ == 0) {
       mshadow::Shape<4> s = out_.data.shape_;
-      printf("MNISTIterator: load %u images, shuffle=%d, shape=%u,%u,%u,%u\n", 
+      printf("MNISTIterator: load %u images, shuffle=%d, shape=%u,%u,%u,%u\n",
              (unsigned)img_.size(0), shuffle_, s[0], s[1], s[2], s[3]);
     }
   }
@@ -75,10 +77,10 @@ class MNISTIterator: public IIterator<DataBatch> {
     int image_count = ReadInt(gzimg);
     int image_rows  = ReadInt(gzimg);
     int image_cols  = ReadInt(gzimg);
-            
+
     img_.shape_ = mshadow::Shape3(image_count, image_rows, image_cols);
     img_.stride_ = img_.size(2);
-            
+
     // allocate continuous memory
     img_.dptr_ = new float[img_.MSize()];
     for (int i = 0; i < image_count; ++i) {
@@ -90,7 +92,7 @@ class MNISTIterator: public IIterator<DataBatch> {
     }
     // normalize to 0-1
     img_ *= 1.0f / 256.0f;
-  }        
+  }
   inline void LoadLabel(void) {
     utils::GzFile gzlabel(path_label.c_str(), "rb");
     ReadInt(gzlabel);
@@ -126,7 +128,7 @@ class MNISTIterator: public IIterator<DataBatch> {
   int silent_;
   // path
   std::string path_img, path_label;
-  // output 
+  // output
   DataBatch out_;
   // whether do shuffle
   int shuffle_;
@@ -136,14 +138,14 @@ class MNISTIterator: public IIterator<DataBatch> {
   index_t loc_;
   // batch size
   index_t batch_size_;
-  // image content 
+  // image content
   mshadow::Tensor<cpu,3> img_;
   // label content
   std::vector<float> labels_;
   // instance index offset
   unsigned inst_offset_;
   // instance index
-  std::vector<unsigned> inst_; 
+  std::vector<unsigned> inst_;
 }; //class MNISTIterator
 }  // namespace cxxnet
 #endif  // CXXNET_ITER_MNIST_INL_HPP_

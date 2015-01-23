@@ -8,6 +8,13 @@
 #include "../layer/param.h"
 #include "../utils/config.h"
 #include "../updater/updater.h"
+#include "glog/logging.h"
+#include "gflags/gflags.h"
+#include "ps.h"
+
+namespace PS {
+DECLARE_string(app_file);
+} // namespace PS
 
 namespace cxxnet {
 namespace nnet {
@@ -26,11 +33,18 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
     cfgvec.push_back(std::make_pair(std::string(name), std::string(val)));
   }
   virtual void Init(int rank, const std::string &conf) {
-    std::stringstream ss(conf);
-    utils::ConfigStreamReader reader(ss);
-    while (reader.Next()) {
-      this->SetParam(reader.name(), reader.val());
+    // FIXME
+    // std::stringstream ss(conf);
+    // utils::ConfigStreamReader reader(ss);
+
+    // if (PS::Postoffice::instance().app()->isServer()) {
+    if (PS::FLAGS_app_file.size()) {
+      utils::ConfigIterator reader(PS::FLAGS_app_file.c_str());
+      while (reader.Next()) {
+        this->SetParam(reader.name(), reader.val());
+      }
     }
+
     // start configure settings
     cfg.Configure(cfgvec);
     rnd.Seed(seed + rank * 17);
@@ -47,6 +61,7 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
          updater::DecodeTag(key));
     e.is_bias = !strcmp(updater::DecodeTag(key), "bias");
     const int i = key / updater::kDataKeyStep;
+CHECK_LT(i, cfg.param.num_layers) <<  "layer index exceed bound";
     utils::Assert(i < cfg.param.num_layers, "layer index exceed bound");
     e.layer_type = cfg.layers[i].type;
     for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
@@ -115,7 +130,7 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
       epoch += 1;
     }
   };
-  
+
  private:
   int seed;
   mshadow::Random<cpu> rnd;
