@@ -22,6 +22,8 @@ public:
     silent_ = 0;
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
+    flag_ = true;
+    img_conf_ = "";
   }
   virtual ~ThreadImagePageIterator(void) {
     if (fplst_ != NULL) fclose(fplst_);
@@ -29,24 +31,39 @@ public:
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "image_list")) {
       raw_imglst_ += val;
-      int bias = 0;
-      char buf[1024];
-      while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imglst_.size()) {
-        printf("Set List: %s\n", buf);
-        std::string v(buf);
-        path_imglst_.push_back(v);
-        bias += v.size() + 1;
-      }
+      raw_imglst_ += ",";
+      std::string v(val);
+      path_imglst_.push_back(v);
     }
     if (!strcmp(name, "image_bin")) {
       raw_imgbin_ += val;
-      int bias = 0;
-      char buf[1024];
-      while(sscanf(val + bias, "%[^%,],", buf) == 1 && bias < raw_imgbin_.size()) {
-        printf("Set Bin:%s\n", buf);
-        std::string v(buf);
-        path_imgbin_.push_back(v);
-        bias += v.size() + 1;
+      raw_imgbin_ += ",";
+      std::string v(val);
+      path_imgbin_.push_back(v);
+    }
+    if (!strcmp(name, "image_conf")) {
+      img_conf_ += val;
+    }
+    if (!strcmp(name, "idlist")) {
+      int loc = 0;
+      int sz = strlen(val);
+      std::string buf = 0;
+      char name[256];
+      while (loc < sz) {
+        if (val[loc] == ' ' || val[loc] == '\t') continue;
+        else if (val[loc] == ',') {
+          sprintf(name,  img_conf_.c_str(), atoi(buf.c_str()));
+          buf = name;
+          std::string v = buf + ".lst";
+          path_imglst_.push_back(v);
+          v = buf + ".bin";
+          path_imgbin_.push_back(v);
+          buf.clear();
+        } else if (isdigit(val[loc])) {
+          buf += val[loc];
+        } else {
+          utils::Error("Unexpected char in idlist");
+        }
       }
     }
     if (!strcmp(name, "silent"))      silent_ = atoi(val);
@@ -63,11 +80,20 @@ public:
     this->BeforeFirst();
   }
   virtual void BeforeFirst(void) {
-    fseek(fplst_ , 0, SEEK_SET);
+    if (path_imglst_.size() == 1) {
+      fseek(fplst_ , 0, SEEK_SET);
+
+    } else {
+      if (fplst_) fclose(fplst_);
+      idx_ = 0;
+      fplst_  = utils::FopenCheck(path_imglst_[0].c_str(), "r");
+    }
     itr.BeforeFirst();
     this->LoadNextPage();
+    flag_ = true;
   }
   virtual bool Next(void) {
+    if (!flag_) return flag_;
     while (fscanf(fplst_, "%u%f%*[^\n]\n", &out_.index, &out_.label) == 2) {
       this->NextBuffer(buf_);
       this->LoadImage(img_, out_, buf_);
@@ -75,8 +101,10 @@ public:
     }
     idx_ += 1;
     idx_ %= path_imglst_.size();
-    if (idx_ == 0 || path_imglst_.size() == 1) return false;
-    else {
+    if (idx_ == 0 || path_imglst_.size() == 1) {
+      flag_ = false;
+      return flag_;
+    } else {
       if (fplst_) fclose(fplst_);
       fplst_  = utils::FopenCheck(path_imglst_[idx_].c_str(), "r");
       return Next();
@@ -120,6 +148,7 @@ protected:
     ptop_ = 0;
   }
 protected:
+  bool flag_;
   int idx_;
   // output data
   DataInst out_;
@@ -129,7 +158,7 @@ protected:
   FILE *fplst_;
   // prefix path of image binary, path to input lst, format: imageid label path
   std::vector<std::string> path_imgbin_, path_imglst_;
-  std::string raw_imglst_, raw_imgbin_;
+  std::string raw_imglst_, raw_imgbin_, img_conf_;
   // temp storage for image
   mshadow::TensorContainer<cpu, 3> img_;
   // temp memory buffer
@@ -143,8 +172,9 @@ private:
     utils::StdFile fi;
     std::vector<std::string> path_imgbin;
     int idx;
+    bool flag;
   public:
-    Factory() : idx(0) {}
+    Factory() : idx(0), flag(true) {}
     inline bool Init() {
       return true;
     }
@@ -153,13 +183,16 @@ private:
       fi.Open(path_imgbin[idx].c_str(), "rb");
     }
     inline bool LoadNext(PagePtr &val) {
+      if (!flag) return flag;
       bool res = val.page->Load(fi);
       if (res) return res;
       else {
         idx += 1;
         idx %= path_imgbin.size();
-        if (idx == 0) return false;
-        else {
+        if (idx == 0) {
+          flag = false;
+          return flag;
+        } else {
           fi.Close();
           fi.Open(path_imgbin[idx].c_str(), "rb");
           return val.page->Load(fi);
@@ -174,9 +207,17 @@ private:
       delete a.page;
     }
     inline void Destroy() {
+      fi.Close();
     }
     inline void BeforeFirst() {
-      fi.Seek(0);
+      if (path_imgbin.size() == 1) {
+        fi.Seek(0);
+      } else {
+        idx = 0;
+        fi.Close();
+        fi.Open(path_imgbin[idx].c_str(), "rb");
+      }
+      flag = true;
     }
   };
 protected:
