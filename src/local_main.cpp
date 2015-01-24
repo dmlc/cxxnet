@@ -4,8 +4,8 @@
  * \author Tianqi Chen
  */
 
-int PS::WorkerNodeMain(int argc, char *argv[]);
+int WorkerNodeMain(int argc, char *argv[]);
 
 int main(int argc, char *argv[]) {
-  return PS::WorkerNodeMain(argc, argv);
+  return WorkerNodeMain(argc, argv);
 }
