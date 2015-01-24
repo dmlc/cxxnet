@@ -5,3 +5,4 @@ test*
 Local*
 bin
 mshadow
+config.mk
