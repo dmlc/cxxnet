@@ -163,7 +163,7 @@ struct NeuralNet {
     }
   }
   // create the updaters
-  inline void InitUpdaters(mshadow::ps::IParamServer<xpu, real_t> *ps, int devid) {
+  inline void InitUpdaters(mshadow::ps::ISharedModel<xpu, real_t> *ps, int devid) {
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       std::vector<updater::IAsyncUpdater<xpu>*> out;
       if (connections[i].type != layer::kSharedLayer) {
@@ -287,7 +287,7 @@ class NeuralNetThread {
  public:
   /*! \brief create a new neural net thread on specific device */
   NeuralNetThread(const NetConfig &cfg,
-                  mshadow::ps::IParamServer<xpu, real_t> *ps,
+                  mshadow::ps::ISharedModel<xpu, real_t> *ps,
                   int device_id,
                   mshadow::index_t batch_size,
                   int seed,
@@ -515,7 +515,7 @@ class NeuralNetThread {
   // thread object
   utils::Thread worker_thread;
   // parameter server
-  mshadow::ps::IParamServer<xpu, real_t> *pserver;
+  mshadow::ps::ISharedModel<xpu, real_t> *pserver;
   // stream used for computation
   mshadow::Stream<xpu> *stream;
   // device id used to intialize tensor engine

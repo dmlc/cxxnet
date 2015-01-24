@@ -17,7 +17,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   AsyncUpdater(int data_key, int devid, int priority,
                mshadow::Tensor<xpu, 2> w, mshadow::Tensor<xpu, 2> dw,
                layer::LayerType layer_type, const char *tag,
-               mshadow::ps::IParamServer<xpu, real_t> *pserver,
+               mshadow::ps::ISharedModel<xpu, real_t> *pserver,
                IUpdater<xpu> *updater)
       : data_key(data_key), devid(devid),
         priority(priority), w(w), dw(dw),
@@ -205,7 +205,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   mshadow::Tensor<xpu, 2> w, dw;
   layer::LayerType layer_type;
   std::string tag;
-  mshadow::ps::IParamServer<xpu, real_t> *pserver;
+  mshadow::ps::ISharedModel<xpu, real_t> *pserver;
   IUpdater<xpu> *updater;
   // whether issue pull request at backprop
   int pull_at_backprop;
