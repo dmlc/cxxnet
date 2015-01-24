@@ -23,7 +23,6 @@ public:
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
     flag_ = true;
-    img_conf_ = "";
   }
   virtual ~ThreadImagePageIterator(void) {
     if (fplst_ != NULL) fclose(fplst_);
@@ -41,28 +40,26 @@ public:
       std::string v(val);
       path_imgbin_.push_back(v);
     }
-    if (!strcmp(name, "image_conf")) {
-      img_conf_ += val;
+    if (!strcmp(name, "image_conf_prefix")) {
+      std::string v(val);
+      img_conf_prefix_.push_back(v);
     }
     if (!strcmp(name, "idlist")) {
-      int loc = 0;
-      int sz = strlen(val);
-      std::string buf = 0;
-      char name[256];
-      while (loc < sz) {
-        if (val[loc] == ' ' || val[loc] == '\t') continue;
-        else if (val[loc] == ',') {
-          sprintf(name,  img_conf_.c_str(), atoi(buf.c_str()));
-          buf = name;
+      std::string buf;
+      char name[1024];
+      int lb = 0;
+      int ub = 0;
+      utils::Check(sscanf(val, "%d-%d", &lb, &ub) == 2, "idlist only support range, like 1-100");
+      for (; lb <= ub; ++lb) {
+        for (unsigned int i = 0; i < img_conf_prefix_.size(); ++i) {
+          sprintf(name, "%s-%04d", img_conf_prefix_[i].c_str(), lb);
+          std::string tmp(name);
+          buf = tmp;
           std::string v = buf + ".lst";
           path_imglst_.push_back(v);
           v = buf + ".bin";
           path_imgbin_.push_back(v);
           buf.clear();
-        } else if (isdigit(val[loc])) {
-          buf += val[loc];
-        } else {
-          utils::Error("Unexpected char in idlist");
         }
       }
     }
@@ -157,8 +154,8 @@ protected:
   // file pointer to list file, information file
   FILE *fplst_;
   // prefix path of image binary, path to input lst, format: imageid label path
-  std::vector<std::string> path_imgbin_, path_imglst_;
-  std::string raw_imglst_, raw_imgbin_, img_conf_;
+  std::vector<std::string> path_imgbin_, path_imglst_, img_conf_prefix_;
+  std::string raw_imglst_, raw_imgbin_;
   // temp storage for image
   mshadow::TensorContainer<cpu, 3> img_;
   // temp memory buffer

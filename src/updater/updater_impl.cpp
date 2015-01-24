@@ -16,7 +16,7 @@ IUpdater<cpu>* CreateUpdater<>(const char *type,
 template<>
 void CreateAsyncUpdaters<cpu>(int layer_index,
                               int device_id,
-                              mshadow::ps::IParamServer<cpu, real_t> *param_server,
+                              mshadow::ps::ISharedModel<cpu, real_t> *param_server,
                               const char *type,
                               mshadow::Random<cpu> *p_rnd,
                               layer::LayerType layer_type,

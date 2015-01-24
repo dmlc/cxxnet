@@ -264,7 +264,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       else type_pserver = "local";
     }
     if (type_pserver != "NONE") {
-      pserver = mshadow::ps::Create<xpu, real_t>(type_pserver.c_str());
+      pserver = mshadow::ps::CreateSharedModel<xpu, real_t>(type_pserver.c_str());
       for (size_t i = 0; i < cfg.size(); ++i) {
         pserver->SetParam(cfg[i].first.c_str(), cfg[i].second.c_str());
       }
@@ -288,7 +288,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
   }
   /*! \brief parameter server */
-  mshadow::ps::IParamServer<xpu, real_t> *pserver;
+  mshadow::ps::ISharedModel<xpu, real_t> *pserver;
   /*! \brief type of parameter server */
   std::string type_pserver;
   /*! \brief epoch counter */

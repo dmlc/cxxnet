@@ -8,21 +8,20 @@
 #include "../layer/param.h"
 #include "../utils/config.h"
 #include "../updater/updater.h"
-#include "glog/logging.h"
-#include "gflags/gflags.h"
-#include "ps.h"
 
+#if MSHADOW_DIST_PS
 namespace PS {
 DECLARE_string(app_file);
 } // namespace PS
+#endif
 
 namespace cxxnet {
 namespace nnet {
-class NetServer : public mshadow::ps::ICustomServer<real_t> {
+class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
  public:
-  NetServer(void) : rnd(0) {
+  CXXNetUpdater(void) : rnd(0) {
   }
-  virtual ~NetServer(void) {
+  virtual ~CXXNetUpdater(void) {
     for (std::map<int, UpdaterEntry*>::iterator
              it = updaters.begin(); it != updaters.end(); ++it) {
       delete it->second;
@@ -38,12 +37,14 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
     // utils::ConfigStreamReader reader(ss);
 
     // if (PS::Postoffice::instance().app()->isServer()) {
+#if MSHADOW_DIST_PS
     if (PS::FLAGS_app_file.size()) {
       utils::ConfigIterator reader(PS::FLAGS_app_file.c_str());
       while (reader.Next()) {
         this->SetParam(reader.name(), reader.val());
       }
     }
+#endif
 
     // start configure settings
     cfg.Configure(cfgvec);
@@ -61,7 +62,6 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
          updater::DecodeTag(key));
     e.is_bias = !strcmp(updater::DecodeTag(key), "bias");
     const int i = key / updater::kDataKeyStep;
-CHECK_LT(i, cfg.param.num_layers) <<  "layer index exceed bound";
     utils::Assert(i < cfg.param.num_layers, "layer index exceed bound");
     e.layer_type = cfg.layers[i].type;
     for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
@@ -147,14 +147,18 @@ CHECK_LT(i, cfg.param.num_layers) <<  "layer index exceed bound";
 namespace mshadow {
 namespace ps {
 template<>
-ICustomServer<cxxnet::real_t> *CreateServer<cxxnet::real_t>(void) {
-  return new cxxnet::nnet::NetServer();
+IModelUpdater<cxxnet::real_t> *CreateModelUpdater<cxxnet::real_t>(void) {
+  return new cxxnet::nnet::CXXNetUpdater();
 }
 }  // namespace ps
 }  // namespace mshadow
 
 #if MSHADOW_DIST_PS
-PS::App* CreateServer(const std::string& conf) {
-  return new mshadow::ps::MShadowServer<cxxnet::real_t>(conf);
+namespace PS {
+
+App* CreateServerNode(const std::string& conf) {
+  return new mshadow::ps::MShadowServerNode<cxxnet::real_t>(conf);
 }
+
+} // namespace PS
 #endif
