@@ -29,16 +29,16 @@ ifneq ($(USE_CUDA_PATH), NONE)
 endif
 
 ifeq ($(USE_BLAS), mkl)
-	LDFLAGS += -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 
-else 
+	LDFLAGS += -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
+else
 	CFLAGS += -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
 endif
 ifeq ($(USE_BLAS), openblas)
 	LDFLAGS += -lopenblas
 else ifeq ($(USE_BLAS), atlas)
-	LDFLAGS += -lcblas	
+	LDFLAGS += -lcblas
 else ifeq ($(USE_BLAS), blas)
-	LDFLAGS += -lblas	
+	LDFLAGS += -lblas
 endif
 
 # setup opencv
@@ -65,11 +65,20 @@ ifneq ($(ADD_LDFLAGS), NONE)
 	LDFLAGS += $(ADD_LDFLAGS)
 endif
 
-
 ifeq ($(USE_DIST_PS),1)
-	CFLAGS+= -DMSHADOW_DIST_PS=1
+ifeq ($(PS_PATH), NONE)
+PS_PATH = ..
+endif
+ifeq ($(PS_THIRD_PATH), NONE)
+PS_THIRD_PATH = $(PS_PATH)/third_party
+endif
+CFLAGS += -DMSHADOW_DIST_PS=1 -std=c++0x \
+	-I$(PS_PATH)/src -I$(PS_THIRD_PATH)/include
+PS_LIB = $(addprefix $(PS_PATH)/build/, libps.a psmain.o) \
+	$(addprefix $(PS_THIRD_PATH)/lib/, libgflags.a libzmq.a libprotobuf.a \
+	libglog.a libz.a libsnappy.a)
 else
-	CFLAGS+= -DMSHADOW_DIST_PS=0	
+	CFLAGS+= -DMSHADOW_DIST_PS=0
 endif
 
 # specify tensor path
@@ -78,7 +87,7 @@ OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 ifeq ($(USE_CUDA), 0)
-	CUDEP = 
+	CUDEP =
 else
 	CUDEP = $(CUOBJ)
 endif
@@ -86,10 +95,10 @@ endif
 .PHONY: clean all
 
 ifeq ($(USE_DIST_PS), 1)
-	BIN += bin/cxxnet.ps
+BIN=bin/cxxnet.ps
 endif
 
-all: $(BIN) 
+all: $(BIN)
 
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu\
 	src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
@@ -104,10 +113,10 @@ nnet_ps_server.o: src/nnet/nnet_ps_server.cpp src/utils/*.h src/nnet/*.hpp src/n
 
 data.o: src/io/data.cpp src/io/*.hpp
 
-main.o: src/cxxnet_main.cpp 
+main.o: src/cxxnet_main.cpp
 
 bin/cxxnet: src/local_main.cpp $(OBJ) $(CUDEP)
-bin/cxxnet.ps: $(OBJ) $(CUDEP) libps.a libps_main.a
+bin/cxxnet.ps: $(OBJ) $(CUDEP) $(PS_LIB)
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)

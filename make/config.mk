@@ -1,9 +1,9 @@
 #-----------------------------------------------------
 #  cxxnet: the configuration compile script
-#  
+#
 #  This is the default configuration setup for cxxnet
 #  If you want to change configuration, do the following steps:
-#     
+#
 #  - copy this file to the root folder
 #  - modify the configuration you want
 #  - type make or make -j n for parallel build
@@ -39,10 +39,11 @@ USE_BLAS = mkl
 
 # whether compile with parameter server
 USE_DIST_PS = 0
+PS_PATH = NONE
+PS_THRID_PATH = NONE
 
 # the additional link flags you want to add
 ADD_LDFLAGS = NONE
 
 # the additional compile flags you want to add
 ADD_CFLAGS = NONE
-
