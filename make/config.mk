@@ -40,7 +40,7 @@ USE_BLAS = mkl
 # whether compile with parameter server
 USE_DIST_PS = 0
 PS_PATH = NONE
-PS_THRID_PATH = NONE
+PS_THIRD_PATH = NONE
 
 # the additional link flags you want to add
 ADD_LDFLAGS = NONE
