@@ -78,7 +78,7 @@ OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 ifeq ($(USE_CUDA), 0)
-	CUDEP = ""
+	CUDEP = 
 else
 	CUDEP = $(CUOBJ)
 endif
