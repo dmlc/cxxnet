@@ -30,7 +30,7 @@ inline IAsyncUpdater<xpu>*
 CreateAsyncUpdater_(int layer_index,
                     int devid,
                     int priority,
-                    mshadow::ps::IParamServer<xpu, real_t> *pserver,
+                    mshadow::ps::ISharedModel<xpu, real_t> *pserver,
                     const char *type,
                     mshadow::Random<xpu> *p_rnd,
                     layer::LayerType layer_type,
@@ -50,7 +50,7 @@ struct CreateAsyncUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   // device id
   int devid;
   // parameter server
-  mshadow::ps::IParamServer<xpu, real_t> *pserver;
+  mshadow::ps::ISharedModel<xpu, real_t> *pserver;
   // type of updater
   const char *type;
   // random number generator
@@ -63,7 +63,7 @@ struct CreateAsyncUpdaterVisitor : public IUpdater<xpu>::IVisitor {
   CreateAsyncUpdaterVisitor
   (int layerid,
    int devid,
-   mshadow::ps::IParamServer<xpu, real_t> *pserver,
+   mshadow::ps::ISharedModel<xpu, real_t> *pserver,
    const char *type,
    mshadow::Random<xpu> *p_rnd,
    layer::LayerType layer_type,

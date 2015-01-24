@@ -74,7 +74,7 @@ PS_THIRD_PATH = $(PS_PATH)/third_party
 endif
 CFLAGS += -DMSHADOW_DIST_PS=1 -std=c++0x \
 	-I$(PS_PATH)/src -I$(PS_THIRD_PATH)/include
-PS_LIB = $(addprefix $(PS_PATH)/build/, libps.a psmain.o) \
+PS_LIB = $(addprefix $(PS_PATH)/build/, libps.a libpsmain.a) \
 	$(addprefix $(PS_THIRD_PATH)/lib/, libgflags.a libzmq.a libprotobuf.a \
 	libglog.a libz.a libsnappy.a)
 else
@@ -109,7 +109,8 @@ updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_im
 nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h\
 	src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h
 
-nnet_ps_server.o: src/nnet/nnet_ps_server.cpp src/utils/*.h src/nnet/*.hpp src/nnet/*.h
+nnet_ps_server.o: src/nnet/nnet_ps_server.cpp src/utils/*.h src/nnet/*.hpp \
+	src/nnet/*.h mshadow/mshadow-ps/*.h
 
 data.o: src/io/data.cpp src/io/*.hpp
 

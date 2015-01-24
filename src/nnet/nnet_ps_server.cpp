@@ -17,11 +17,11 @@ DECLARE_string(app_file);
 
 namespace cxxnet {
 namespace nnet {
-class NetServer : public mshadow::ps::ICustomServer<real_t> {
+class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
  public:
-  NetServer(void) : rnd(0) {
+  CXXNetUpdater(void) : rnd(0) {
   }
-  virtual ~NetServer(void) {
+  virtual ~CXXNetUpdater(void) {
     for (std::map<int, UpdaterEntry*>::iterator
              it = updaters.begin(); it != updaters.end(); ++it) {
       delete it->second;
@@ -147,14 +147,18 @@ class NetServer : public mshadow::ps::ICustomServer<real_t> {
 namespace mshadow {
 namespace ps {
 template<>
-ICustomServer<cxxnet::real_t> *CreateServer<cxxnet::real_t>(void) {
-  return new cxxnet::nnet::NetServer();
+IModelUpdater<cxxnet::real_t> *CreateModelUpdater<cxxnet::real_t>(void) {
+  return new cxxnet::nnet::CXXNetUpdater();
 }
 }  // namespace ps
 }  // namespace mshadow
 
 #if MSHADOW_DIST_PS
-PS::App* CreateServer(const std::string& conf) {
-  return new mshadow::ps::MShadowServer<cxxnet::real_t>(conf);
+namespace PS {
+
+App* CreateServerNode(const std::string& conf) {
+  return new mshadow::ps::MShadowServerNode<cxxnet::real_t>(conf);
 }
+
+} // namespace PS
 #endif

@@ -16,7 +16,7 @@ With distributed parameter server:
 git clone https://github.com/mli/parameter_server
 cd parameter_server
 ./script/install_third.sh
-make -j8
+make ps -j8
 ```
 
 2. Build cxxnet with parameter server
@@ -36,7 +36,13 @@ in `config.mk`
 3. Run with 1 worker and 2 servers:
 
 ```bash
-../../../script/local.sh ../../bin/cxxnet.ps 2 1 MNIST.conf -app_file MNIST.conf
+../../../script/local.sh ../../bin/cxxnet.ps 2 1 MNIST.conf -app_file MNIST.conf update_on_server=1 param_server=dist
+```
+
+4. Run with 2 workers and 2 servers:
+
+```bash
+../../../script/local.sh ../../bin/cxxnet.ps 2 2 MNIST.conf -app_file MNIST.conf update_on_server=1 param_server=dist silent=1
 ```
 
 TODO
