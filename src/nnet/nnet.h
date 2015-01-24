@@ -50,8 +50,11 @@ class INetTrainer{
   /*! \brief  predict labels */
   virtual void Predict(std::vector<float> &preds, const DataBatch& batch) = 0;
   virtual void PredictRaw( std::vector<std::vector<float> > &preds, const DataBatch &batch) = 0;
-  virtual void PredictTop( std::vector<std::vector<float> > &preds, const DataBatch &batch) = 0;
+  virtual void ExtractFeature( std::vector<std::vector<float> > &preds, const DataBatch &batch,
+    const std::string& layer_name) = 0;
 
+  virtual void ExtractFeature( std::vector<std::vector<float> > &preds, const DataBatch &batch,
+    const int layer_id) = 0;
 };
 
 /*!

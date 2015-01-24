@@ -128,13 +128,13 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
   }
   virtual void Predict(std::vector<float> &preds, const DataBatch& data) {
-    this->ForwardToTemp(data);
+    this->ForwardToTemp(data, nets_[0]->net().nodes.size() - 1);
     for (index_t i = 0; i < out_temp.size(0); ++i) {
       preds.push_back(this->TransformPred(out_temp[i][0][0]));
     }
   }
   virtual void PredictRaw(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
-    this->ForwardToTemp(batch);
+    this->ForwardToTemp(batch, nets_[0]->net().nodes.size() - 1);
     preds.resize(out_temp.size(0));
     for(index_t i = 0; i < out_temp.size(0); ++i) {
       preds[i].resize(out_temp.size(3));
@@ -143,16 +143,27 @@ class CXXNetThreadTrainer : public INetTrainer {
       }
     }
   }
-  virtual void PredictTop(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
-    this->ForwardToTemp(batch, -2);
+  virtual void ExtractFeature(std::vector<std::vector<float> > &preds,
+    const DataBatch& batch, const int layer_id) {
+    this->ForwardToTemp(batch, layer_id);
     // TODO (bing): merge with PredictRaw
     preds.resize(out_temp.size(0));
     for(index_t i = 0; i < out_temp.size(0); ++i) {
-      preds[i].resize(out_temp.size(3));
-      for (index_t j = 0; j < out_temp.size(3); ++j) {
-        preds[i][j] = out_temp[i][0][0][j];
+      preds[i].resize(out_temp.size(1) * out_temp.size(2) * out_temp.size(3));
+      index_t count = 0;
+      for (index_t j = 0; j < out_temp.size(1); ++j) {
+        for (index_t k = 0; k < out_temp.size(2); ++k) {
+          for (index_t l = 0; l < out_temp.size(3); ++l){
+            preds[i][count++] = out_temp[i][j][k][l];
+          }
+        }
       }
     }
+  }
+
+  virtual void ExtractFeature(std::vector<std::vector<float> > &preds,
+    const DataBatch& batch, const std::string& layer_name) {
+    utils::Error("Not supported now.");
   }
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char* data_name) {
     std::string ret;
@@ -165,7 +176,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     iter_eval->BeforeFirst();
     while (iter_eval->Next()) {
       const DataBatch& batch = iter_eval->Value();
-      this->ForwardToTemp(batch);
+      this->ForwardToTemp(batch, nets_[0]->net().nodes.size() - 1);
       metric.AddEval(out_temp.Slice(0, out_temp.size(0) - batch.num_batch_padd).FlatTo2D(), batch.labels);
     }
     ret += metric.Print(data_name);
@@ -187,9 +198,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     return maxidx;
   }
-  inline void ForwardToTemp(const DataBatch &data, int layer=-1) {
-    const int lid = nets_[0]->net().nodes.size() + layer;
-    mshadow::Shape<4> oshape = nets_[0]->net().nodes[lid].data.shape_;
+  inline void ForwardToTemp(const DataBatch &data, int layer) {
+    mshadow::Shape<4> oshape = nets_[0]->net().nodes[layer].data.shape_;
     oshape[0] = data.batch_size;
     out_temp.Resize(oshape);
     const size_t ndevice = devices_.size();

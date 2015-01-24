@@ -25,7 +25,7 @@ else
 endif
 ifneq ($(USE_CUDA_PATH), NONE)
 	CFLAGS += -I$(USE_CUDA_PATH)/include
-	LDFLAGS += -I$(USE_CUDA_PATH)/lib64
+	LDFLAGS += -L$(USE_CUDA_PATH)/lib64
 endif
 
 ifeq ($(USE_BLAS), mkl)
@@ -54,8 +54,8 @@ ifeq ($(USE_CUDNN), 1)
 	CFLAGS += -DCXXNET_USE_CUDNN=1
 endif
 ifneq ($(USE_CUDNN_PATH), NONE)
-	CFLAGS += -I$(CUDNN_PATH)
-	LDFLAGS += -L$(CUDNN_PATH)
+	CFLAGS += -I$(USE_CUDNN_PATH)
+	LDFLAGS += -L$(USE_CUDNN_PATH) -lcudnn
 endif
 
 ifneq ($(ADD_CFLAGS), NONE)

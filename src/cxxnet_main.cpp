@@ -33,6 +33,8 @@ class CXXNetLearnTask {
     name_pred     = "pred.txt";
     print_step    = 100;
     reset_net_type = -1;
+    extract_node_name = "";
+    extract_node_id = -1;
     this->SetParam("dev", "gpu");
   }
   ~CXXNetLearnTask(void) {
@@ -71,8 +73,8 @@ class CXXNetLearnTask {
     }
     if (task == "train") this->TaskTrain();
     if (task == "pred")   this->TaskPredict();
-    if (task == "pred_top") this->TaskPredictTop();
     if (task == "pred_raw") this->TaskPredictRaw();
+    if (task == "extract_feature") this->TaskExtractFeature();
     return 0;
   }
 
@@ -92,6 +94,8 @@ class CXXNetLearnTask {
     if (!strcmp(name, "task"))              task = val;
     if (!strcmp(name, "dev"))               device = val;
     if (!strcmp(name, "test_io"))           test_io = atoi(val);
+    if (!strcmp(name, "extract_node_name"))         extract_node_name = val;
+    if (!strcmp(name, "extract_node_id"))           extract_node_id = atoi(val);
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
  private:
@@ -211,7 +215,8 @@ class CXXNetLearnTask {
           itr_evals.push_back(cxxnet::CreateIterator(itcfg));
           eval_names.push_back(evname);
         }
-        if (flag == 3 && (task == "pred" || task == "pred_raw" || task == "pred_top")) {
+        if (flag == 3 && (task == "pred" || task == "pred_raw" ||
+          task == "extract_feature")) {
           utils::Assert(itr_pred == NULL, "can only have one data:test");
           itr_pred = cxxnet::CreateIterator(itcfg);
         }
@@ -270,32 +275,54 @@ class CXXNetLearnTask {
       }
     }
   }
-  inline void TaskPredictTop() {
-        int row = 0;
-        int col = 0;
-        utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
-        printf("start predicting...\n");
-        FILE *fo = utils::FopenCheck(name_pred.c_str(), "wb");
-        std::string name_meta = name_pred + ".meta";
-        FILE *fm = utils::FopenCheck(name_meta.c_str(), "w");
-        itr_pred->BeforeFirst();
-        while (itr_pred->Next()) {
-          const DataBatch& batch = itr_pred->Value();
-          std::vector<std::vector<float> > pred;
-          net_trainer->PredictTop(pred, batch);
-          for (mshadow::index_t j = 0; j < pred.size(); ++j) {
-            for (mshadow::index_t k = 0; k < pred[j].size(); ++k) {
-              // TODO: change to write a vector
-              fwrite(&pred[j][k], sizeof(float), 1, fo);
-            }
-            row++;
-          }
-          col = pred[0].size();
+  inline void TaskExtractFeature() {
+    int row = 0;
+    int col = 0;
+    utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
+    printf("start predicting...\n");
+    FILE *fo = utils::FopenCheck(name_pred.c_str(), "wb");
+    std::string name_meta = name_pred + ".meta";
+    FILE *fm = utils::FopenCheck(name_meta.c_str(), "w");
+    itr_pred->BeforeFirst();
+
+    time_t start    = time(NULL);
+    int sample_counter = 0;
+    std::vector<std::vector<float> > pred;
+    while (itr_pred->Next()) {
+      const DataBatch& batch = itr_pred->Value();
+      if (extract_node_name != ""){
+        net_trainer->ExtractFeature(pred, batch, extract_node_name);
+      } else if (extract_node_id != -1){
+        net_trainer->ExtractFeature(pred, batch, extract_node_id);
+      } else {
+        utils::Error("extract node name or id must be specified in task extract_feature.");
+        exit(1);
+      }
+      for (mshadow::index_t j = 0; j < pred.size(); ++j) {
+        for (mshadow::index_t k = 0; k < pred[j].size(); ++k) {
+          // TODO: change to write a vector
+          fwrite(&pred[j][k], sizeof(float), 1, fo);
         }
-        fclose(fo);
-        fprintf(fm, "%d\n%d\n", row, col);
-        fclose(fm);
-        printf("finished prediction, write into %s\n", name_pred.c_str());
+        row++;
+      }
+      col = pred[0].size();
+      if (++ sample_counter  % print_step == 0) {
+        long elapsed = (long)(time(NULL) - start);
+        if (!silent) {
+          printf("\r                                                               \r");
+          printf("batch:[%8d] %ld sec elapsed", sample_counter, elapsed);
+          fflush(stdout);
+        }
+      }
+    }
+    long elapsed = (long)(time(NULL) - start);
+    printf("\r                                                               \r");
+    printf("batch:[%8d] %ld sec elapsed\n", sample_counter, elapsed);
+
+    fclose(fo);
+    fprintf(fm, "%d\n%d\n", row, col);
+    fclose(fm);
+    printf("finished prediction, write into %s\n", name_pred.c_str());
   }
   inline void TaskTrain(void) {
     time_t start    = time(NULL);
@@ -393,7 +420,11 @@ class CXXNetLearnTask {
   std::string name_model_dir;
   /*! \brief file name to write prediction */
   std::string name_pred;
-};
+  /*! \brief the layer name to be extracted */
+  std::string extract_node_name;
+  /*! \brief the id of the layer to be extracted */
+  int extract_node_id;
+ };
 }  // namespace cxxnet
 
 // general main for PS

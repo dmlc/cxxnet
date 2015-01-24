@@ -6,3 +6,6 @@ Local*
 bin
 mshadow
 config.mk
+layer.h
+layer_imple-inl.hpp
+.gitignore

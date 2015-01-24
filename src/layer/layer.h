@@ -273,6 +273,7 @@ const int kCaffe = 20;
 const int kReluMaxPooling = 21;
 const int kCuDNNMaxPooling = 22;
 const int kSplit = 23;
+const int kInsanity = 24;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -282,7 +283,7 @@ typedef int LayerType;
  * \param type indicate the type of a layer
  */
 inline LayerType GetLayerType(const char *type) {
-  if (!strcmp(type, "share")) return kSharedLayer;
+  if (!strncmp(type, "share", 5)) return kSharedLayer;
   if (!strcmp(type, "fullc")) return kFullConnect;
   if (!strcmp(type, "bias")) return kBias;
   if (!strcmp(type, "softmax")) return kSoftmax;
@@ -302,6 +303,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "xelu")) return kXelu;
   if (!strcmp(type, "cumax_pooling")) return kCuDNNMaxPooling;
   if (!strcmp(type, "split")) return kSplit;
+  if (!strcmp(type, "insanity")) return kInsanity;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
   #endif
