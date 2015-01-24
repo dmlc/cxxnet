@@ -60,24 +60,16 @@ class CXXNetThreadTrainer : public INetTrainer {
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
   virtual void InitModel(void) {
-    DD << "xxx";
     this->InitNet();
-    DD << "xxx";
     nets_[0]->InitModel();
-    DD << "xxx";
     nets_[0]->WaitJob();
-    DD << "xxx";
     this->Save2ModelBlob();
-    DD << "xxx";
     for(size_t i = 1; i < nets_.size(); ++i) {
       utils::MemoryBufferStream fs(&model_blob_);
       nets_[i]->LoadModel(fs);
       nets_[i]->WaitJob();
     }
-    DD << "xxx";
     this->InitTemp();
-
-    DD << "xxx";
   }
   virtual void SaveModel(utils::IStream &fo) {
     this->Save2ModelBlob();

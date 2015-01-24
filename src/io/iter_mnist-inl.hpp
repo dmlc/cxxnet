@@ -14,7 +14,6 @@ namespace cxxnet {
 class MNISTIterator: public IIterator<DataBatch> {
  public:
   MNISTIterator(void) {
-    DD  << "..";
     img_.dptr_ = NULL;
     mode_ = 1;
     inst_offset_ = 0;
@@ -35,7 +34,6 @@ class MNISTIterator: public IIterator<DataBatch> {
   }
   // intialize iterator loads data in
   virtual void Init(void) {
-    DD << "init";
     this->LoadImage();
     this->LoadLabel();
     if (mode_ == 1) {
