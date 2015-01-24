@@ -152,3 +152,9 @@ ICustomServer<cxxnet::real_t> *CreateServer<cxxnet::real_t>(void) {
 }
 }  // namespace ps
 }  // namespace mshadow
+
+#if MSHADOW_DIST_PS
+PS::App* CreateServer(const std::string& conf) {
+  return new mshadow::ps::MShadowServer<cxxnet::real_t>(conf);
+}
+#endif

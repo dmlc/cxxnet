@@ -143,9 +143,12 @@ struct NetConfig {
       if (layers[i].type == layer::kSharedLayer) {
         utils::Check(layers[i].name.length() == 0, "SharedLayer must not have name");
       } else {
-        utils::Check(layer_name_map.count(layers[i].name) == 0,
-                     "NetConfig: invalid model file, duplicated layer name");
-        layer_name_map[layers[i].name] = i;
+        if (layers[i].name != ""){
+          utils::Check(layer_name_map.count(layers[i].name) == 0,
+                       "NetConfig: invalid model file, duplicated layer name: %s",
+                       layers[i].name.c_str());
+          layer_name_map[layers[i].name] = i;
+        }
       }
     }
     this->ClearConfig();
@@ -239,31 +242,31 @@ struct NetConfig {
     } else {
       utils::Error("invalid layer format %s", name);
     }
-    std::string s_tag;
+    std::string s_tag, layer_name;
     if (sscanf(val , "%[^:]:%s", ltype, tag) == 2) {
       inf.type = layer::GetLayerType(ltype);
-      s_tag = tag;
+      layer_name = tag;
     } else {
       inf.type = layer::GetLayerType(val);
     }
     if (inf.type == layer::kSharedLayer) {
-      utils::Check(s_tag.length() != 0, "shared layer must specify tag of layer to share with");
+      const char* layer_type_start = strchr(ltype, '[');
+      utils::Check(layer_type_start != NULL, "shared layer must specify tag of layer to share with");
+      s_tag = layer_type_start + 1;
+      s_tag = s_tag.substr(0, s_tag.length() - 1);
       utils::Check(layer_name_map.count(s_tag) != 0,
                    "shared layer tag %s is not defined before", s_tag.c_str());
       inf.primary_layer_index = layer_name_map[s_tag];
     } else {
-      if (s_tag.length() != 0) {
-        if (layer_name_map.count(s_tag) != 0) {
-          // LOG(ERROR) << layer_name_map[s_tag] << " " << cfg_layer_index << " " <<  s_tag.c_str();
-          CHECK_EQ(layer_name_map[s_tag],cfg_layer_index);
-          utils::Check(layer_name_map[s_tag] == cfg_layer_index,
+      if (layer_name.length() != 0) {
+        if (layer_name_map.count(layer_name) != 0) {
+          utils::Check(layer_name_map[layer_name] == cfg_layer_index,
                        "layer name in the configuration file do not "\
                        "match the name stored in model");
         } else {
-          layer_name_map[s_tag] = cfg_layer_index;
-          // LOG(ERROR) << layer_name_map[s_tag] << " " << cfg_layer_index << " " <<  s_tag.c_str();
+          layer_name_map[layer_name] = cfg_layer_index;
         }
-        inf.name = s_tag;
+        inf.name = layer_name;
       }
     }
     return inf;

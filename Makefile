@@ -1,68 +1,113 @@
-# set LD_LIBRARY_PATH
-export CC  = gcc
-export CXX = g++
-export NVCC =nvcc
-# all tge possible warning tread
-export WARNFLAGS= -Wall -Wno-unused-parameter -Wno-unknown-pragmas
-export IFLAGS=-I/opt/intel/mkl/include -I/usr/local/cuda-6.0/include/ -L/opt/intel/mkl/lib/intel64 -L/opt/intel/lib/intel64 -L/usr/local/cuda-6.0/lib64 
-export CFLAGS = -g -O3 -msse3 -funroll-loops -I./mshadow/  -fopenmp -DMSHADOW_FORCE_STREAM $(IFLAGS) $(WARNFLAGS) 
-export blas=0
-export noopencv=0
-export usecaffe=0
-export usecudnn=1
-ifeq ($(blas),1)
- LDFLAGS= -lm -lcudart -lcublas -lcurand -lz -lcblas
- CFLAGS+= -DMSHADOW_USE_MKL=0 -DMSHADOW_USE_CBLAS=1
+ifndef config
+ifdef CXXNET_CONFIG
+	config = $(CXXNET_CONFIG)
+else ifneq ("$(wildcard ./config.mk)","")
+	config = config.mk
 else
- LDFLAGS= -lm -lcudart -lcublas -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lcurand -lz
+	config = make/config.mk
+endif
 endif
 
-ifeq ($(noopencv),1)
-	CFLAGS+= -DCXXNET_USE_OPENCV=0
+# use customized config file
+include $(config)
+
+# all tge possible warning tread
+WARNFLAGS= -Wall -Wno-unused-parameter -Wno-unknown-pragmas
+CFLAGS = -g -O3 -msse3 -funroll-loops -I./mshadow/  -fopenmp
+CFLAGS += -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
+LDFLAGS = -lm -lz -pthread
+NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
+
+ifeq ($(USE_CUDA), 0)
+	CFLAGS += -DMSHADOW_USE_CUDA=0
 else
+	LDFLAGS += -lcudart -lcublas -lcurand
+endif
+ifneq ($(USE_CUDA_PATH), NONE)
+	CFLAGS += -I$(USE_CUDA_PATH)/include
+	LDFLAGS += -I$(USE_CUDA_PATH)/lib64
+endif
+
+ifeq ($(USE_BLAS), mkl)
+	LDFLAGS += -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 
+else 
+	CFLAGS += -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
+endif
+ifeq ($(USE_BLAS), openblas)
+	LDFLAGS += -lopenblas
+else ifeq ($(USE_BLAS), atlas)
+	LDFLAGS += -lcblas	
+else ifeq ($(USE_BLAS), blas)
+	LDFLAGS += -lblas	
+endif
+
+# setup opencv
+ifeq ($(USE_OPENCV),1)
 	CFLAGS+= -DCXXNET_USE_OPENCV=1
 	LDFLAGS+= `pkg-config --libs opencv`
-endif
-
-ifeq ($(usecaffe), 1)
-	LDFLAGS+= -L./caffe/ -lcaffe -lglog -lprotobuf
-	CFLAGS+= -DCXXNET_USE_CAFFE_ADAPTOR=1 -I./caffe/include -I/home/winsty/glog-0.3.3/src -I/home/winsty/leveldb-master/include
 else
-	CFLAGS+= -DCXXNET_USE_CAFFE_ADAPTOR=0
+	CFLAGS+= -DCXXNET_USE_OPENCV=0
 endif
 
-ifeq ($(usecudnn), 1)
-	CFLAGS+= -DCXXNET_USE_CUDNN=1 -I/home/winsty/cudnn
-	LDFLAGS+= -L/home/winsty/cudnn -lcudnn
+# customize cudnn path
+ifeq ($(USE_CUDNN), 1)
+	CFLAGS += -DCXXNET_USE_CUDNN=1
 endif
-export NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
+ifneq ($(USE_CUDNN_PATH), NONE)
+	CFLAGS += -I$(CUDNN_PATH)
+	LDFLAGS += -L$(CUDNN_PATH)
+endif
+
+ifneq ($(ADD_CFLAGS), NONE)
+	CFLAGS += $(ADD_CFLAGS)
+endif
+ifneq ($(ADD_LDFLAGS), NONE)
+	LDFLAGS += $(ADD_LDFLAGS)
+endif
+
+
+ifeq ($(USE_DIST_PS),1)
+	CFLAGS+= -DMSHADOW_DIST_PS=1
+else
+	CFLAGS+= -DMSHADOW_DIST_PS=0	
+endif
 
 # specify tensor path
 BIN = bin/cxxnet
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
-.PHONY: clean all
-
-ifeq ($(ps),1)
-	CFLAGS += -DMSHADOW_DIST_PS_=1
-	BIN += bin/cxxnet.ps
+ifeq ($(USE_CUDA), 0)
+	CUDEP = 
 else
-	CFLAGS += -DMSHADOW_DIST_PS_=0	
+	CUDEP = $(CUOBJ)
 endif
 
+.PHONY: clean all
 
-all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
+ifeq ($(USE_DIST_PS), 1)
+	BIN += bin/cxxnet.ps
+endif
 
-layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
-updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_impl.cu src/layer/layer.h src/updater/*.hpp src/updater/*.h src/utils/*.h
-nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h
+all: $(BIN) 
+
+layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu\
+	src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
+
+updater_cpu.o updater_gpu.o: src/updater/updater_impl.cpp src/updater/updater_impl.cu\
+	src/layer/layer.h src/updater/*.hpp src/updater/*.h src/utils/*.h
+
+nnet_cpu.o nnet_gpu.o: src/nnet/nnet_impl.cpp src/nnet/nnet_impl.cu src/layer/layer.h\
+	src/updater/updater.h src/utils/*.h src/nnet/*.hpp src/nnet/*.h
+
 nnet_ps_server.o: src/nnet/nnet_ps_server.cpp src/utils/*.h src/nnet/*.hpp src/nnet/*.h
+
 data.o: src/io/data.cpp src/io/*.hpp
+
 main.o: src/cxxnet_main.cpp 
 
-bin/cxxnet: src/local_main.cpp $(OBJ) $(CUOBJ)
-bin/cxxnet.ps: src/dist_ps_server.cpp $(OBJ) $(CUOBJ) libps.a libps_main.a
+bin/cxxnet: src/local_main.cpp $(OBJ) $(CUDEP)
+bin/cxxnet.ps: $(OBJ) $(CUDEP) libps.a libps_main.a
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)
