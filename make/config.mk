@@ -2,11 +2,11 @@
 #  cxxnet: the configuration compile script
 #  
 #  This is the default configuration setup for cxxnet
-#  If you want to change configuration, you can:
+#  If you want to change configuration, do the following steps:
 #     
-#  * copy this file to the root folder
-#  * modify the configuration you want
-#  * type make
+#  - copy this file to the root folder
+#  - modify the configuration you want
+#  - type make or make -j n for parallel build
 #----------------------------------------------------
 
 # choice of compiler
