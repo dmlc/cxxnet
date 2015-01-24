@@ -77,6 +77,12 @@ BIN = bin/cxxnet
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
+ifeq ($(USE_CUDA), 0)
+	CUDEP = ""
+else
+	CUDEP = $(CUOBJ)
+endif
+
 .PHONY: clean all
 
 ifeq ($(USE_DIST_PS), 1)
@@ -100,12 +106,8 @@ data.o: src/io/data.cpp src/io/*.hpp
 
 main.o: src/cxxnet_main.cpp 
 
-bin/cxxnet: src/local_main.cpp $(OBJ) 
-bin/cxxnet.ps: $(OBJ) libps.a libps_main.a
-ifeq ($(USE_CUDA), 1)
-	bin/cxxnet: $(CUOBJ)
-	bin/cxxnet.ps: $(CUOBJ) 
-endif
+bin/cxxnet: src/local_main.cpp $(OBJ) $(CUDEP)
+bin/cxxnet.ps: $(OBJ) $(CUDEP) libps.a libps_main.a
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)
