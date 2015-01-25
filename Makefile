@@ -65,18 +65,19 @@ ifneq ($(ADD_LDFLAGS), NONE)
 	LDFLAGS += $(ADD_LDFLAGS)
 endif
 
-ifeq ($(USE_DIST_PS),1)
 ifeq ($(PS_PATH), NONE)
 PS_PATH = ..
 endif
 ifeq ($(PS_THIRD_PATH), NONE)
 PS_THIRD_PATH = $(PS_PATH)/third_party
 endif
-PS_FLAGS += -DMSHADOW_DIST_PS=1 -std=c++0x \
+ifeq ($(USE_DIST_PS),1)
+CFLAGS += -DMSHADOW_DIST_PS=1 -std=c++0x \
 	-I$(PS_PATH)/src -I$(PS_THIRD_PATH)/include
 PS_LIB = $(addprefix $(PS_PATH)/build/, libps.a libpsmain.a) \
 	$(addprefix $(PS_THIRD_PATH)/lib/, libgflags.a libzmq.a libprotobuf.a \
 	libglog.a libz.a libsnappy.a)
+NVCCFLAGS += --std=c++11
 # NVCCFLAGS += -std=c++0x -DMSHADOW_DIST_PS=1
 else
 	CFLAGS+= -DMSHADOW_DIST_PS=0
