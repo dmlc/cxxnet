@@ -19,7 +19,7 @@ USE_CUDA = 1
 
 # add the path to CUDA libary to link and compile flag
 # if you have already add them to enviroment variable, leave it as NONE
-USE_CUDA_PATH = /usr/local/cuda
+USE_CUDA_PATH = NONE
 
 # whether use opencv during compilation
 # you can disable it, however, you will not able to use
@@ -27,15 +27,20 @@ USE_CUDA_PATH = /usr/local/cuda
 USE_OPENCV = 1
 
 # whether use CUDNN library
-USE_CUDNN = 1
+USE_CUDNN = 0
 # add the path to CUDNN libary to link and compile flag
 # if you do not need that, or do not have that, leave it as NONE
-USE_CUDNN_PATH = /home/winsty/cudnn
+USE_CUDNN_PATH = NONE
 
 #
 # choose the version of blas you want to use
 # can be: mkl, blas, atlas, openblas
 USE_BLAS = mkl
+#
+# add path to intel libary, you may need it
+# for MKL, if you did not add the path to enviroment variable
+# 
+USE_INTEL_PATH = NONE
 
 # whether compile with parameter server
 USE_DIST_PS = 0
@@ -43,8 +48,7 @@ PS_PATH = NONE
 PS_THIRD_PATH = NONE
 
 # the additional link flags you want to add
-ADD_LDFLAGS = -L/opt/intel/mkl/lib/intel64 -L/opt/intel/lib/intel64
+ADD_LDFLAGS = 
 
 # the additional compile flags you want to add
-ADD_CFLAGS = -I/opt/intel/mkl/include
-
+ADD_CFLAGS =  

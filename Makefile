@@ -29,6 +29,11 @@ ifneq ($(USE_CUDA_PATH), NONE)
 endif
 
 ifeq ($(USE_BLAS), mkl)
+ifneq ($(USE_INTEL_PATH), NONE)
+	LDFLAGS += -L$(USE_INTEL_PATH)/mkl/lib/intel64
+	LDFLAGS += -L$(USE_INTEL_PATH)/lib/intel64
+	CFLAGS += -I$(USE_INTEL_PATH)/mkl/include
+endif
 	LDFLAGS += -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
 else
 	CFLAGS += -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
@@ -40,6 +45,7 @@ else ifeq ($(USE_BLAS), atlas)
 else ifeq ($(USE_BLAS), blas)
 	LDFLAGS += -lblas
 endif
+
 
 # setup opencv
 ifeq ($(USE_OPENCV),1)
@@ -71,17 +77,18 @@ endif
 ifeq ($(PS_THIRD_PATH), NONE)
 PS_THIRD_PATH = $(PS_PATH)/third_party
 endif
+
 ifeq ($(USE_DIST_PS),1)
-CFLAGS += -DMSHADOW_DIST_PS=1 -std=c++0x \
+CFLAGS += -DMSHADOW_DIST_PS=1 -std=c++11 \
 	-I$(PS_PATH)/src -I$(PS_THIRD_PATH)/include
 PS_LIB = $(addprefix $(PS_PATH)/build/, libps.a libpsmain.a) \
 	$(addprefix $(PS_THIRD_PATH)/lib/, libgflags.a libzmq.a libprotobuf.a \
 	libglog.a libz.a libsnappy.a)
 NVCCFLAGS += --std=c++11
-# NVCCFLAGS += -std=c++0x -DMSHADOW_DIST_PS=1
 else
 	CFLAGS+= -DMSHADOW_DIST_PS=0
 endif
+
 
 # specify tensor path
 BIN = bin/cxxnet
