@@ -83,10 +83,14 @@ struct NetConfig {
   NetParam param;
   /*! \brief per layer information */
   std::vector<LayerInfo> layers;
+  /*! \brief name of each node */
+  std::vector<std::string> node_names;
   // -----------------------------
   // Training parameters that can be changed each time, even when network is fixed
   // the training parameters will not be saved during LoadNet SaveNet
   //
+  /*! \brief maps node name to node index */
+  std::map<std::string, int> node_name_map;
   /*! \brief maps tag to layer index */
   std::map<std::string, int> layer_name_map;
   /*! \brief type of updater function */
@@ -112,6 +116,7 @@ struct NetConfig {
     fo.Write(&param, sizeof(param));
     utils::Assert(param.num_layers == static_cast<int>(layers.size()),
                   "model inconsistent");
+    fo.Write(node_names);
     for (int i = 0; i < param.num_layers; ++i) {
       fo.Write(&layers[i].type, sizeof(layer::LayerType));
       fo.Write(&layers[i].primary_layer_index, sizeof(int));
@@ -129,9 +134,15 @@ struct NetConfig {
   inline void LoadNet(utils::IStream &fi) {
     utils::Check(fi.Read(&param, sizeof(param)) != 0,
                  "NetConfig: invalid model file");
+    utils::Check(fi.Read(&node_names),
+                 "NetConfig: invalid model file");
+    node_name_map.clear();
+    for (size_t i = 0; i < node_names.size(); ++i) {
+      node_name_map[node_names[i]] = static_cast<int>(i);
+    }
     layers.resize(param.num_layers);
     layercfg.resize(param.num_layers);
-    layer_name_map.clear();
+    layer_name_map.clear();    
     for (int i = 0; i < param.num_layers; ++i) {
       utils::Check(fi.Read(&layers[i].type, sizeof(layer::LayerType)) != 0,
                  "NetConfig: invalid model file");
@@ -157,9 +168,12 @@ struct NetConfig {
    * \brief setup configuration, using the config string pass in
    */
   inline void Configure(const std::vector< std::pair<std::string, std::string> > &cfg) {
-    // LOG(ERROR) << this;
-    // for (auto c : cfg)  LOG(ERROR) << c.first << "\t" << c.second;
     this->ClearConfig();
+    if (node_names.size() == 0 && node_name_map.size() == 0) {
+      node_names.push_back(std::string("in"));
+      node_name_map["in"] = 0;
+      node_name_map["0"] = 0;
+    }
     // whether in net config mode
     int netcfg_mode = 0;
     // remembers what is the last top node
@@ -169,7 +183,6 @@ struct NetConfig {
     for (size_t i = 0; i < cfg.size(); ++i) {
       const char *name = cfg[i].first.c_str();
       const char *val = cfg[i].second.c_str();
-      // printf("%s \t %s \n", name, val);
       if (param.init_end == 0) {
         if (!strcmp( name, "input_shape")) {
           unsigned x, y, z;
@@ -188,16 +201,20 @@ struct NetConfig {
         LayerInfo info = this->GetLayerInfo(name, val, cfg_top_node, cfg_layer_index);
         netcfg_mode = 2;
         if (param.init_end == 0) {
-          utils::Assert(layers.size() == static_cast<size_t>(cfg_layer_index), "NetConfig inconsistent");
+          utils::Assert(layers.size() == static_cast<size_t>(cfg_layer_index),
+                        "NetConfig inconsistent");
           layers.push_back(info);
           layercfg.resize(layers.size());
         } else {
-          utils::Check(cfg_layer_index < static_cast<int>(layers.size()), "config layer index exceed bound");
+          utils::Check(cfg_layer_index < static_cast<int>(layers.size()),
+                       "config layer index exceed bound");
           utils::Check(info == layers[cfg_layer_index],
                        "config setting does not match existing network structure");
         }
-        if (info.nindex_out.size() != 0) {
+        if (info.nindex_out.size() == 1) {
           cfg_top_node = info.nindex_out[0];
+        } else {
+          cfg_top_node = -1;
         }
         cfg_layer_index += 1;
         continue;
@@ -216,31 +233,33 @@ struct NetConfig {
  private:
   // configuration parser to parse layer info, support one to to one connection for now
   // extend this later to support multiple connections
-  inline LayerInfo GetLayerInfo(const char *name, const char *val, int top_node, int cfg_layer_index) {
+  inline LayerInfo GetLayerInfo(const char *name, const char *val,
+                                int top_node, int cfg_layer_index) {
     LayerInfo inf;
-    int a, b;
-    int byte_now = 0;
+    int inc;
     char ltype[256], tag[256];
-    char src[256];
-    if (sscanf(name, "layer[+%d]", &b) == 1) {
-      a = top_node; b += top_node;
-      inf.nindex_in.push_back(a);
-      inf.nindex_out.push_back(b);
-    } else if (sscanf(name, "layer[%s", src) == 1) {
-      char* dst = strchr(src, '-');
-      dst += 2;
-      const char* pt = src;
-      while (sscanf(pt, "%d%n", &a, &byte_now) == 1){
-        inf.nindex_in.push_back(a);
-        pt += byte_now + 1;
+    char src[256], dst[256];
+    if (sscanf(name, "layer[+%d", &inc) == 1) {
+      utils::Check(top_node >=0,
+                   "ConfigError: layer[+1] is used, "\
+                   "but last layer have more than one output"\
+                   "use layer[in->out] instead");
+      inf.nindex_in.push_back(top_node);
+      if (sscanf(name, "layer[+1:%[^]]]", tag) == 1) {
+        inf.nindex_out.push_back(GetNodeIndex(tag, true));
+      } else {
+        if (inc == 0) {
+          inf.nindex_out.push_back(top_node);
+        } else {
+          utils::SPrintf(tag, sizeof(tag), "!node-after-%d", top_node);
+          inf.nindex_out.push_back(GetNodeIndex(tag, true));
+        }
       }
-      pt = dst;
-      while (sscanf(pt, "%d%n", &b, &byte_now) == 1){
-        inf.nindex_out.push_back(b);
-        pt += byte_now + 1;
-      }
+    } else if (sscanf(name, "layer[%[^-]->%[^]]]", src, dst) == 2) {
+      this->ParseNodeIndex(src, &inf.nindex_in, false);
+      this->ParseNodeIndex(dst, &inf.nindex_out, true);
     } else {
-      utils::Error("invalid layer format %s", name);
+      utils::Error("ConfigError: invalid layer format %s", name);
     }
     std::string s_tag, layer_name;
     if (sscanf(val , "%[^:]:%s", ltype, tag) == 2) {
@@ -251,17 +270,18 @@ struct NetConfig {
     }
     if (inf.type == layer::kSharedLayer) {
       const char* layer_type_start = strchr(ltype, '[');
-      utils::Check(layer_type_start != NULL, "shared layer must specify tag of layer to share with");
+      utils::Check(layer_type_start != NULL,
+                   "ConfigError: shared layer must specify tag of layer to share with");
       s_tag = layer_type_start + 1;
       s_tag = s_tag.substr(0, s_tag.length() - 1);
       utils::Check(layer_name_map.count(s_tag) != 0,
-                   "shared layer tag %s is not defined before", s_tag.c_str());
+                   "ConfigError: shared layer tag %s is not defined before", s_tag.c_str());
       inf.primary_layer_index = layer_name_map[s_tag];
     } else {
       if (layer_name.length() != 0) {
         if (layer_name_map.count(layer_name) != 0) {
           utils::Check(layer_name_map[layer_name] == cfg_layer_index,
-                       "layer name in the configuration file do not "\
+                       "ConfigError: layer name in the configuration file do not "\
                        "match the name stored in model");
         } else {
           layer_name_map[layer_name] = cfg_layer_index;
@@ -270,6 +290,32 @@ struct NetConfig {
       }
     }
     return inf;
+  }
+  inline void ParseNodeIndex(char *nodes,
+                             std::vector<int> *p_indexs,
+                             bool alloc_unknown) {
+    char *pch = strtok(nodes, ",");
+    while (pch != NULL) {
+      p_indexs->push_back(GetNodeIndex(pch, alloc_unknown));
+      pch = strtok(NULL, ",");
+    }
+  }
+  inline int GetNodeIndex(const char *name, bool alloc_unknown) {
+    std::string key = name;
+    std::map<std::string, int>::iterator it
+        = node_name_map.find(key);
+    if (it == node_name_map.end() || key != it->first) {
+      utils::Check(alloc_unknown,
+                   "ConfigError: undefined node name %s,"\
+                   "input node of a layer must be specified as output of another layer"\
+                   "presented before the layer declaration", name);
+      int value = static_cast<int>(node_names.size());
+      node_name_map[key] = value;
+      node_names.push_back(key);
+      return value;
+    } else {
+      return it->second;
+    }
   }
   /*! \brief guess parameters, from current setting, this will set init_end in param to be true */
   inline void InitNet(void) {
