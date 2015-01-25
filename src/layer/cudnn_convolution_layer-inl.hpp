@@ -32,6 +32,14 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
     nodes_out[0]->must_contiguous = true;
     this->InitCuDNN();
   }
+  virtual void SetParam(const char *name, const char* val) {
+    Parent::SetParam(name, val);
+    if (!strcmp(name, "algo")) {
+      if (!strcmp(val, "fast")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMPT_GEMM;
+      else if(!strcmp(val, "balance")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+      else utils::Error("Unkown convolution algo mode");
+    }
+  }
   virtual void Forward(bool is_train,
                        const std::vector<Node<xpu>*> &nodes_in,
                        const std::vector<Node<xpu>*> &nodes_out,
