@@ -243,7 +243,7 @@ struct NetConfig {
       utils::Check(top_node >=0,
                    "ConfigError: layer[+1] is used, "\
                    "but last layer have more than one output"\
-                   "use layer[in->out] instead");
+                   "use layer[input-name->output-name] instead");
       inf.nindex_in.push_back(top_node);
       if (sscanf(name, "layer[+1:%[^]]]", tag) == 1) {
         inf.nindex_out.push_back(GetNodeIndex(tag, true));
