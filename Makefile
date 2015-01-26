@@ -10,42 +10,14 @@ endif
 
 # use customized config file
 include $(config)
+include mshadow/make/mshadow.mk
 
 # all tge possible warning tread
-WARNFLAGS= -Wall -Wno-unused-parameter -Wno-unknown-pragmas
-CFLAGS = -g -O3 -msse3 -funroll-loops -I./mshadow/  -fopenmp
+WARNFLAGS= -Wall
+CFLAGS = -g -O3 -I./mshadow/  -fopenmp $(MSHADOW_CFLAGS)
 CFLAGS += -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
-LDFLAGS = -lm -lz -pthread
-NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX)
-
-ifeq ($(USE_CUDA), 0)
-	CFLAGS += -DMSHADOW_USE_CUDA=0
-else
-	LDFLAGS += -lcudart -lcublas -lcurand
-endif
-ifneq ($(USE_CUDA_PATH), NONE)
-	CFLAGS += -I$(USE_CUDA_PATH)/include
-	LDFLAGS += -L$(USE_CUDA_PATH)/lib64
-endif
-
-ifeq ($(USE_BLAS), mkl)
-ifneq ($(USE_INTEL_PATH), NONE)
-	LDFLAGS += -L$(USE_INTEL_PATH)/mkl/lib/intel64
-	LDFLAGS += -L$(USE_INTEL_PATH)/lib/intel64
-	CFLAGS += -I$(USE_INTEL_PATH)/mkl/include
-endif
-	LDFLAGS += -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
-else
-	CFLAGS += -DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0
-endif
-ifeq ($(USE_BLAS), openblas)
-	LDFLAGS += -lopenblas
-else ifeq ($(USE_BLAS), atlas)
-	LDFLAGS += -lcblas
-else ifeq ($(USE_BLAS), blas)
-	LDFLAGS += -lblas
-endif
-
+LDFLAGS = -lz -pthread $(MSHADOW_LDFLAGS)
+NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
 
 # setup opencv
 ifeq ($(USE_OPENCV),1)
@@ -70,25 +42,6 @@ endif
 ifneq ($(ADD_LDFLAGS), NONE)
 	LDFLAGS += $(ADD_LDFLAGS)
 endif
-
-ifeq ($(PS_PATH), NONE)
-PS_PATH = ..
-endif
-ifeq ($(PS_THIRD_PATH), NONE)
-PS_THIRD_PATH = $(PS_PATH)/third_party
-endif
-
-ifeq ($(USE_DIST_PS),1)
-CFLAGS += -DMSHADOW_DIST_PS=1 -std=c++11 \
-	-I$(PS_PATH)/src -I$(PS_THIRD_PATH)/include
-PS_LIB = $(addprefix $(PS_PATH)/build/, libps.a libpsmain.a) \
-	$(addprefix $(PS_THIRD_PATH)/lib/, libgflags.a libzmq.a libprotobuf.a \
-	libglog.a libz.a libsnappy.a)
-NVCCFLAGS += --std=c++11
-else
-	CFLAGS+= -DMSHADOW_DIST_PS=0
-endif
-
 
 # specify tensor path
 BIN = bin/cxxnet
@@ -135,6 +88,7 @@ $(OBJ) :
 
 $(CUOBJ) :
 	$(NVCC) -c -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" $(filter %.cu, $^)
+
 $(CUBIN) :
 	$(NVCC) -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" -Xlinker "$(LDFLAGS)" $(filter %.cu %.cpp %.o, $^)
 
