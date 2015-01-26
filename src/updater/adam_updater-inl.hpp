@@ -75,9 +75,9 @@ class AdamUpdater : public IUpdater<xpu> {
     if (param.wd > 0.0f) grad -= param.wd * w;
     float fix1 = 1.0f - powf(1.0f - decay1, epoch + 1);
     float fix2 = 1.0f - powf(1.0f - decay2, epoch + 1);
-    float lr_t = param.learning_rate * sqrt(fix2) / fix1;
-    m_w1 = decay1 * grad + (1.0f - decay1) * m_w1;
-    m_w2 = decay2 * mshadow::expr::F<op::square_root>(grad) + (1.0f - decay2) * m_w2;
+    float lr_t = param.base_lr_ * sqrt(fix2) / fix1;
+    m_w1 += decay1 * (grad - m_w1);
+    m_w2 += decay2 * (mshadow::expr::F<op::square>(grad) - m_w2);
     w -= lr_t * (m_w1 / (mshadow::expr::F<op::square_root>(m_w2) + 1e-8f));
   }
 };  // class AdamUpdater
