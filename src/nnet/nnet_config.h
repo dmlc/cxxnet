@@ -116,7 +116,11 @@ struct NetConfig {
     fo.Write(&param, sizeof(param));
     utils::Assert(param.num_layers == static_cast<int>(layers.size()),
                   "model inconsistent");
-    fo.Write(node_names);
+    utils::Assert(param.num_nodes == static_cast<int>(node_names.size()),
+                  "num_nodes is inconsistent with node_names");
+    for (int i = 0; i < param.num_nodes; ++i) {
+      fo.Write(node_names[i]);
+    }
     for (int i = 0; i < param.num_layers; ++i) {
       fo.Write(&layers[i].type, sizeof(layer::LayerType));
       fo.Write(&layers[i].primary_layer_index, sizeof(int));
@@ -134,8 +138,11 @@ struct NetConfig {
   inline void LoadNet(utils::IStream &fi) {
     utils::Check(fi.Read(&param, sizeof(param)) != 0,
                  "NetConfig: invalid model file");
-    utils::Check(fi.Read(&node_names),
-                 "NetConfig: invalid model file");
+    node_names.resize(param.num_nodes);
+    for (int i = 0; i < param.num_nodes; ++i) {    
+      utils::Check(fi.Read(&node_names[i]),
+                   "NetConfig: invalid model file");
+    }
     node_name_map.clear();
     for (size_t i = 0; i < node_names.size(); ++i) {
       node_name_map[node_names[i]] = static_cast<int>(i);
@@ -330,6 +337,8 @@ struct NetConfig {
         param.num_nodes = std::max(info.nindex_out[j] + 1, param.num_nodes);
       }
     }
+    utils::Assert(param.num_nodes == static_cast<int>(node_names.size()),
+                  "num_nodes is inconsistent with node_names");
     param.init_end = 1;
   }
   /*! \brief clear the configurations */
