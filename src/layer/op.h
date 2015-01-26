@@ -92,6 +92,13 @@ struct power {
   }
 };
 
+/*!\ \brief used for generate element sqrt */
+struct square_root {
+  MSHADOW_XINLINE static real_t Map(real_t a) {
+    return sqrt(a);
+  }
+};
+
 }  // namespace op
 }  // namespace cxxnet
 #endif // CXXNET_LAYER_OP_H

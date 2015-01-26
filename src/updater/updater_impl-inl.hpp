@@ -8,6 +8,7 @@
 #include "./sgd_updater-inl.hpp"
 #include "./async_updater-inl.hpp"
 #include "./nag_updater-inl.hpp"
+#include "./adam_updater-inl.hpp"
 namespace cxxnet {
 namespace updater {
 /*!
@@ -21,6 +22,7 @@ inline IUpdater<xpu>* CreateUpdater_(const char *type,
                                      const char *tag) {
   if(!strcmp(type, "sgd")) return new SGDUpdater<xpu,dim>(weight, wgrad, tag);
   if(!strcmp(type, "nag")) return new NAGUpdater<xpu, dim>(weight, wgrad, tag);
+  if(!strcmp(type, "adam")) return new AdamUpdater<xpu, dim>(weight, wgrad, tag);
   utils::Error("unknown updater type %s", type);
   return NULL;
 }
@@ -36,7 +38,7 @@ CreateAsyncUpdater_(int layer_index,
                     layer::LayerType layer_type,
                     mshadow::Tensor<xpu,dim> weight,
                     mshadow::Tensor<xpu,dim> wgrad,
-                    const char *tag) {  
+                    const char *tag) {
   return new AsyncUpdater<xpu>(EncodeDataKey(layer_index, tag),
                                devid, priority,
                                weight.FlatTo2D(), wgrad.FlatTo2D(), layer_type, tag,
