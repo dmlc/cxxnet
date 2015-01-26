@@ -3,12 +3,12 @@ export CC  = gcc
 export CXX = g++
 export NVCC =nvcc
 
-export CFLAGS = -Wall -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ -I.. -DMSHADOW_USE_MKL=0 
+export CFLAGS = -Wall -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ -I.. -DMSHADOW_USE_MKL=0
 export LDFLAGS=
 export NVCCFLAGS = -g -O3 -ccbin $(CXX)
 
 # specify tensor path
-BIN = im2bin cxxcombine_buffer
+BIN = im2bin
 OBJ =
 CUOBJ =
 CUBIN =
