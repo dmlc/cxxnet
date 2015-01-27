@@ -35,7 +35,7 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
   virtual void SetParam(const char *name, const char* val) {
     Parent::SetParam(name, val);
     if (!strcmp(name, "algo")) {
-      if (!strcmp(val, "fast")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMPT_GEMM;
+      if (!strcmp(val, "fast")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
       else if(!strcmp(val, "balance")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
       else utils::Error("Unkown convolution algo mode");
     }
