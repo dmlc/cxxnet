@@ -178,11 +178,11 @@ protected:
                  path_imgbin_.size() == 0,
                  "you can either set image_conf_prefix or image_bin/image_list");
     int lb, ub;
-    utils::Check(sscanf(image_conf_ids_.c_str(), "%d-%d", &lb, &ub) == 2,
+    utils::Check(sscanf(img_conf_ids_.c_str(), "%d-%d", &lb, &ub) == 2,
                  "image_conf_ids only support range, like 1-100");
     int n = ub + 1 - lb;
     if (dist_num_worker_ > 1) {
-      int nstep = (n + dist_num_worker_ - 1) / dist_num_worker_;
+      int step = (n + dist_num_worker_ - 1) / dist_num_worker_;
       int begin = std::min(dist_worker_rank_ * step, n) + lb;
       int end = std::min((dist_worker_rank_ + 1) * step, n) + lb;
       lb = begin; ub = end;
@@ -193,7 +193,8 @@ protected:
     for (int i = lb; i <= ub; ++i) {
       std::string tmp;
       tmp.resize(img_conf_prefix_.length() + 30);
-      sprintf(BeginPtr(tmp), img_conf_prefix_.c_str(), i);
+      sprintf(&tmp[0], img_conf_prefix_.c_str(), i);
+      tmp.resize(strlen(tmp.c_str()));
       path_imglst_.push_back(tmp + ".lst");
       path_imgbin_.push_back(tmp + ".bin");
     }
