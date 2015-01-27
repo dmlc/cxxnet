@@ -34,8 +34,8 @@ class CXXNetThreadTrainer : public INetTrainer {
       const char *devs = strchr(val, ':');
       if (devs != NULL) {
         int a, b;
-        if (sscanf(devs+1, "%d-%d", &a, &b) == 2) {
-          for (int i = a; i < b; ++i) {
+        if (sscanf(devs + 1, "%d-%d", &a, &b) == 2) {
+          for (int i = a; i <= b; ++i) {
             devices_.push_back(i);
           }
         } else {
