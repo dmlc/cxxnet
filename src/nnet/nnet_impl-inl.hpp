@@ -278,7 +278,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     out_temp.Resize(oshape);
   }
   inline void FreeNet(void) {
-    for (size_t i = 0; i < devices_.size(); ++i) {
+    for (size_t i = 0; i < nets_.size(); ++i) {
       delete nets_[i];
     }
     nets_.clear();
