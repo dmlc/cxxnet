@@ -39,6 +39,7 @@ public:
     crop_x_start_ = -1;
     max_rotate_angle_ = -1;
     max_aspect_ratio_ = 0.0f;
+    max_shear_ratio_ = 0.0f;
     min_crop_size_ = -1;
     max_crop_size_ = -1;
     mean_r_ = 0.0f;
@@ -65,6 +66,7 @@ public:
     if (!strcmp(name, "scale"))       scale_ = static_cast<real_t>(atof(val));
     if (!strcmp(name, "image_mean"))   name_meanimg_ = val;
     if (!strcmp(name, "max_rotate_angle")) max_rotate_angle_ = atof(val);
+    if (!strcmp(name, "max_shear_ratio"))  max_shear_ratio_ = atof(val);
     if (!strcmp(name, "max_aspect_ratio"))  max_aspect_ratio_ = atof(val);
     if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
     if (!strcmp(name, "min_crop_size"))     min_crop_size_ = atoi(val);
@@ -131,13 +133,22 @@ private:
           res.at<cv::Vec3b>(i, j)[2] = d.data[0][i][j];
         }
       }
-      if (max_rotate_angle_ > 0.0f) {
+      if (max_rotate_angle_ > 0.0f || max_shear_ratio_ > 0.0f) {
         int angle = utils::NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
         int len = std::max(res.cols, res.rows);
         cv::Point2f pt(len / 2.0f, len / 2.0f);
-        cv::Mat r = cv::getRotationMatrix2D(pt, angle, 1.0);
+        cv::Mat M(2, 3, CV_32F);
+        float cs = cos(angle / 180.0 * M_PI);
+        float sn = sin(angle / 180.0 * M_PI);
+        float q = utils::NextDouble() * max_shear_ratio_ * 2 - max_shear_ratio_;
+        M.at<float>(0, 0) = cs;
+        M.at<float>(0, 1) = sn;
+        M.at<float>(0, 2) = 0.0f;
+        M.at<float>(1, 0) = q * cs - sn;
+        M.at<float>(1, 1) = q * sn + cs;
+        M.at<float>(1, 2) = 0.0f;
         cv::Mat temp;
-        cv::warpAffine(res, temp, r, cv::Size(len, len),
+        cv::warpAffine(res, temp, M, cv::Size(len, len),
               cv::INTER_CUBIC,
               cv::BORDER_CONSTANT,
               cv::Scalar(255, 255, 255));
@@ -285,8 +296,11 @@ private:
   // Indicate the max ratation angle for augmentation, we will random rotate
   // [-max_rotate_angle, max_rotate_angle]
   int max_rotate_angle_;
-  // max aspect ration
+  // max aspect ratio
   float max_aspect_ratio_;
+  // max shear ratio
+  // will random shear the image [-max_shear_ratio, max_shear_ratio]
+  float max_shear_ratio_;
   int max_crop_size_;
   int min_crop_size_;
   float mean_r_;
