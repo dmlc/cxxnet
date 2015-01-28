@@ -144,8 +144,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
   }
   virtual void ExtractFeature(std::vector<std::vector<float> > &preds,
-    const DataBatch& batch, const int layer_id) {
-    this->ForwardToTemp(batch, layer_id);
+    const DataBatch& batch, const int node_id) {
+    this->ForwardToTemp(batch, node_id);
     // TODO (bing): merge with PredictRaw
     preds.resize(out_temp.size(0));
     for(index_t i = 0; i < out_temp.size(0); ++i) {
@@ -162,8 +162,12 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
 
   virtual void ExtractFeature(std::vector<std::vector<float> > &preds,
-    const DataBatch& batch, const std::string& layer_name) {
-    utils::Error("Not supported now.");
+    const DataBatch& batch, const std::string& node_name) {
+    std::map<std::string, int>& name_map = net_cfg.node_name_map;
+    utils::Check(name_map.find(node_name) != name_map.end(),
+      "ExtractFeature: Cannot find node name: %s", node_name.c_str());
+    const int node_id = name_map[node_name];
+    this->ExtractFeature(preds, batch, node_id);
   }
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char* data_name) {
     std::string ret;

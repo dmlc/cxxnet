@@ -37,7 +37,7 @@ public:
     name_meanimg_ = "";
     crop_y_start_ = -1;
     crop_x_start_ = -1;
-    max_rotate_angle_ = -1;
+    max_rotate_angle_ = 0.0f;
     max_aspect_ratio_ = 0.0f;
     max_shear_ratio_ = 0.0f;
     min_crop_size_ = -1;
