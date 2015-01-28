@@ -185,7 +185,7 @@ protected:
       int step = (n + dist_num_worker_ - 1) / dist_num_worker_;
       int begin = std::min(dist_worker_rank_ * step, n) + lb;
       int end = std::min((dist_worker_rank_ + 1) * step, n) + lb;
-      lb = begin; ub = end;
+      lb = begin; ub = end - 1;
       utils::Check(lb <= ub,
                    "ThreadImagePageIterator: too many workers"\
                    "such that idlist cannot be divided between them");
