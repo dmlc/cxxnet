@@ -143,10 +143,10 @@ private:
         float q = utils::NextDouble() * max_shear_ratio_ * 2 - max_shear_ratio_;
         M.at<float>(0, 0) = cs;
         M.at<float>(0, 1) = sn;
-        M.at<float>(0, 2) = 0.0f;
+        M.at<float>(0, 2) = (1 - cs - sn) * len / 2.0;
         M.at<float>(1, 0) = q * cs - sn;
         M.at<float>(1, 1) = q * sn + cs;
-        M.at<float>(1, 2) = 0.0f;
+        M.at<float>(1, 2) = (1 - cs + sn) * len / 2.0;
         cv::Mat temp;
         cv::warpAffine(res, temp, M, cv::Size(len, len),
               cv::INTER_CUBIC,
