@@ -46,6 +46,7 @@ public:
     mean_g_ = 0.0f;
     mean_b_ = 0.0f;
     flip_ = 0;
+    rotate_ = -1.0f;
   }
   virtual ~AugmentIterator(void) {
     delete base_;
@@ -72,6 +73,16 @@ public:
     if (!strcmp(name, "min_crop_size"))     min_crop_size_ = atoi(val);
     if (!strcmp(name, "max_crop_size"))     max_crop_size_ = atoi(val);
     if (!strcmp(name, "flip")) flip_ = atoi(val);
+    if (!strcmp(name, "rotate")) rotate_ = atoi(val);
+    if (!strcmp(name, "rotate_list")) {
+      const char *end = val + strlen(val);
+      char buf[128];
+      while (val < end) {
+        sscanf(val, "%[^,]", buf);
+        val += strlen(buf) + 1;
+        rotate_list_.push_back(atoi(buf));
+      }
+    }
     if (!strcmp(name, "mean_value")) {
       utils::Assert(sscanf(val, "%f,%f,%f", &mean_b_, &mean_g_, &mean_r_) == 3,
                     "mean value must be three consecutive float without space example: 128,127.5,128.2 ");
@@ -133,8 +144,11 @@ private:
           res.at<cv::Vec3b>(i, j)[2] = d.data[0][i][j];
         }
       }
-      if (max_rotate_angle_ > 0.0f || max_shear_ratio_ > 0.0f) {
+      if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
+          || rotate_ > 0 || rotate_list_.size() > 0) {
         int angle = utils::NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
+        if (rotate_ > 0) angle = rotate_;
+        if (rotate_list_.size() > 0) angle = rotate_list_[utils::NextUInt32(rotate_list_.size() - 1)];
         int len = std::max(res.cols, res.rows);
         cv::Point2f pt(len / 2.0f, len / 2.0f);
         cv::Mat M(2, 3, CV_32F);
@@ -308,6 +322,8 @@ private:
   float mean_b_;
   bool meanfile_ready_;
   int flip_;
+  int rotate_;
+  std::vector<int> rotate_list_;
 };  // class AugmentIterator
 }  // namespace cxxnet
 #endif
