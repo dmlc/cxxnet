@@ -22,6 +22,7 @@
 #include "./cudnn_pooling_layer-inl.hpp"
 #include "./xelu_layer-inl.hpp"
 #include "./insanity_layer-inl.hpp"
+#include "./maxout_layer-inl.hpp"
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
 #endif
@@ -55,6 +56,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSplit: return new SplitLayer<xpu>();
     case kXelu: return new XeluLayer<xpu>();
     case kInsanity: return new InsanityLayer<xpu>(p_rnd);
+    case kMaxout: return new MaxoutLayer<mshadow::red::maximum, xpu>();
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
     #endif
