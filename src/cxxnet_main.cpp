@@ -65,13 +65,13 @@ class CXXNetLearnTask {
       char name[256], val[256];
       if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
         this->SetParam(name, val);
-      }
+      } 
     }
     this->Init();
     if (!silent) {
       printf("initializing end, start working\n");
     }
-    if (task == "train") this->TaskTrain();
+    if (task == "train" || task == "finetune") this->TaskTrain();
     if (task == "pred")   this->TaskPredict();
     if (task == "pred_raw") this->TaskPredictRaw();
     if (task == "extract_feature") this->TaskExtractFeature();
@@ -108,7 +108,11 @@ class CXXNetLearnTask {
         net_trainer = this->CreateNet();
         net_trainer->InitModel();
       }else{
-        this->LoadModel();
+        if (task == "finetune"){
+          this->CopyModel();
+        } else {
+          this->LoadModel();
+        }
       }
     }
     this->CreateIterators();
@@ -374,6 +378,15 @@ class CXXNetLearnTask {
     if (!silent) {
       printf("\nupdating end, %lu sec in all\n", elapsed);
     }
+  }
+
+  inline void CopyModel(void){
+    FILE *fi = utils::FopenCheck(name_model_in.c_str(), "rb");
+    utils::Assert(fread(&net_type, sizeof(int), 1, fi) > 0, "loading model");
+    net_trainer = this->CreateNet();
+    utils::FileStream fs(fi);
+    net_trainer->CopyModelFrom(fs);
+    fclose(fi);
   }
  private:
   /*! \brief type of net implementation */

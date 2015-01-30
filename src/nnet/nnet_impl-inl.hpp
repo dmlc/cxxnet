@@ -90,6 +90,40 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     this->InitTemp();
   }
+  virtual void CopyModelFrom(utils::IStream &fi) {
+    this->FreeNet();
+    this->InitModel();
+
+    // Load the original net
+    NetConfig old_cfg;
+    old_cfg.LoadNet(fi);
+    fi.Read(&epoch_counter, sizeof(epoch_counter));
+    epoch_counter = 0;
+    NeuralNet<cpu> old_net(old_cfg, 0, 0, NULL);
+    std::string old_model;
+    fi.Read(&old_model);
+    utils::MemoryBufferStream os(&old_model);
+    old_net.LoadModel(os);
+
+    // Compare original net and current net
+    for (index_t i = 0; i < old_cfg.layers.size(); ++i){
+      std::string& old_name = old_cfg.layers[i].name;
+      for (index_t j = 0; j < net_cfg.layers.size(); ++j){
+        std::string& new_name = net_cfg.layers[j].name;
+        if (old_name == new_name && old_name != ""){
+          printf("Copying layer %s\n", old_name.c_str());
+          std::string data;
+          utils::MemoryBufferStream fs(&data);
+          old_net.connections[i].layer->SaveModel(fs);
+          for (index_t k = 0; k < nets_.size(); ++k){
+            fs.Seek(0);
+            nets_[k]->CopyLayer(j, fs);
+            nets_[k]->WaitJob();
+          }
+        }
+      }
+    }
+  }
   virtual void StartRound(int round) {
     for (size_t i = 0; i < nets_.size(); ++i) {
       nets_[i]->StartRound(round);

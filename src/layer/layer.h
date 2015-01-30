@@ -36,9 +36,11 @@ struct Node {
   mshadow::Tensor<xpu, 4> data;
   /*! \brief whether the underlying data must be contiguous */
   bool must_contiguous;
+  bool inited;
   // constructor
   Node(void) : must_contiguous(false) {
     data.shape_ = mshadow::Shape4(0,0,0,0);
+    inited = false;
   }
   /*! \brief matrix view of the node */
   inline mshadow::Tensor<xpu, 2> mat(void) {
@@ -50,7 +52,9 @@ struct Node {
   }
   /*! \brief helper rountine to free space */
   inline void FreeSpace(void) {
-    mshadow::FreeSpace(&data);
+    if (inited){
+      mshadow::FreeSpace(&data);
+    }
   }
   /*! \brief helper rountine to allocate space */
   inline void AllocSpace(void) {
@@ -60,6 +64,7 @@ struct Node {
     } else {
       mshadow::AllocSpace(&data);
     }
+    inited = true;
   }
 }; // struct Node
 

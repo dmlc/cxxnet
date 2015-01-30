@@ -55,6 +55,7 @@ class INetTrainer{
 
   virtual void ExtractFeature( std::vector<std::vector<float> > &preds, const DataBatch &batch,
     const int layer_id) = 0;
+  virtual void CopyModelFrom(utils::IStream &fi) = 0;
 };
 
 /*!

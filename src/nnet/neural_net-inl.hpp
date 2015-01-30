@@ -393,6 +393,14 @@ class NeuralNetThread {
     this->task = kCopyNode;
     this->ExecTask();
   }
+  // copy layer from a fs
+  inline void CopyLayer(int lid, utils::IStream& fi){
+    iparam_fp = &fi;
+    iparam_lid = lid;
+    this->task = kCopyLayer;
+    this->ExecTask();
+  }
+
   // return reference of node
   inline const NeuralNet<xpu> &net(void) const{
     return *net_;
@@ -408,7 +416,8 @@ class NeuralNetThread {
     kStartRound,
     kTrainProp,
     kPredForward,
-    kCopyNode
+    kCopyNode,
+    kCopyLayer
   };
   // thread related code
   inline static CXXNET_THREAD_PREFIX ThreadEntry(void *pthread) {
@@ -485,6 +494,11 @@ class NeuralNetThread {
         stream->Wait();
         return;
       }
+      case kCopyLayer: {
+        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()), "lid out of range");
+        net_->connections[iparam_lid].layer->LoadModel(*iparam_fp);
+        return;
+      }
     }
   }
   // the following are fields that are used to pass parameters in or out
@@ -498,6 +512,8 @@ class NeuralNetThread {
   size_t iparam_epoch;
   // input node id
   int iparam_nid;
+  // input layer id
+  int iparam_lid;
   // input parameters of file pointers
   utils::IStream *iparam_fp;
   // input batch
