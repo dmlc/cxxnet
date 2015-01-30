@@ -8,6 +8,7 @@
  */
 #include <cstring>
 #include <string>
+#include "../utils/global_random.h"
 
 namespace cxxnet {
 namespace layer {
@@ -125,24 +126,25 @@ struct LayerParam {
     } else if (random_type == 2) {
       // sparse initalization
       real_t a = sqrt(3.0f / (in_num + out_num));
+      int rej = 0;
       utils::Check(dim == 2, "Sparse init only support 2 dim");
       std::vector<real_t> tmp(mat.MSize(), 0.0f);
       mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape_);
       for (int i = 0; i < init_sparse; ++i) {
-        int idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
-        int rej = 0;
         int j = i;
+        int idx = utils::NextUInt32(in_num);
         int loc = j * mat.stride_ + idx;
         while (tmp[loc] > 0.0f) {
           rej++;
-          idx = static_cast<int>(in_num * static_cast<double>(rand())/RAND_MAX);
-          if (rej > 10) j = static_cast<int>(out_num * static_cast<double>(rand())/RAND_MAX);
+
+          idx = utils::NextUInt32(in_num);
+          if (rej > 10) j = utils::NextUInt32(out_num);
           if (rej > 20) break;
         }
-        tmp[loc] = ((static_cast<float>(rand())/RAND_MAX) > 0.5f ? 1.0f : -1.0f) * \
-            a * static_cast<float>(rand())/RAND_MAX;
+        tmp[loc] = (utils::NextDouble() > 0.5f ? 1.0f : -1.0f) * \
+            a * static_cast<float>(utils::NextDouble());
       }
-      mshadow::Copy(mat, cpu_mat);
+      mshadow::Copy(mat, cpu_mat, mat.stream_);
     } else if (random_type == 3) {
       // mshadow::utils::LoadBinary(fi, mat, false);
     }

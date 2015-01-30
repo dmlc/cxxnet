@@ -271,7 +271,7 @@ const int kXelu = 19;
 const int kCaffe = 20;
 // first apply relu then maxpooling
 const int kReluMaxPooling = 21;
-const int kMaxout = 22,
+const int kMaxout = 22;
 const int kSplit = 23;
 const int kInsanity = 24;
 /*! \brief gap used to encode pairtest layer */
