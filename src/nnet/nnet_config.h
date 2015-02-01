@@ -97,6 +97,10 @@ struct NetConfig {
   std::string updater_type;
   /*! \brief type of synchronization function */
   std::string sync_type;
+  /*! \brief map to map input sequence to label name*/
+  std::map<std::string, size_t> label_name_map;
+  /*! \brief vector to record range of input label*/
+  std::vector<std::pair<index_t, index_t> > label_range;
   /*! \brief default global configuration */
   std::vector< std::pair< std::string, std::string > > defcfg;
   /*! \brief extra parameter configuration specific to this layer */
@@ -105,6 +109,8 @@ struct NetConfig {
   NetConfig(void) {
     updater_type = "sgd";
     sync_type = "simple";
+    label_name_map["label"] = 0;
+    label_range.push_back(std::make_pair(0, 1));
   }
   /*!
    * \brief save network structure to output
@@ -171,6 +177,18 @@ struct NetConfig {
     }
     this->ClearConfig();
   }
+  inline void SetGlobalParam(const char *name, const char *val) {
+    if (!strcmp(name, "updater")) updater_type = val;
+    if (!strcmp(name, "sync")) sync_type = val;
+    {
+      unsigned a, b;
+      if (sscanf(name, "label_vec[%u,%u)", &a, &b) == 2) {
+        label_range.push_back(std::make_pair((index_t)a,
+                                             (index_t)b));
+        label_name_map[val] = label_range.size() - 1;
+      }
+    }
+  }
   /*!
    * \brief setup configuration, using the config string pass in
    */
@@ -198,10 +216,7 @@ struct NetConfig {
           param.input_shape = mshadow::Shape3(z, y, x);
         }
       }
-      if (netcfg_mode != 2) {
-        if (!strcmp(name, "updater")) updater_type = val;
-        if (!strcmp(name, "sync")) sync_type = val;
-      }
+      if (netcfg_mode != 2) this->SetGlobalParam(name, val);
       if (!strcmp(name, "netconfig") && !strcmp(val, "start")) netcfg_mode = 1;
       if (!strcmp(name, "netconfig") && !strcmp(val, "end")) netcfg_mode = 0;
       if (!strncmp(name, "layer[", 6)) {

@@ -6,6 +6,8 @@
  * \author Tianqi Chen, Bing Xu
  */
 #include <vector>
+#include <map>
+#include <string>
 #include <mshadow/tensor.h>
 #include "../global.h"
 #include "../utils/utils.h"
@@ -69,17 +71,38 @@ struct Node {
 }; // struct Node
 
 /*!
+ * \brief a single label record that can be taken by a loss function
+ *    use struct for future extensibility
+ */
+struct LabelRecord {
+  /*! \brief label field */
+  mshadow::Tensor<cpu, 2> label;
+  /*!
+   * \brief slice the label information to take [begin, end)
+   * \param begin beginning of index
+   * \param end end of index
+   */
+  inline LabelRecord Slice(index_t begin, index_t end) const {
+    LabelRecord r;
+    r.label = label.Slice(begin, end);
+    return r;
+  }
+};
+/*!
  * \brief data structure to hold additional information about label of instances
  * this information is used by layers that computes the gradient over objectibe functions,
  * this data structure  will be evolving, to meet needs of different kinds of supervision signals
  */
 struct LabelInfo {
-  /*! \brief pointer to the label fields */
-  const float *labels;
-  /*! \brief the size of the batch */
-  mshadow::index_t batch_size;
+  /*! \brief fields of each label */
+  std::vector<LabelRecord> fields;
+  /*!
+   * \brief name map that maps field name
+   *  to the index of fields
+   */
+  const std::map<std::string, size_t> *name2findex;
   // constructor
-  LabelInfo(void) : labels(NULL), batch_size(0) {
+  LabelInfo(void) : name2findex(NULL) {
   }
   /*!
    * \brief slice the label information to take [begin, end)
@@ -88,12 +111,14 @@ struct LabelInfo {
    */
   inline LabelInfo Slice(index_t begin, index_t end) const {
     LabelInfo ret;
-    ret.labels = labels + begin;
-    ret.batch_size = end - begin;
+    ret.fields.resize(fields.size());
+    for (size_t i = 0; i < fields.size(); ++i) {
+      ret.fields[i] = fields[i].Slice(begin, end);
+    } 
+    ret.name2findex = name2findex;   
     return ret;
   }
 };
-
 /*!
  * \brief connection states
  *   temporal state space that can be used to share information between forward and backprop

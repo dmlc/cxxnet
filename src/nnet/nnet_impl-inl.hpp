@@ -140,16 +140,16 @@ class CXXNetThreadTrainer : public INetTrainer {
 
     bool need_sync = sample_counter % update_period == 0;
     bool need_update = (sample_counter + 1) % update_period == 0;
+    layer::LabelInfo info = GetLabelInfo(data);
 
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
-      mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
-      layer::LabelInfo info;
-      info.labels = data.labels + begin;
-      info.batch_size = end - begin;
-      nets_[i - 1]->TrainForwardBackprop(mbatch, info, out_temp.Slice(begin, end),
-                                         false, need_sync, need_update, epoch_counter);
+      nets_[i - 1]->TrainForwardBackprop(data.data.Slice(begin, end),
+                                         info.Slice(begin, end),
+                                         out_temp.Slice(begin, end),
+                                         false, need_sync,
+                                         need_update, epoch_counter);
     }
     this->WaitAllJobs();
     // evlauate training loss
@@ -222,6 +222,16 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
 
  private:
+  inline layer::LabelInfo GetLabelInfo(const DataBatch &data) const {
+    layer::LabelInfo info;
+    layer::LabelRecord rec;
+    info.name2findex = &net_cfg.label_name_map;
+    rec.label = mshadow::Tensor<cpu, 2>
+                          (data.labels,
+                           mshadow::Shape2(data.batch_size, 1));
+    info.fields.push_back(rec);
+    return info;
+  }
   inline float TransformPred(mshadow::Tensor<cpu,1> pred) {
     if (pred.size(0) != 1) {
       return GetMaxIndex(pred);
@@ -356,8 +366,9 @@ class CXXNetThreadTrainer : public INetTrainer {
   std::string model_blob_;
   /*! \brief threads of neural nets */
   std::vector<NeuralNetThread<xpu>*> nets_;
+
   /*! \brief network configuration type */
-  NetConfig net_cfg;
+  NetConfig net_cfg;  
   /*! \brief history of configurations */
   std::vector< std::pair<std::string, std::string> > cfg;
 };

@@ -14,7 +14,6 @@
 #include "./lrn_layer-inl.hpp"
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
-#include "./softmax_layer-inl.hpp"
 #include "./pairtest_layer-inl.hpp"
 #include "./concat_layer-inl.hpp"
 #include "./cudnn_convolution_layer-inl.hpp"
@@ -24,6 +23,7 @@
 #include "./insanity_layer-inl.hpp"
 #include "./insanity_pooling_layer-inl.hpp"
 #include "./maxout_layer-inl.hpp"
+#include "./loss/softmax_layer-inl.hpp"
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
 #endif

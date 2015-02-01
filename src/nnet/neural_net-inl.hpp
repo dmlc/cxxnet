@@ -45,6 +45,7 @@ struct NeuralNet {
     // set maximum batch
     this->max_batch = batch_size;
     rnd.set_stream(stream);
+    label_info.name2findex = &cfg.label_name_map;
   }
   ~NeuralNet(void) {
     this->FreeSpace();
