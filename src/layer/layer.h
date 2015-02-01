@@ -274,6 +274,7 @@ const int kReluMaxPooling = 21;
 const int kMaxout = 22;
 const int kSplit = 23;
 const int kInsanity = 24;
+const int kInsanityPooling = 25;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -304,6 +305,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "maxout")) return kMaxout;
   if (!strcmp(type, "split")) return kSplit;
   if (!strcmp(type, "insanity")) return kInsanity;
+  if (!strcmp(type, "insanity_max_pooling")) return kInsanityPooling;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
   #endif
