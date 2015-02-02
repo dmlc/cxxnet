@@ -24,6 +24,8 @@
 #include "./insanity_pooling_layer-inl.hpp"
 #include "./maxout_layer-inl.hpp"
 #include "./loss/softmax_layer-inl.hpp"
+#include "./loss/l2_loss_layer-inl.hpp"
+#include "./loss/multi_logistic_layer-inl.hpp"
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
 #endif
@@ -59,6 +61,8 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kInsanity: return new InsanityLayer<xpu>(p_rnd);
     case kInsanityPooling: return new InsanityPoolingLayer<mshadow::red::maximum, kMaxPooling, xpu>(p_rnd);
     case kMaxout: return new MaxoutLayer<mshadow::red::maximum, xpu>();
+    case kL2Loss: return new L2LossLayer<xpu>(label_info);
+    case kMultiLogistic: return new MultiLogisticLayer<xpu>(label_info);
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
     #endif
