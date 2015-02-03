@@ -54,8 +54,13 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (!strcmp(name, "eval_train")) eval_train = atoi(val);
     if (!strcmp(name, "seed")) seed = atoi(val);
     if (!strcmp(name, "param_server")) type_pserver = val;
-    if(!strcmp(name, "metric")) {
-      metric.AddMetric(val); train_metric.AddMetric(val);
+    if (!strncmp(name, "metric", 6)) {
+      char label_name[256];
+      if (sscanf(name, "metric[%[^]]]", label_name) == 1){
+        metric.AddMetric(val, label_name); train_metric.AddMetric(val, label_name);
+      } else {
+        metric.AddMetric(val, "label"); train_metric.AddMetric(val, "label");  
+      }
     }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
@@ -154,7 +159,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     this->WaitAllJobs();
     // evlauate training loss
     if (eval_train != 0) {
-      train_metric.AddEval(out_temp.FlatTo2D(), data.labels);
+      train_metric.AddEval(out_temp.FlatTo2D(), info);
     }
     if (++sample_counter >= update_period) {
       sample_counter = 0;
@@ -215,7 +220,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     while (iter_eval->Next()) {
       const DataBatch& batch = iter_eval->Value();
       this->ForwardToTemp(batch, nets_[0]->net().nodes.size() - 1);
-      metric.AddEval(out_temp.Slice(0, out_temp.size(0) - batch.num_batch_padd).FlatTo2D(), batch.labels);
+      metric.AddEval(out_temp.Slice(0, out_temp.size(0) - batch.num_batch_padd).FlatTo2D(),
+        GetLabelInfo(batch));
     }
     ret += metric.Print(data_name);
     return ret;
