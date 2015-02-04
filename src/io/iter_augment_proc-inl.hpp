@@ -184,7 +184,7 @@ private:
         }
         if (crop_y_start_ != -1) y = crop_y_start_;
         if (crop_x_start_ != -1) x = crop_x_start_;
-        cv::Rect roi(y, x, crop_size_y, crop_size_x);
+        cv::Rect roi(x, y, crop_size_x, crop_size_y);
         res = res(roi);
         cut = true;
         cv::resize(res, res, cv::Size(shape_[1], shape_[2]));
