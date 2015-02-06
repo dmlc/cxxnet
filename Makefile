@@ -28,12 +28,13 @@ else
 endif
 
 # customize cudnn path
-ifeq ($(USE_CUDNN), 1)
-	CFLAGS += -DCXXNET_USE_CUDNN=1
-endif
 ifneq ($(USE_CUDNN_PATH), NONE)
 	CFLAGS += -I$(USE_CUDNN_PATH)
-	LDFLAGS += -L$(USE_CUDNN_PATH) -lcudnn
+	LDFLAGS += -L$(USE_CUDNN_PATH)
+endif
+ifeq ($(USE_CUDNN), 1)
+	CFLAGS += -DCXXNET_USE_CUDNN=1
+	LDFLAGS += -lcudnn
 endif
 
 ifneq ($(ADD_CFLAGS), NONE)
@@ -89,7 +90,7 @@ $(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )
 
 $(SLIB) :
-	$(CXX) $(CFLAGS) -shared -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS) 
+	$(CXX) $(CFLAGS) -shared -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS)
 
 $(CUOBJ) :
 	$(NVCC) -c -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" $(filter %.cu, $^)
