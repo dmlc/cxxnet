@@ -14,7 +14,7 @@ include mshadow/make/mshadow.mk
 
 # all tge possible warning tread
 WARNFLAGS= -Wall
-CFLAGS = -g -O3 -I./mshadow/  -fopenmp $(MSHADOW_CFLAGS)
+CFLAGS = -g -O3 -I./mshadow/  -fopenmp -fPIC $(MSHADOW_CFLAGS)
 CFLAGS += -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
 LDFLAGS = -lz -pthread $(MSHADOW_LDFLAGS)
 NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
@@ -45,6 +45,7 @@ endif
 
 # specify tensor path
 BIN = bin/cxxnet
+SLIB = wrapper/libcxxnetwrapper.so
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
@@ -60,7 +61,7 @@ ifeq ($(USE_DIST_PS), 1)
 BIN=bin/cxxnet.ps
 endif
 
-all: $(BIN)
+all: $(BIN) $(SLIB)
 
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu\
 	src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
@@ -77,6 +78,7 @@ data.o: src/io/data.cpp src/io/*.hpp
 
 main.o: src/cxxnet_main.cpp
 
+wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(CUDEP)
 bin/cxxnet: src/local_main.cpp $(OBJ) $(CUDEP)
 bin/cxxnet.ps: $(OBJ) $(CUDEP) $(PS_LIB)
 
@@ -85,6 +87,9 @@ $(BIN) :
 
 $(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )
+
+$(SLIB) :
+	$(CXX) $(CFLAGS) -shared -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS) 
 
 $(CUOBJ) :
 	$(NVCC) -c -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" $(filter %.cu, $^)

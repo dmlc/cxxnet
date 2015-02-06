@@ -11,7 +11,7 @@
 #include "utils/config.h"
 
 namespace cxxnet{
-using namespace nnet;
+
 
 class CXXNetLearnTask {
  public:
@@ -46,7 +46,7 @@ class CXXNetLearnTask {
 
     if (itr_train != NULL)   delete itr_train;
     if (itr_pred  != NULL)   delete itr_pred;
-    for(size_t i = 0; i < itr_evals.size(); ++ i) {
+    for (size_t i = 0; i < itr_evals.size(); ++ i) {
       delete itr_evals[i];
     }
   }
@@ -61,7 +61,7 @@ class CXXNetLearnTask {
     while (itr.Next()) {
       this->SetParam(itr.name(), itr.val());
     }
-    for(int i = 2; i < argc; i ++) {
+    for (int i = 2; i < argc; i ++) {
       char name[256], val[256];
       if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
         this->SetParam(name, val);
@@ -162,29 +162,29 @@ class CXXNetLearnTask {
     fclose(fo);
   }
   // create a neural net
-  inline INetTrainer* CreateNet(void) {
+  inline nnet::INetTrainer* CreateNet(void) {
     if (reset_net_type != -1) {
       net_type = reset_net_type;
     }
-    INetTrainer *net;
+    nnet::INetTrainer *net;
     if (!strncmp(device.c_str(), "gpu", 3)) {
 #if MSHADOW_USE_CUDA
-      net = cxxnet::CreateNet<mshadow::gpu>(net_type);
+      net = nnet::CreateNet<mshadow::gpu>(net_type);
 #else
       utils::Error("MSHADOW_USE_CUDA was not enabled");
 #endif
     } else {
-      net = cxxnet::CreateNet<mshadow::cpu>(net_type);
+      net = nnet::CreateNet<mshadow::cpu>(net_type);
     }
 
-    for(size_t i = 0; i < cfg.size(); ++ i) {
+    for (size_t i = 0; i < cfg.size(); ++ i) {
       net->SetParam(cfg[i].first.c_str(), cfg[i].second.c_str());
     }
     return net;
   }
   inline void InitIter(IIterator<DataBatch>* itr,
                         const std::vector< std::pair< std::string, std::string> > &defcfg) {
-    for(size_t i = 0; i < defcfg.size(); ++ i) {
+    for (size_t i = 0; i < defcfg.size(); ++ i) {
       itr->SetParam(defcfg[i].first.c_str(), defcfg[i].second.c_str());
     }
     itr->Init();
@@ -196,7 +196,7 @@ class CXXNetLearnTask {
     std::string evname;
     std::vector< std::pair< std::string, std::string> > itcfg;
     std::vector< std::pair< std::string, std::string> > defcfg;
-    for(size_t i = 0; i < cfg.size(); ++ i) {
+    for (size_t i = 0; i < cfg.size(); ++ i) {
       const char *name = cfg[i].first.c_str();
       const char *val  = cfg[i].second.c_str();
       if (!strcmp(name, "data")) {
@@ -238,7 +238,7 @@ class CXXNetLearnTask {
     if (itr_pred != NULL) {
       this->InitIter(itr_pred, defcfg);
     }
-    for(size_t i = 0; i < itr_evals.size(); ++ i) {
+    for (size_t i = 0; i < itr_evals.size(); ++ i) {
       this->InitIter(itr_evals[i], defcfg);
     }
   }
@@ -364,7 +364,7 @@ class CXXNetLearnTask {
         // code handling evaluation
         fprintf(stderr, "[%d]", start_counter);
 
-        for(size_t i = 0; i < itr_evals.size(); ++i) {
+        for (size_t i = 0; i < itr_evals.size(); ++i) {
           std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
           fprintf(stderr, "%s", res.c_str());
         }
@@ -394,16 +394,16 @@ class CXXNetLearnTask {
   /*! \brief whether to force reset network implementation */
   int reset_net_type;
   /*! \brief trainer */
-  INetTrainer *net_trainer;
+  nnet::INetTrainer *net_trainer;
   /*! \brief training iterator, prediction iterator */
   IIterator<DataBatch>* itr_train, *itr_pred;
   /*! \brief validation iterators */
-  std::vector< IIterator<DataBatch>* > itr_evals;
+  std::vector<IIterator<DataBatch>* > itr_evals;
   /*! \brief evaluation names */
   std::vector<std::string> eval_names;
  private:
   /*! \brief all the configurations */
-  std::vector< std::pair< std::string, std::string> > cfg;
+  std::vector<std::pair<std::string, std::string> > cfg;
  private:
   /*! \brief whether test io only */
   int test_io;
