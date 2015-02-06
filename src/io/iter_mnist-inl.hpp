@@ -37,11 +37,13 @@ class MNISTIterator: public IIterator<DataBatch> {
     this->LoadImage();
     this->LoadLabel();
     if (mode_ == 1) {
-      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, 1,img_.size(1) * img_.size(2));
+      out_.data.shape_ = mshadow::Shape4(batch_size_, 1, 1, img_.size(1) * img_.size(2));
     } else {
       out_.data.shape_ = mshadow::Shape4(batch_size_, 1, img_.size(1), img_.size(2));
     }
     out_.inst_index = NULL;
+    out_.label.shape_ = mshadow::Shape2(batch_size_, 1);
+    out_.label.stride_ = 1;
     out_.data.stride_ = out_.data.size(3);
     out_.batch_size = batch_size_;
     if (shuffle_) this->Shuffle();
@@ -57,7 +59,7 @@ class MNISTIterator: public IIterator<DataBatch> {
   virtual bool Next(void) {
     if (loc_ + batch_size_ <= img_.size(0)) {
       out_.data.dptr_ = img_[loc_].dptr_;
-      out_.labels = &labels_[loc_];
+      out_.label.dptr_ = &labels_[loc_];
       out_.inst_index = &inst_[loc_];
       loc_ += batch_size_;
       return true;
@@ -137,7 +139,7 @@ class MNISTIterator: public IIterator<DataBatch> {
   // batch size
   index_t batch_size_;
   // image content
-  mshadow::Tensor<cpu,3> img_;
+  mshadow::Tensor<cpu, 3> img_;
   // label content
   std::vector<float> labels_;
   // instance index offset

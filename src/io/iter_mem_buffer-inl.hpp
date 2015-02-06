@@ -32,9 +32,9 @@ class DenseBufferIterator : public IIterator<DataBatch> {
     base_->Init();
     while (base_->Next()) {
       const DataBatch &batch = base_->Value();
-      utils::Assert(batch.labels != NULL, "need dense");
+      utils::Assert(batch.label.dptr_ != NULL, "need dense");
       DataBatch v;
-      v.AllocSpaceDense(batch.data.shape_, batch.batch_size);
+      v.AllocSpaceDense(batch.data.shape_, batch.batch_size, batch.label.size(1));
       v.CopyFromDense(batch);
       buffer_.push_back(v);
       if (buffer_.size() >= max_nbatch_) break;

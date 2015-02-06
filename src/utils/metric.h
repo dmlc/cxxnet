@@ -207,14 +207,15 @@ struct MetricSet{
     }
   }
   inline std::string Print(const char *evname) {
-    std::string res = "";
+    std::stringstream ss;
     for (size_t i = 0; i < evals_.size(); ++ i) {
-      char tmp[1024];
-      sprintf(tmp, "\t%s-%s[%s]:%f", evname, evals_[i]->Name(), label_fields_[i].c_str(),
-        evals_[i]->Get());
-      res += tmp;
+      ss << '\t' << evname << '-' << evals_[i]->Name();
+      if (label_fields_[i] != "label") {
+        ss << '[' << label_fields_[i] << ']';
+      }
+      ss << ':' << evals_[i]->Get();
     }
-    return res;
+    return ss.str();
   }
  private:
   inline static bool CmpName(const IMetric *a, const IMetric *b) {

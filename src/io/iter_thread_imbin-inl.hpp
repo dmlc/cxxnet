@@ -18,12 +18,14 @@ public:
   ThreadImagePageIterator(void) {
     idx_ = 0;
     img_.set_pad(false);
+    label_.set_pad(false);
     fplst_ = NULL;
     silent_ = 0;
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
     img_conf_prefix_ = "";    
     flag_ = true;
+    label_width_ = 1;
     dist_num_worker_ = 0;
     dist_worker_rank_ = 0;
   }
@@ -54,6 +56,9 @@ public:
       dist_worker_rank_ = atoi(val);
     }
     if (!strcmp(name, "silent")) silent_ = atoi(val);
+    if (!strcmp(name, "label_width")) {
+      label_width_ = atoi(val);
+    }
   }
   virtual void Init(void) {
     this->ParseImageConf();
@@ -69,6 +74,8 @@ public:
     }
     utils::Check(path_imgbin_.size() == path_imglst_.size(),
                  "List/Bin number not consist");
+    label_.Resize(mshadow::Shape1(label_width_));
+    out_.label = label_;
     itr.get_factory().path_imgbin = path_imgbin_;
     itr.get_factory().Ready();
     itr.Init();
@@ -88,7 +95,15 @@ public:
   }
   virtual bool Next(void) {
     if (!flag_) return flag_;
-    while (fscanf(fplst_, "%u%f%*[^\n]\n", &out_.index, &out_.label) == 2) {
+    while (fscanf(fplst_, "%u", &out_.index) == 1) {
+      for (int i = 0; i < label_width_; ++i) {
+        float tmp;
+        utils::Check(fscanf(fplst_, "%f", &tmp) == 1,
+                     "ImageList format:label_width=%d but only have %d labels per line",
+                     label_width_, i);
+        label_[i] = tmp;
+      }
+      utils::Assert(fscanf(fplst_, "%*[^\n]\n") == 0, "ignore");
       this->NextBuffer(buf_);
       this->LoadImage(img_, out_, buf_);
       return true;
@@ -151,6 +166,8 @@ protected:
   int dist_num_worker_, dist_worker_rank_;
   // output data
   DataInst out_;
+  // label-width
+  int label_width_;
   // silent
   int silent_;
   // file pointer to list file, information file
@@ -162,6 +179,8 @@ protected:
   std::string img_conf_prefix_, img_conf_ids_;
   // raw image list
   std::string raw_imglst_, raw_imgbin_;
+  // temp storage for label
+  mshadow::TensorContainer<cpu, 1> label_;
   // temp storage for image
   mshadow::TensorContainer<cpu, 3> img_;
   // temp memory buffer

@@ -232,7 +232,8 @@ extern "C" {
                             cxx_real_t *p_label,
                             cxx_uint label_width) {    
     DataBatch batch;
-    batch.labels = p_label;
+    batch.label = mshadow::Tensor<cpu, 2>
+        (p_label, mshadow::Shape2(nbatch, label_width));
     batch.batch_size = nbatch;
     batch.data = mshadow::Tensor<cpu, 4>
         (p_data, mshadow::Shape4(nbatch, nchannel, height, width));

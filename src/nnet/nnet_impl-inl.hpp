@@ -232,10 +232,15 @@ class CXXNetThreadTrainer : public INetTrainer {
     layer::LabelInfo info;
     layer::LabelRecord rec;
     info.name2findex = &net_cfg.label_name_map;
-    rec.label = mshadow::Tensor<cpu, 2>
-                          (data.labels,
-                           mshadow::Shape2(data.batch_size, 1));
-    info.fields.push_back(rec);
+    for (size_t i = 0; i < net_cfg.label_range.size(); ++i) {
+      index_t begin =  net_cfg.label_range[i].first;
+      index_t end =  net_cfg.label_range[i].second;
+      rec.label = mshadow::Tensor<cpu, 2>
+          (data.label.dptr_ + begin,
+           mshadow::Shape2(data.batch_size, end - begin),
+           data.label.stride_, NULL);
+      info.fields.push_back(rec);
+    }
     return info;
   }
   inline float TransformPred(mshadow::Tensor<cpu,1> pred) {

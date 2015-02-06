@@ -29,6 +29,8 @@ public:
     num_overflow_ = 0;
     // silent
     silent_ = 0;
+    // label width
+    label_width_ = 1;
   }
   virtual ~BatchAdaptIterator(void) {
     delete base_;
@@ -40,6 +42,9 @@ public:
     if (!strcmp(name, "input_shape")) {
       utils::Assert(sscanf(val, "%u,%u,%u", &shape_[1], &shape_[2], &shape_[3]) == 3,
                     "input_shape must be three consecutive integers without space example: 1,1,200 ");
+    }
+    if (!strcmp(name, "label_width")) {
+      label_width_ = static_cast<index_t>(atoi(val));
     }
     if (!strcmp(name, "round_batch")) round_batch_ = atoi(val);
     if (!strcmp(name, "silent")) silent_ = atoi(val);
@@ -54,7 +59,7 @@ public:
     } else {
       tshape[0] = batch_size_;
     }
-    out_.AllocSpaceDense(tshape, batch_size_, false);
+    out_.AllocSpaceDense(tshape, batch_size_, label_width_, false);
   }
 
   virtual void BeforeFirst(void) {
@@ -79,7 +84,7 @@ public:
 
     while (base_->Next()) {
       const DataInst& d = base_->Value();
-      out_.labels[top] = d.label;
+      mshadow::Copy(out_.label[top], d.label);
       out_.inst_index[top] = d.index;
       //out_.data[top] = d.data;
       Copy(out_.data[top], d.data);
@@ -93,7 +98,7 @@ public:
         for (; top < batch_size_; ++top, ++num_overflow_) {
           utils::Assert(base_->Next(), "number of input must be bigger than batch size");
           const DataInst& d = base_->Value();
-          out_.labels[top] = d.label;
+          mshadow::Copy(out_.label[top], d.label);
           out_.inst_index[top] = d.index;
           out_.data[top] = d.data;
         }
@@ -116,6 +121,8 @@ private:
   index_t batch_size_;
   // input shape
   mshadow::Shape<4> shape_;
+  // label width
+  index_t label_width_;
   // output data
   DataBatch out_;
   // on first
@@ -168,7 +175,7 @@ public :
 private:
   struct Factory {
   public:
-    IIterator< DataBatch > *base_;
+    IIterator<DataBatch> *base_;
   public:
     Factory(void) {
       base_ = NULL;
@@ -181,6 +188,7 @@ private:
       utils::Assert(base_->Next(), "ThreadBufferIterator: input can not be empty");
       oshape_ = base_->Value().data.shape_;
       batch_size_ = base_->Value().batch_size;
+      label_width_ = base_->Value().label.size(1);
       base_->BeforeFirst();
       return true;
     }
@@ -193,7 +201,7 @@ private:
       }
     }
     inline DataBatch Create(void) {
-      DataBatch a; a.AllocSpaceDense(oshape_, batch_size_);
+      DataBatch a; a.AllocSpaceDense(oshape_, batch_size_, label_width_);
       return a;
     }
     inline void FreeSpace(DataBatch &a) {
@@ -207,6 +215,7 @@ private:
     }
   private:
     mshadow::index_t batch_size_;
+    mshadow::index_t label_width_;
     mshadow::Shape<4> oshape_;
   };
 private:

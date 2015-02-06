@@ -1,12 +1,10 @@
-#ifndef DATA_H
-#define DATA_H
-#pragma once
+#ifndef CXXNET_DATA_H_
+#define CXXNET_DATA_H_
 /*!
  * \file data.h
  * \brief data type and iterator abstraction
  * \author Bing Xu, Tianqi Chen
  */
-
 #include <vector>
 #include <string>
 #include <mshadow/tensor.h>
@@ -41,10 +39,10 @@ public:
 
 /*! \brief a single data instance */
 struct DataInst {
-  /*! \brief label information */
-  float  label;
   /*! \brief unique id for instance */
   unsigned index;
+  /*! \brief label information */
+  mshadow::Tensor<mshadow::cpu, 1> label;
   /*! \brief content of data */
   mshadow::Tensor<mshadow::cpu, 3> data;
 }; // struct DataInst
@@ -60,7 +58,7 @@ struct SparseInst {
     Entry(unsigned findex, float fvalue): findex(findex), fvalue(fvalue) {}
   }; // struct Entry
   /*! \brief label information */
-  float  label;
+  mshadow::Tensor<mshadow::cpu, 1> label;
   /*! \brief unique id for instance */
   unsigned index;
   /*! \brief length of the instance */
@@ -80,8 +78,6 @@ struct SparseInst {
  */
 struct DataBatch {
 public:
-  /*! \brief label information */
-  float  *labels;
   /*! \brief unique id for instance, can be NULL, sometimes is useful */
   unsigned *inst_index;
   /*! \brief number of instance */
@@ -90,6 +86,8 @@ public:
        this is used to indicate the last elements in the batch are only padded up to match the batch, and should be discarded */
   mshadow::index_t num_batch_padd;
 public:
+  /*! \brief label information of the data*/
+  mshadow::Tensor<mshadow::cpu, 2> label;
   /*! \brief content of dense data, if this DataBatch is dense */
   mshadow::Tensor<mshadow::cpu, 4> data;
 public:
@@ -101,33 +99,38 @@ public:
 public:
   /*! \brief constructor */
   DataBatch(void) {
-    labels = NULL; inst_index = NULL;
+    label.dptr_ = NULL;
+    inst_index = NULL;
     data.dptr_ = NULL;
     batch_size = 0; num_batch_padd = 0;
     sparse_row_ptr = NULL;
     sparse_data = NULL;
   }
   /*! \brief auxiliary  functionto allocate space, if needed */
-  inline void AllocSpaceDense(mshadow::Shape<4> shape, mshadow::index_t batch_size, bool pad = false) {
+  inline void AllocSpaceDense(mshadow::Shape<4> shape,
+                              mshadow::index_t batch_size,
+                              mshadow::index_t label_width,
+                              bool pad = false) {
     data = mshadow::NewTensor<mshadow::cpu>(shape, 0.0f, pad);
-    labels = new float[batch_size];
+    mshadow::Shape<2> lshape = mshadow::Shape2(batch_size, label_width);
+    label = mshadow::NewTensor<mshadow::cpu>(lshape, 0.0f, pad);
     inst_index = new unsigned[batch_size];
     this->batch_size = batch_size;
   }
   /*! \brief auxiliary function to free space, if needed, dense only */
   inline void FreeSpaceDense(void) {
-    if (labels != NULL) {
-      delete [] labels;
+    if (label.dptr_ != NULL) {
       delete [] inst_index;
+      mshadow::FreeSpace(&label);
       mshadow::FreeSpace(&data);
-      labels = NULL;
+      label.dptr_ = NULL;
     }
   }
   /*! \brief copy dense content from existing data, dense only */
   inline void CopyFromDense(const DataBatch &src) {
     utils::Assert(batch_size == src.batch_size, "the batch size is not set correctly");
-    memcpy(labels, src.labels, batch_size * sizeof(float));
     memcpy(inst_index, src.inst_index, batch_size * sizeof(unsigned));
+    mshadow::Copy(label, src.label);
     mshadow::Copy(data, src.data);
   }
 public:
@@ -140,7 +143,7 @@ public:
     SparseInst inst;
     inst.data = sparse_data + sparse_row_ptr[rid];
     inst.length = sparse_row_ptr[rid + 1] - sparse_row_ptr[rid];
-    inst.label = labels[rid];
+    inst.label = label[rid];
     if (inst_index != NULL) {
       inst.index = inst_index[rid];
     } else {
@@ -153,6 +156,6 @@ public:
  * \brief create iterator from configure settings
  * \param cfg configure settings key=vale pair
  */
-IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, std::string> > &cfg);
+IIterator<DataBatch> *CreateIterator(const std::vector<std::pair<std::string, std::string> > &cfg);
 }  // namespace cxxnet
-#endif
+#endif  // CXXNET_DATA_H_
