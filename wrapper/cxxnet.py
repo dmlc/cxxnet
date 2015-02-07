@@ -31,9 +31,9 @@ class DataIter:
         """destructor"""
         cxnlib.CXNIOFree(self.handle)
 
-def ctypes2numpy(cptr, length, dtype):
+def ctypes2numpy(cptr, length, dtype=numpy.float32):
     """convert a ctypes pointer array to numpy array """
-    assert isinstance(cptr, ctypes.POINTER(ctypes.c_float))
+    #assert isinstance(cptr, ctypes.POINTER(ctypes.c_float))
     res = numpy.zeros(length, dtype=dtype)
     assert ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0])
     return res
@@ -57,7 +57,7 @@ class Net:
                               ctypes.c_char_p(value.encode('utf-8')))
 
     def init_model(self):
-        """ initialize the network structure        
+        """ initialize the network structure
         """
         cxnlib.CXNNetInitModel(self.handle)
 
@@ -88,17 +88,17 @@ class Net:
     def update(self, data):
         """ update the net using the data
         Parameters
-            data: input can be DataIter or numpy.ndarray            
+            data: input can be DataIter or numpy.ndarray
         """
         if isinstance(data, DataIter):
             cxnlib.CXNNetUpdateOneIter(self.handle, data.handle)
         else:
             raise Exception('update do not support type %s' % str(type(data)))
-    
+
     def evaluate(self, data, name):
         """ update the net using the data
         Parameters
-            data: input can be DataIter or numpy.ndarray            
+            data: input can be DataIter or numpy.ndarray
             name: str
                 name of the input data
         """
@@ -106,7 +106,10 @@ class Net:
             return cxnlib.CXNNetEvaluate(self.handle, data.handle, name)
         else:
             raise Exception('update do not support type %s' % str(type(data)))
-        
+    def predict_iter(self, data):
+        olen = ctypes.c_uint()
+        ret = cxnlib.CXNNetPredictIter(self.handle, data.handle, ctypes.byref(olen))
+        return ctypes2numpy(ret, olen.value, 'float32')
     def predict(self, data):
         assert isinstance(numpy.ndarray)
         if data.ndim != 4:
@@ -117,8 +120,8 @@ class Net:
                                    data.shape[0], data.shape[1],
                                    data.shape[2], data.shape[3],
                                    ctypes.byref(olen));
-        return ctypes2numpy(ret, olen.value)
-    
+        return ctypes2numpy(ret, olen.value, 'float32')
+
 def train(cfg, data, num_round, param, eval_data = None):
     net = Net(cfg = cfg)
     if isinstance(param, dict):

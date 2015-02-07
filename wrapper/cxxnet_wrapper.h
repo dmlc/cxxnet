@@ -25,7 +25,7 @@ extern "C" {
    * \param cfg config string that contains the configuration about
    *        the iterator
    * \return the handle pointer to the iterator
-   */  
+   */
   CXXNET_DLL void *CXNIOCreateFromConfig(const char *cfg);
   /*!
    * \brief free the cxxnet io iterator handle
@@ -49,12 +49,12 @@ extern "C" {
    * \param handle net handle
    * \param name name of parameter
    * \param val the value of parameter
-   */  
+   */
   CXXNET_DLL void CXNNetSetParam(void *handle, const char *name, const char *val);
   /*!
-   * \brief initialize 
+   * \brief initialize
    * \param handle net handle
-   */  
+   */
   CXXNET_DLL void CXNNetInitModel(void *handle);
   /*!
    * \brief save model into existing file
@@ -66,13 +66,13 @@ extern "C" {
    * \brief load model from model file
    * \param handle net handle
    * \param fname file name
-   */ 
+   */
   CXXNET_DLL void CXNNetLoadModel(void *handle, const char *fname);
   /*!
    * \brief inform the updater that a new round has been started
    * \param handle net handle
    * \param round round counter
-   */ 
+   */
   CXXNET_DLL void CXNNetStartRound(void *handle, int round);
   /*!
    * \brief update the model for one iteration
@@ -90,7 +90,7 @@ extern "C" {
    * \param height height of image
    * \param width width of image
    * \param p_label pointer to the label field, shape=(nbatch, label_width)
-   * \param label_width number of labels 
+   * \param label_width number of labels
    */
   CXXNET_DLL void CXNNetUpdateOneBatch(void *handle,
                                        cxx_real_t *p_data,
@@ -120,6 +120,10 @@ extern "C" {
                                              cxx_uint height,
                                              cxx_uint width,
                                              cxx_uint *out_size);
+
+  CXXNET_DLL const cxx_real_t *CXNNetPredictBatch(void *handle,
+                                                 void *data_handle,
+                                                 cxx_uint *out_size);
   /*!
    * \brief evaluate the net using the data source
    * \param handle net handle

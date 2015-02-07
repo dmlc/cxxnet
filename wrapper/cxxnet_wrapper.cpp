@@ -17,14 +17,14 @@ class WrapperIterator {
     int flag = 1;
     std::vector<std::pair<std::string, std::string> > itcfg;
     std::vector<std::pair<std::string, std::string> > defcfg;
-    
+
     while (cfg.Next()) {
       const char *name = cfg.name();
       const char *val  = cfg.val();
       if (!strcmp(name, "iter") && !strcmp(val, "end")) {
         utils::Assert(flag != 0, "wrong configuration file");
         iter_  = cxxnet::CreateIterator(itcfg);
-        flag = 0; itcfg.clear(); continue;        
+        flag = 0; itcfg.clear(); continue;
       }
       if (flag == 0) {
         defcfg.push_back(std::make_pair(std::string(name),
@@ -49,7 +49,7 @@ class WrapperIterator {
 
  private:
   friend class WrapperNet;
-  IIterator<DataBatch> *iter_;  
+  IIterator<DataBatch> *iter_;
 };
 
 class WrapperNet {
@@ -107,7 +107,7 @@ class WrapperNet {
     fclose(fo);
   }
   inline void StartRound(int round) {
-    round_counter = round;    
+    round_counter = round;
   }
   inline void UpdateOneIter(WrapperIterator *iter) {
     IIterator<DataBatch> *itr_train = iter->iter_;
@@ -130,7 +130,21 @@ class WrapperNet {
     *out_size = static_cast<cxx_uint>(res_pred.size());
     return BeginPtr(res_pred);
   }
-  inline const char *Evaluate(WrapperIterator *iter, const char *data_name) {    
+  inline cxx_real_t *PredictIter(WrapperIterator *iter, cxx_uint *out_size) {
+    res_pred_all.clear();
+    IIterator<DataBatch> *itr_data = iter->iter_;
+    itr_data->BeforeFirst();
+    while (itr_data->Next()) {
+      res_pred.clear();
+      net_->Predict(res_pred, itr_data->Value());
+      *out_size += static_cast<cxx_uint>(res_pred.size());
+      for (cxx_uint i = 0; i < res_pred.size(); ++i) {
+        res_pred_all.push_back(res_pred[i]);
+      }
+    }
+    return BeginPtr(res_pred_all);
+  }
+  inline const char *Evaluate(WrapperIterator *iter, const char *data_name) {
     res_eval = net_->Evaluate(iter->iter_, data_name);
     return res_eval.c_str();
   }
@@ -143,7 +157,7 @@ class WrapperNet {
   // returning cache
   std::string res_eval;
   std::vector<cxx_real_t> res_pred;
-  
+  std::vector<cxx_real_t> res_pred_all;
  private:
   // the internal net
   nnet::INetTrainer *net_;
@@ -230,7 +244,7 @@ extern "C" {
                             cxx_uint height,
                             cxx_uint width,
                             cxx_real_t *p_label,
-                            cxx_uint label_width) {    
+                            cxx_uint label_width) {
     DataBatch batch;
     batch.label = mshadow::Tensor<cpu, 2>
         (p_label, mshadow::Shape2(nbatch, label_width));
@@ -252,10 +266,16 @@ extern "C" {
         (p_data, mshadow::Shape4(nbatch, nchannel, height, width));
     return static_cast<WrapperNet*>(handle)->Predict(batch, out_size);
   }
+  const cxx_real_t *CXNNetPredictIter(void *handle,
+                                       void *data_handle,
+                                       cxx_uint *out_size) {
+    WrapperIterator* iter = static_cast<WrapperIterator*>(data_handle);
+    return static_cast<WrapperNet*>(handle)->PredictIter(iter, out_size);
+  }
   const char *CXNNetEvaluate(void *handle,
                              void *data_handle,
                              const char *data_name) {
     return static_cast<WrapperNet*>(handle)->
         Evaluate(static_cast<WrapperIterator*>(data_handle), data_name);
-  }  
+  }
 }
