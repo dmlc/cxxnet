@@ -55,7 +55,8 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kSumPooling: return new PoolingLayer<mshadow::red::sum, kSumPooling, xpu>();
     case kAvgPooling: return new CuDNNPoolingLayer<mshadow::red::sum, kAvgPooling, xpu>();
     case kSoftmax: return new SoftmaxLayer<xpu>(label_info);
-    case kConcat: return new ConcatLayer<xpu>();
+    case kConcat: return new ConcatLayer<xpu, 3>();
+    case kChConcat: return new ConcatLayer<xpu, 1>();
     case kSplit: return new SplitLayer<xpu>();
     case kXelu: return new XeluLayer<xpu>();
     case kInsanity: return new InsanityLayer<xpu>(p_rnd);

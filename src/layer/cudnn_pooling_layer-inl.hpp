@@ -116,5 +116,5 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
 
 }  // namespace layer
 }  // namespace cxxnet
-#endif  // LAYER_POOLING_LAYER_INL_HPP_
+#endif  // LAYER_CUDNN_POOLING_LAYER_INL_HPP_
 

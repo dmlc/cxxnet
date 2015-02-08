@@ -6,7 +6,7 @@
 /*!
  * \file visitor.h
  * \brief implementation of visitor of layer weights
- * tihs file gives util to set/get weights from/to a layer
+ *        tihs file gives util to set/get weights from/to a layer
  * \author Tianqi Chen
  */
 namespace cxxnet {

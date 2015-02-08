@@ -6,6 +6,7 @@
 #include "./layer.h"
 #include "./op.h"
 
+
 namespace cxxnet {
 namespace layer {
 
@@ -84,12 +85,19 @@ class InsanityLayer : public ILayer<xpu> {
  private:
   /*! \brief random number generator */
   mshadow::Random<xpu> *prnd_;
+  /*! \brief whether initialized */
   bool init_;
+  /*! \brief lower bound */
   float lb_;
+  /*! \brief upper bound */
   float ub_;
+  /*! \brief step counter */
   long step_;
+  /*! \brief epoch to start saturation process */
   long saturation_start_;
+  /*! \brief epoch to finish saturation */
   long saturation_end_;
+  /*! \brief change in each epoch */
   double delta_;
 };  // class InsanityLayer
 

@@ -114,8 +114,8 @@ struct LabelInfo {
     ret.fields.resize(fields.size());
     for (size_t i = 0; i < fields.size(); ++i) {
       ret.fields[i] = fields[i].Slice(begin, end);
-    } 
-    ret.name2findex = name2findex;   
+    }
+    ret.name2findex = name2findex;
     return ret;
   }
 };
@@ -307,6 +307,7 @@ const int kInsanity = 24;
 const int kInsanityPooling = 25;
 const int kL2Loss = 26;
 const int kMultiLogistic = 27;
+const int kChConcat = 28;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -340,6 +341,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "insanity_max_pooling")) return kInsanityPooling;
   if (!strcmp(type, "l2_loss")) return kL2Loss;
   if (!strcmp(type, "multi_logistic")) return kMultiLogistic;
+  if (!strcmp(type, "ch_concat")) return kChConcat;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
   #endif

@@ -8,7 +8,7 @@
 namespace cxxnet {
 namespace layer {
 
-template<typename xpu>
+template<typename xpu, int dim>
 class ConcatLayer : public ILayer<xpu> {
  public:
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
@@ -20,9 +20,14 @@ class ConcatLayer : public ILayer<xpu> {
     mshadow::Shape<4> oshape = nodes_in[0]->data.shape_;
     mshadow::index_t out_ch = 0;
     for (mshadow::index_t i = 0; i < nodes_in.size(); ++i) {
-      out_ch += nodes_in[i]->data.shape_[3];
+      out_ch += nodes_in[i]->data.shape_[dim];
+      for (mshadow::index_t j = 0; j < 4; ++j) {
+        if (j == dim) continue;
+        utils::Check(nodes_in[i]->data.shape_[j] == oshape[j],
+                     "Concat shape doesn't match");
+      }
     }
-    oshape[3] = out_ch;
+    oshape[dim] = out_ch;
     nodes_out[0]->data.shape_ = oshape;
   }
   virtual void Forward(bool is_train,
@@ -32,15 +37,18 @@ class ConcatLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     switch(nodes_in.size()) {
     case 2:
-      nodes_out[0]->data = concat<3>(nodes_in[0]->data, nodes_in[1]->data);
+      nodes_out[0]->data = concat<dim>(nodes_in[0]->data, nodes_in[1]->data);
       break;
     case 3:
-      nodes_out[0]->data = concat<3>(nodes_in[0]->data,
-                                     concat<3>(nodes_in[1]->data, nodes_in[2]->data));
+      nodes_out[0]->data = concat<dim>(nodes_in[0]->data,
+                                     concat<dim>(nodes_in[1]->data, nodes_in[2]->data));
       break;
     case 4:
-      nodes_out[0]->data = concat<3>(concat<3>(nodes_in[0]->data, nodes_in[1]->data),
-                                     concat<3>(nodes_in[2]->data, nodes_in[3]->data));
+      nodes_out[0]->data = concat<dim>(concat<dim>(nodes_in[0]->data, nodes_in[1]->data),
+                                     concat<dim>(nodes_in[2]->data, nodes_in[3]->data));
+      break;
+    default:
+      utils::Error("Too many node to concat");
       break;
     };
   }
@@ -52,15 +60,18 @@ class ConcatLayer : public ILayer<xpu> {
     if (prop_grad) {
       switch(nodes_in.size()) {
       case 2:
-        concat<3>(nodes_in[0]->data, nodes_in[1]->data) = nodes_out[0]->data;
+        concat<dim>(nodes_in[0]->data, nodes_in[1]->data) = nodes_out[0]->data;
         break;
       case 3:
-        concat<3>(nodes_in[0]->data,
-                  concat<3>(nodes_in[1]->data, nodes_in[2]->data)) = nodes_out[0]->data;
+        concat<dim>(nodes_in[0]->data,
+                  concat<dim>(nodes_in[1]->data, nodes_in[2]->data)) = nodes_out[0]->data;
         break;
       case 4:
-        concat<3>(concat<3>(nodes_in[0]->data, nodes_in[1]->data),
-                  concat<3>(nodes_in[2]->data, nodes_in[3]->data)) = nodes_out[0]->data;
+        concat<dim>(concat<dim>(nodes_in[0]->data, nodes_in[1]->data),
+                  concat<dim>(nodes_in[2]->data, nodes_in[3]->data)) = nodes_out[0]->data;
+        break;
+      default:
+        utils::Error("Too many nodes to concat");
         break;
       };
     }

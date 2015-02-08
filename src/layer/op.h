@@ -47,6 +47,7 @@ struct relu_grad {
   }
 };
 
+/*! \brief Leaky ReLU Operation */
 struct xelu {
   MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
     return a > 0 ? a : a / b;

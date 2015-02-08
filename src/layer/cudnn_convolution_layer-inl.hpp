@@ -35,8 +35,8 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
   virtual void SetParam(const char *name, const char* val) {
     Parent::SetParam(name, val);
     if (!strcmp(name, "algo")) {
-      if (!strcmp(val, "fast")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-      else if(!strcmp(val, "balance")) algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+      if (!strcmp(val, "fast")) use_fast_algo_ = true;
+      else if(!strcmp(val, "balance")) use_fast_algo_ = false;
       else utils::Error("Unkown convolution algo mode");
     }
   }
@@ -48,6 +48,11 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
     float beta = 0.0f;
     if (!init_cudnn_) {
       init_cudnn_ = true;
+      if (use_fast_algo_) {
+        algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      } else {
+        algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+      }
       temp_.set_stream(nodes_out[0]->data.stream_);
       CUDA_CHECK(cudnnSetStream(handle_, nodes_out[0]->data.stream_->stream_));
       CUDA_CHECK(cudnnSetFilter4dDescriptor(filter_desc_, dtype_,
@@ -152,6 +157,8 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
   mshadow::TensorContainer<xpu, 1> temp_;
   /*! \brief parent */
   typedef ConvolutionLayer<xpu> Parent;
+  /*! \brief whether use fast algorithm */
+  bool use_fast_algo_;
 #endif // __CUDACC__
 #endif
 }; // class CuDNNConvolutionLayer

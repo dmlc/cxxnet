@@ -82,11 +82,12 @@ class MaxoutLayer : public ILayer<xpu> {
   }
   /*! \brief parameters that potentially be useful */
   LayerParam param_;
+  /*! \brief num of maxout unit */
   int num_maxout_;
+  /*! \brief fullc maxout or conv maxout mode */
   int mode_;
-
 };   // class PoolingLayer
 }  // namespace layer
 }  // namespace cxxnet
-#endif  // LAYER_POOLING_LAYER_INL_HPP_
+#endif  // LAYER_MAXOUT_LAYER_INL_HPP_
 
