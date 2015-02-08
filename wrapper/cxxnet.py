@@ -1,6 +1,6 @@
 """
 CXXNet python ctypes wrapper
-Author: Tianqi Chen, Bing Xu
+Author: Bing Xu
 
 """
 import ctypes
@@ -85,13 +85,33 @@ class Net:
         """
         cxnlib.CXNNetStartRound(self.handle, round_counter)
 
-    def update(self, data):
+    def update(self, data, label = None):
         """ update the net using the data
         Parameters
             data: input can be DataIter or numpy.ndarray
+            label: the label of the data batch
         """
         if isinstance(data, DataIter):
             cxnlib.CXNNetUpdateOneIter(self.handle, data.handle)
+        elif isinstance(data, numpy.ndarray):
+            if data.ndim != 4:
+                raise Exception('Net.update: need 4 dimensional tensor (batch, channel, height, width)')
+            if label is None:
+                raise Exception('Net.update: need label to use update')
+            if not isinstance(label, numpy.ndarray):
+                raise Exception('Net.update: label need to be ndarray')
+            if label.ndim == 1:
+                label = label.reshape((label.size(0),1))
+            if label.ndim != 2:
+                raise Exception('Net.update: label need to be 2 dimension or one dimension ndarray')
+            if label.shape[0] != data.shape[0]:
+                raise Exception('Net.update: data size mismatch')
+            cxnlib.CXNNetUpdateOneBatch(self.handle,
+                                        data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                                        data.shape[0], data.shape[1],
+                                        data.shape[2], data.shape[3],
+                                        label.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                                        label.shape[1])
         else:
             raise Exception('update do not support type %s' % str(type(data)))
 
