@@ -124,27 +124,27 @@ class MNISTIterator: public IIterator<DataBatch> {
     return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
   }
  private:
-  // silent
+  /*! \brief silent */
   int silent_;
-  // path
+  /*! \brief path */
   std::string path_img, path_label;
-  // output
+  /*! \brief output */
   DataBatch out_;
-  // whether do shuffle
+  /*! \brief whether do shuffle */
   int shuffle_;
-  // data mode
+  /*! \brief data mode */
   int mode_;
-  // current location
+  /*! \brief current location */
   index_t loc_;
-  // batch size
+  /*! \brief batch size */
   index_t batch_size_;
-  // image content
+  /*! \brief image content */
   mshadow::Tensor<cpu, 3> img_;
-  // label content
+  /*! \brief label content */
   std::vector<float> labels_;
-  // instance index offset
+  /*! \brief instance index offset */
   unsigned inst_offset_;
-  // instance index
+  /*! \brief instance index */
   std::vector<unsigned> inst_;
 }; //class MNISTIterator
 }  // namespace cxxnet

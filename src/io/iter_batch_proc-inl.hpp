@@ -88,7 +88,7 @@ public:
       out_.inst_index[top] = d.index;
       //out_.data[top] = d.data;
       Copy(out_.data[top], d.data);
-      
+
       if (++ top >= batch_size_) return true;
     }
     if (top != 0) {
@@ -115,25 +115,25 @@ public:
     return out_;
   }
 private:
-  // base iterator
+  /*! \brief base iterator */
   IIterator<DataInst> *base_;
-  // batch size
+  /*! \brief batch size */
   index_t batch_size_;
-  // input shape
+  /*! \brief input shape */
   mshadow::Shape<4> shape_;
-  // label width
+  /*! \brief label width */
   index_t label_width_;
-  // output data
+  /*! \brief output data */
   DataBatch out_;
-  // on first
+  /*! \brief on first */
   int head_;
-  // skip read
+  /*! \brief skip read */
   int test_skipread_;
-  // silent
+  /*! \brief silent */
   int silent_;
-  // use round roubin to handle overflow batch
+  /*! \brief use round roubin to handle overflow batch */
   int round_batch_;
-  // number of overflow instances that readed in round_batch mode
+  /*! \brief number of overflow instances that readed in round_batch mode */
   int num_overflow_;
 }; // class BatchAdaptIterator
 

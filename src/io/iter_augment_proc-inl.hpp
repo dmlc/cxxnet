@@ -1,5 +1,5 @@
-#ifndef CXXNET_ITER_PROC_INL_HPP_
-#define CXXNET_ITER_PROC_INL_HPP_
+#ifndef CXXNET_ITER_AUGMENT_INL_HPP_
+#define CXXNET_ITER_AUGMENT_INL_HPP_
 /*!
  * \file iter_augment_proc-inl.hpp
  * \brief processing unit to do data augmention
@@ -277,52 +277,60 @@ private:
     this->BeforeFirst();
   }
 private:
-  // base iterator
+  /*! \brief base iterator */
   IIterator<DataInst> *base_;
-  // input shape
+  /*! \brief input shape */
   mshadow::Shape<4> shape_;
-  // output data
+  /*! \brief output data */
   DataInst out_;
-  // skip read
+  /*! \brief skip read */
   int test_skipread_;
-  // silent
+  /*! \brief silent */
   int silent_;
-  // scale of data
+  /*! \brief scale of data */
   real_t scale_;
-  // whether we do random cropping
+  /*! \brief whether we do random cropping */
   int rand_crop_;
-  // whether we do random mirroring
+  /*! \brief whether we do random mirroring */
   int rand_mirror_;
-  // use round roubin to handle overflow batch
+  /*! \brief use round roubin to handle overflow batch */
   int round_batch_;
-  // whether we do nonrandom croping
+  /*! \brief whether we do nonrandom croping */
   int crop_y_start_;
-  // whether we do nonrandom croping
+  /*! \brief whether we do nonrandom croping */
   int crop_x_start_;
-  // number of overflow instances that readed in round_batch mode
+  /*! \brief number of overflow instances that readed in round_batch mode */
   int num_overflow_;
-  // mean image, if needed
+  /*! \brief mean image, if needed */
   mshadow::TensorContainer<cpu, 3> meanimg_;
-  // temp space
+  /*! \brief temp space */
   mshadow::TensorContainer<cpu, 3> img_;
-  // mean image file, if specified, will generate mean image file, and substract by mean
+  /*! \brief mean image file, if specified, will generate mean image file, and substract by mean */
   std::string name_meanimg_;
-  // Indicate the max ratation angle for augmentation, we will random rotate
-  // [-max_rotate_angle, max_rotate_angle]
+  /*! \brief Indicate the max ratation angle for augmentation, we will random rotate */
+  /*! \brief [-max_rotate_angle, max_rotate_angle] */
   int max_rotate_angle_;
-  // max aspect ratio
+  /*! \brief max aspect ratio */
   float max_aspect_ratio_;
-  // max shear ratio
-  // will random shear the image [-max_shear_ratio, max_shear_ratio]
+  /*! \brief random shear the image [-max_shear_ratio, max_shear_ratio] */
   float max_shear_ratio_;
+  /*! \brief max crop size */
   int max_crop_size_;
+  /*! \brief min crop size */
   int min_crop_size_;
+  /*! \brief mean value for r channel */
   float mean_r_;
+  /*! \brief mean value for g channel */
   float mean_g_;
+  /*! \brief mean value for b channel */
   float mean_b_;
+  /*! \brief whether mean file is ready */
   bool meanfile_ready_;
+  /*! \brief whether to flip the image */
   int flip_;
+  /*! \brief rotate angle */
   int rotate_;
+  /*! \brief list of possible rotate angle */
   std::vector<int> rotate_list_;
 };  // class AugmentIterator
 }  // namespace cxxnet

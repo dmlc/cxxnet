@@ -46,7 +46,7 @@ class DenseBufferIterator : public IIterator<DataBatch> {
   }
   virtual void BeforeFirst(void) {
     data_index_ = 0;
-  }  
+  }
   virtual bool Next(void) {
     if (data_index_ < buffer_.size()) {
       data_index_ += 1;
@@ -59,18 +59,18 @@ class DenseBufferIterator : public IIterator<DataBatch> {
     utils::Assert(data_index_ > 0,
                   "Iterator.Value: at beginning of iterator");
     return buffer_[data_index_ - 1];
-  }  
-  
+  }
+
  private:
-  // silent
+  /*! \brief silent */
   int silent_;
-  // maximum number of batch in buffer
+  /*! \brief maximum number of batch in buffer */
   size_t max_nbatch_;
-  // data index 
+  /*! \brief data index */
   size_t data_index_;
-  // base iterator
+  /*! \brief base iterator */
   IIterator<DataBatch> *base_;
-  // data content
+  /*! \brief data content */
   std::vector<DataBatch> buffer_;
 };
 }  // namespace cxxnet

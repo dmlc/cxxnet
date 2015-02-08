@@ -23,7 +23,7 @@ public:
     silent_ = 0;
     itr.SetParam("buffer_size", "4");
     page_.page = NULL;
-    img_conf_prefix_ = "";    
+    img_conf_prefix_ = "";
     flag_ = true;
     label_width_ = 1;
     dist_num_worker_ = 0;
@@ -64,7 +64,7 @@ public:
     this->ParseImageConf();
     fplst_  = utils::FopenCheck(path_imglst_[0].c_str(), "r");
     if (silent_ == 0) {
-      if (img_conf_prefix_.length() == 0) { 
+      if (img_conf_prefix_.length() == 0) {
         printf("ThreadImagePageIterator:image_list=%s, bin=%s\n",
                raw_imglst_.c_str(), raw_imgbin_.c_str());
       } else {
@@ -158,34 +158,34 @@ protected:
   }
 
 protected:
-  // internal flag
+  /*! \brief internal flag */
   bool flag_;
-  // internal index
+  /*! \brief internal index */
   int idx_;
-  // number of distributed worker
+  /*! \brief number of distributed worker */
   int dist_num_worker_, dist_worker_rank_;
-  // output data
+  /*! \brief output data */
   DataInst out_;
-  // label-width
+  /*! \brief label-width */
   int label_width_;
-  // silent
+  /*! \brief silent */
   int silent_;
-  // file pointer to list file, information file
+  /*! \brief file pointer to list file, information file */
   FILE *fplst_;
-  // prefix path of image binary, path to input lst
+  /*! \brief prefix path of image binary, path to input lst */
   // format: imageid label path
   std::vector<std::string> path_imgbin_, path_imglst_;
-  // configuration bing
+  /*! \brief configuration bing */
   std::string img_conf_prefix_, img_conf_ids_;
-  // raw image list
+  /*! \brief raw image list */
   std::string raw_imglst_, raw_imgbin_;
-  // temp storage for label
+  /*! \brief temp storage for label */
   mshadow::TensorContainer<cpu, 1> label_;
-  // temp storage for image
+  /*! \brief temp storage for image */
   mshadow::TensorContainer<cpu, 3> img_;
-  // temp memory buffer
+  /*! \brief temp memory buffer */
   std::vector<unsigned char> buf_;
-  // parse configure file
+  /*! \brief parse configure file */
   inline void ParseImageConf(void) {
     // handling for hadoop
     const char *ps_rank = getenv("PS_RANK");
@@ -208,7 +208,7 @@ protected:
       utils::Check(lb <= ub,
                    "ThreadImagePageIterator: too many workers"\
                    "such that idlist cannot be divided between them");
-    }    
+    }
     for (int i = lb; i <= ub; ++i) {
       std::string tmp;
       tmp.resize(img_conf_prefix_.length() + 30);
