@@ -143,6 +143,10 @@ class CXXNetLearnTask {
   }
   // load model from file
   inline void LoadModel(void) {
+    if (sscanf(name_model_in.c_str() + name_model_in.length() - 10, "%d", &start_counter)
+      != 1){
+      printf("WARNING: Cannot infer start_counter from model name. Specify it in config if needed\n");
+    }
     FILE *fi = utils::FopenCheck(name_model_in.c_str(), "rb");
     utils::Assert(fread(&net_type, sizeof(int), 1, fi) > 0, "loading model");
     net_trainer = this->CreateNet();
