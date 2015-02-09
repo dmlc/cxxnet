@@ -34,7 +34,6 @@ class CXXNetLearnTask {
     print_step    = 100;
     reset_net_type = -1;
     extract_node_name = "";
-    extract_node_id = -1;
     this->SetParam("dev", "gpu");
   }
   ~CXXNetLearnTask(void) {
@@ -95,7 +94,6 @@ class CXXNetLearnTask {
     if (!strcmp(name, "dev"))               device = val;
     if (!strcmp(name, "test_io"))           test_io = atoi(val);
     if (!strcmp(name, "extract_node_name"))         extract_node_name = val;
-    if (!strcmp(name, "extract_node_id"))           extract_node_id = atoi(val);
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
  private:
@@ -300,10 +298,8 @@ class CXXNetLearnTask {
       const DataBatch& batch = itr_pred->Value();
       if (extract_node_name != ""){
         net_trainer->ExtractFeature(pred, batch, extract_node_name);
-      } else if (extract_node_id != -1){
-        net_trainer->ExtractFeature(pred, batch, extract_node_id);
       } else {
-        utils::Error("extract node name or id must be specified in task extract_feature.");
+        utils::Error("extract node name must be specified in task extract_feature.");
         exit(1);
       }
       for (mshadow::index_t j = 0; j < pred.size(); ++j) {
@@ -439,8 +435,6 @@ class CXXNetLearnTask {
   std::string name_pred;
   /*! \brief the layer name to be extracted */
   std::string extract_node_name;
-  /*! \brief the id of the layer to be extracted */
-  int extract_node_id;
  };
 }  // namespace cxxnet
 
