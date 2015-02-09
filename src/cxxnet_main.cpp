@@ -143,8 +143,8 @@ class CXXNetLearnTask {
   }
   // load model from file
   inline void LoadModel(void) {
-    if (sscanf(name_model_in.c_str() + name_model_in.length() - 10, "%d", &start_counter)
-      != 1){
+    const char* pos = strrchr(name_model_in.c_str(), '/');
+    if (pos != NULL && sscanf(pos + 1, "%d", &start_counter) != 1){
       printf("WARNING: Cannot infer start_counter from model name. Specify it in config if needed\n");
     }
     FILE *fi = utils::FopenCheck(name_model_in.c_str(), "rb");
