@@ -37,9 +37,11 @@ class PReluLayer : public ILayer<xpu> {
   PReluLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {
     // setup default value
     init_slope_ = 0.25f;
+    init_random_ = 0;
   }
   virtual void SetParam(const char *name, const char* val) {
     if (!strcmp(name, "init_slope")) init_slope_ = atof(val);
+    if (!strcmp(name, "random_slope")) init_random_ = atoi(val);
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("bias", slope_, gslope_);
@@ -58,14 +60,17 @@ class PReluLayer : public ILayer<xpu> {
       // This is a conv layer
       channel_ = nodes_in[0]->data.size(1);
     }
-    in_shape_ = nodes_in[0]->data.shape_;
   }
   virtual void InitModel(void) {
     // resize to correct shape
     slope_.Resize(mshadow::Shape1(channel_));
     gslope_.Resize(mshadow::Shape1(channel_));
-    temp_.Resize(in_shape_);
-    slope_ = init_slope_;
+    if (init_random_ == 0) {
+      slope_ = init_slope_;
+    } else {
+      slope_ = prnd_->uniform(slope_.shape_);
+      slope_ = slope_ * init_slope_;
+    }
     gslope_ = 0.0;
   }
   virtual void SaveModel(utils::IStream &fo) const{
@@ -80,7 +85,6 @@ class PReluLayer : public ILayer<xpu> {
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
     slope_.set_stream(stream);
     gslope_.set_stream(stream);
-    temp_.set_stream(stream);
   }
   virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
                                   const std::vector<Node<xpu>*> &nodes_out,
@@ -94,13 +98,11 @@ class PReluLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     mshadow::Tensor<xpu, 4> &in = nodes_in[0]->data;
     mshadow::Tensor<xpu, 4> &out = nodes_out[0]->data;
-    mshadow::Copy(temp_, in, out.stream_);
     if (in.size(1) != 1){
-      in = F<op::mxelu>(in, broadcast<1>(slope_, in.shape_));
+      out = F<op::mxelu>(in, broadcast<1>(slope_, in.shape_));
     } else {
-      in = F<op::mxelu>(in, broadcast<3>(slope_, in.shape_));
+      out = F<op::mxelu>(in, broadcast<3>(slope_, in.shape_));
     }
-    mshadow::Copy(out, in, out.stream_);
   }
   virtual void Backprop(bool prop_grad,
                         const std::vector<Node<xpu>*> &nodes_in,
@@ -109,14 +111,14 @@ class PReluLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     mshadow::Tensor<xpu, 4> &in = nodes_in[0]->data;
     mshadow::Tensor<xpu, 4> &out = nodes_out[0]->data;
-    temp_ = F<op::prelu_grad>(temp_) * out;
+    const float scale = 1.0f / in.shape_[0];
     if (in.size(1) != 1){
-      gslope_ += sumall_except_dim<1>(temp_);
+      gslope_ += scale * sumall_except_dim<1>(F<op::prelu_grad>(in) * out);
       if (prop_grad){
         in = F<op::mxelu_grad>(in, broadcast<1>(slope_, in.shape_)) * out;
       }
     } else {
-      gslope_ += sumall_except_dim<3>(temp_);
+      gslope_ += scale * sumall_except_dim<3>(F<op::prelu_grad>(in) * out);
       if (prop_grad){
         in = F<op::mxelu_grad>(in, broadcast<3>(slope_, in.shape_)) * out;
       }
@@ -134,9 +136,8 @@ class PReluLayer : public ILayer<xpu> {
   mshadow::TensorContainer<xpu,1> slope_;
   /*! \brief gradient of slope */
   mshadow::TensorContainer<xpu,1> gslope_;
-  mshadow::TensorContainer<xpu,4> temp_;
-  mshadow::Shape<4> in_shape_;
-
+  /*! \brief whether init slope to [0, init_slope] */
+  int init_random_;
 };  // class PReluLayer
 
 } // namespace layer
