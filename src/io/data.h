@@ -90,6 +90,8 @@ public:
   mshadow::Tensor<mshadow::cpu, 2> label;
   /*! \brief content of dense data, if this DataBatch is dense */
   mshadow::Tensor<mshadow::cpu, 4> data;
+  /*! \brief extra data to be fed to the network */
+  std::vector<mshadow::Tensor<mshadow::cpu, 4> >* extra_data;
 public:
   // sparse part of the DataBatch, in CSR format
   /*! \brief array[batch_size+1], row pointer of each of the elements */
@@ -105,6 +107,15 @@ public:
     batch_size = 0; num_batch_padd = 0;
     sparse_row_ptr = NULL;
     sparse_data = NULL;
+    extra_data = NULL;
+  }
+  inline void DeleteExtraData(){
+    if (extra_data != NULL){
+      for (mshadow::index_t i = 0; i < extra_data->size(); ++i){
+        mshadow::FreeSpace(&((*extra_data)[i]));
+      }
+      delete extra_data;
+    }
   }
   /*! \brief auxiliary  functionto allocate space, if needed */
   inline void AllocSpaceDense(mshadow::Shape<4> shape,
@@ -117,6 +128,19 @@ public:
     inst_index = new unsigned[batch_size];
     this->batch_size = batch_size;
   }
+  /*! \brief auxiliary  functionto allocate space, if needed */
+  inline void AllocSpaceDense(mshadow::Shape<4> shape,
+                              mshadow::index_t batch_size,
+                              mshadow::index_t label_width,
+                              const std::vector<mshadow::Shape<4> >& extra_shape,
+                              bool pad = false) {
+    AllocSpaceDense(shape, batch_size, label_width, pad);
+    extra_data = new std::vector<mshadow::Tensor<mshadow::cpu, 4> > ();
+    extra_data->resize(extra_shape.size());
+    for (mshadow::index_t i = 0; i < extra_shape.size(); ++i){
+      extra_data->push_back(mshadow::NewTensor<mshadow::cpu>(extra_shape[i], 0.0f, pad));
+    }
+  }
   /*! \brief auxiliary function to free space, if needed, dense only */
   inline void FreeSpaceDense(void) {
     if (label.dptr_ != NULL) {
@@ -125,13 +149,24 @@ public:
       mshadow::FreeSpace(&data);
       label.dptr_ = NULL;
     }
+    DeleteExtraData();
   }
   /*! \brief copy dense content from existing data, dense only */
-  inline void CopyFromDense(const DataBatch &src) {
+  inline void CopyFromDense(const DataBatch &src, bool pad = false) {
     utils::Assert(batch_size == src.batch_size, "the batch size is not set correctly");
     memcpy(inst_index, src.inst_index, batch_size * sizeof(unsigned));
     mshadow::Copy(label, src.label);
     mshadow::Copy(data, src.data);
+    if (src.extra_data != NULL){
+      DeleteExtraData();
+      extra_data = new std::vector<mshadow::Tensor<mshadow::cpu, 4> > ();
+      extra_data->resize(src.extra_data->size());
+      for (mshadow::index_t i = 0; i < extra_data->size(); ++i){
+        extra_data->push_back(mshadow::NewTensor<mshadow::cpu>(
+          (*(src.extra_data))[i].shape_, 0.0f, pad));
+        mshadow::Copy((*extra_data)[i], (*(src.extra_data))[i]);
+      }
+    }
   }
 public:
   /*! \brief helper function to check if a element is sparse */
