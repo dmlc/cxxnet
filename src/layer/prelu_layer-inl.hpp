@@ -111,14 +111,13 @@ class PReluLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     mshadow::Tensor<xpu, 4> &in = nodes_in[0]->data;
     mshadow::Tensor<xpu, 4> &out = nodes_out[0]->data;
-    const float scale = 1.0f / in.shape_[0];
     if (in.size(1) != 1){
-      gslope_ += scale * sumall_except_dim<1>(F<op::prelu_grad>(in) * out);
+      gslope_ += sumall_except_dim<1>(F<op::prelu_grad>(in) * out);
       if (prop_grad){
         in = F<op::mxelu_grad>(in, broadcast<1>(slope_, in.shape_)) * out;
       }
     } else {
-      gslope_ += scale * sumall_except_dim<3>(F<op::prelu_grad>(in) * out);
+      gslope_ += sumall_except_dim<3>(F<op::prelu_grad>(in) * out);
       if (prop_grad){
         in = F<op::mxelu_grad>(in, broadcast<3>(slope_, in.shape_)) * out;
       }

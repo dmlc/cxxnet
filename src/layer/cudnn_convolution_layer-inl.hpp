@@ -13,7 +13,9 @@ namespace layer {
 template<typename xpu>
 class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
  public:
-  CuDNNConvolutionLayer(mshadow::Random<xpu> *p_rnd) : ConvolutionLayer<xpu>(p_rnd) {};
+  CuDNNConvolutionLayer(mshadow::Random<xpu> *p_rnd) : ConvolutionLayer<xpu>(p_rnd) {
+    use_fast_algo_ = false;
+  };
 #ifdef __CUDACC__
 #if CXXNET_USE_CUDNN == 1
   virtual ~CuDNNConvolutionLayer() {
@@ -158,9 +160,9 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
   /*! \brief parent */
   typedef ConvolutionLayer<xpu> Parent;
   /*! \brief whether use fast algorithm */
-  bool use_fast_algo_;
+#endif // CXXNET_USE_CUDNN
 #endif // __CUDACC__
-#endif
+  bool use_fast_algo_;
 }; // class CuDNNConvolutionLayer
 } // namespace layer
 } // namespace cxxnet
