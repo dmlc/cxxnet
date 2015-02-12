@@ -100,11 +100,15 @@ struct NeuralNet {
    */
   inline void Forward(bool is_train,
                       mshadow::Tensor<cpu,4> batch,
+                      std::vector<mshadow::Tensor<cpu,4> > extra_data,
                       bool need_sync) {
     // check if we need to adjust batch size according to the input
     this->AdjustBatchSize(batch.size(0));
     // copy data into node
     mshadow::Copy(nodes[0].data, batch, stream);
+    for (size_t i = 0; i < extra_data.size(); ++i){
+      mshadow::Copy(nodes[i + 1].data, extra_data[i], stream);
+    }
     // setup updater notification
     for (size_t i = connections.size(); i != 0; --i) {
       for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
@@ -364,6 +368,7 @@ class NeuralNetThread {
   }
   /*! \brief run a training forward backprop pass */
   inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
+                                   const std::vector<mshadow::Tensor<mshadow::cpu, 4> >& extra_data,
                                    const layer::LabelInfo &label_info,
                                    mshadow::Tensor<cpu,4> out_data,
                                    bool prop_to_input,
@@ -378,12 +383,15 @@ class NeuralNetThread {
     iparam_need_sync = need_sync;
     iparam_need_update = need_update;
     iparam_epoch = update_epoch;
+    iparam_extra_data = extra_data;
     this->task = kTrainProp;
     this->ExecTask();
   }
   /*! \brief run a predicting forward pass, copy final layer  */
-  inline void PredictForward(mshadow::Tensor<cpu,4> batch) {
+  inline void PredictForward(mshadow::Tensor<cpu,4> batch,
+                             const std::vector<mshadow::Tensor<mshadow::cpu, 4> >& extra_data) {
     iparam_batch = batch;
+    iparam_extra_data = extra_data;
     this->task = kPredForward;
     this->ExecTask();
   }
@@ -476,7 +484,7 @@ class NeuralNetThread {
       case kStartRound: net_->StartRound(static_cast<int>(iparam_epoch)); return;
       case kTrainProp: {
         if (iparam_batch.size(0) == 0) return;
-        net_->Forward(true, iparam_batch, iparam_need_sync);
+        net_->Forward(true, iparam_batch, iparam_extra_data, iparam_need_sync);
         if (oparam_node.dptr_ != NULL) {
           mshadow::Copy(oparam_node, net_->nodes.back().data, stream);
         }
@@ -485,7 +493,7 @@ class NeuralNetThread {
         return;
       }
       case kPredForward: {
-        net_->Forward(false, iparam_batch, true);
+        net_->Forward(false, iparam_batch, iparam_extra_data, true);
         return;
       }
       case kCopyNode: {
@@ -519,6 +527,8 @@ class NeuralNetThread {
   utils::IStream *iparam_fp;
   // input batch
   mshadow::Tensor<cpu,4> iparam_batch;
+  // input extra data
+  std::vector<mshadow::Tensor<cpu,4> > iparam_extra_data;
   // current task
   TaskType task;
   // intenal net implementation

@@ -208,6 +208,16 @@ struct NetConfig {
     for (size_t i = 0; i < cfg.size(); ++i) {
       const char *name = cfg[i].first.c_str();
       const char *val = cfg[i].second.c_str();
+      if (!strcmp(name, "extra_data_num")) {
+        int num;
+        sscanf(val, "%d", &num);
+        for (int i = 0; i < num; ++i){
+          char name[256];
+          sprintf(name, "%d", i + 1);
+          node_names.push_back(name);
+          node_name_map[name] = i + 1;
+        }
+      }
       if (param.init_end == 0) {
         if (!strcmp( name, "input_shape")) {
           unsigned x, y, z;
