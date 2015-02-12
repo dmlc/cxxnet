@@ -111,7 +111,6 @@ rand_mirror = 1
 divideby = 256
 image_mean = "img_mean.bin"
 mean_value=255,255,255
-#max_random_contrast = 0.2
 min_crop_size=40
 max_crop_size=80
 max_aspect_ratio = 0.5
