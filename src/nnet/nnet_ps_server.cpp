@@ -31,7 +31,7 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
     if (!strcmp(name, "seed")) seed = atoi(val);
     cfgvec.push_back(std::make_pair(std::string(name), std::string(val)));
   }
-  virtual void Init(int rank, const std::string &conf) {
+  virtual void InitUpdater(int rank, const std::string &conf) {
     // FIXME
     // std::stringstream ss(conf);
     // utils::ConfigStreamReader reader(ss);
@@ -50,7 +50,7 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
     cfg.Configure(cfgvec);
     rnd.Seed(seed + rank * 17);
   }
-  virtual void InitKey(int key, real_t *dptr, size_t size) {
+  virtual void InitModel(int key, real_t *dptr, size_t size) {
     updaters[key] = new UpdaterEntry();
     UpdaterEntry &e = *updaters[key];
     e.key = key;
