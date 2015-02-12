@@ -27,8 +27,6 @@ public:
     test_skipread_ = 0;
     // scale data
     scale_ = 1.0f;
-    // use round roubin to handle overflow batch
-    round_batch_ = 0;
     // number of overflow instances that readed in round_batch mode
     num_overflow_ = 0;
     // silent
@@ -57,7 +55,6 @@ public:
       utils::Assert(sscanf(val, "%u,%u,%u", &shape_[0], &shape_[1], &shape_[2]) == 3,
                     "input_shape must be three consecutive integers without space example: 1,1,200 ");
     }
-    if (!strcmp(name, "round_batch")) round_batch_ = atoi(val);
     if (!strcmp(name, "rand_crop"))   rand_crop_ = atoi(val);
     if (!strcmp(name, "crop_y_start"))  crop_y_start_ = atoi(val);
     if (!strcmp(name, "crop_x_start"))  crop_x_start_ = atoi(val);
@@ -293,8 +290,6 @@ private:
   int rand_crop_;
   /*! \brief whether we do random mirroring */
   int rand_mirror_;
-  /*! \brief use round roubin to handle overflow batch */
-  int round_batch_;
   /*! \brief whether we do nonrandom croping */
   int crop_y_start_;
   /*! \brief whether we do nonrandom croping */
