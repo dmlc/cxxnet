@@ -189,6 +189,9 @@ private:
       oshape_ = base_->Value().data.shape_;
       batch_size_ = base_->Value().batch_size;
       label_width_ = base_->Value().label.size(1);
+      for (size_t i = 0; i < base_->Value().extra_data.size(); ++i){
+        extra_shape_.push_back(base_->Value().extra_data[i].shape_);
+      }
       base_->BeforeFirst();
       return true;
     }
@@ -201,7 +204,7 @@ private:
       }
     }
     inline DataBatch Create(void) {
-      DataBatch a; a.AllocSpaceDense(oshape_, batch_size_, label_width_);
+      DataBatch a; a.AllocSpaceDense(oshape_, batch_size_, label_width_, extra_shape_);
       return a;
     }
     inline void FreeSpace(DataBatch &a) {
@@ -217,6 +220,7 @@ private:
     mshadow::index_t batch_size_;
     mshadow::index_t label_width_;
     mshadow::Shape<4> oshape_;
+    std::vector<mshadow::Shape<4> > extra_shape_;
   };
 private:
   int silent_;

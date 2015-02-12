@@ -150,7 +150,12 @@ class CXXNetThreadTrainer : public INetTrainer {
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
+      std::vector<mshadow::Tensor<mshadow::cpu, 4> > extra_data;
+      for (mshadow::index_t j = 0; j < data.extra_data.size(); ++j){
+        extra_data.push_back(data.extra_data[j].Slice(begin, end));
+      }
       nets_[i - 1]->TrainForwardBackprop(data.data.Slice(begin, end),
+                                         extra_data,
                                          info.Slice(begin, end),
                                          out_temp.Slice(begin, end),
                                          false, need_sync,
@@ -263,7 +268,11 @@ class CXXNetThreadTrainer : public INetTrainer {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
       mshadow::Tensor<cpu, 4> mbatch = data.data.Slice(begin, end);
-      nets_[i - 1]->PredictForward(mbatch);
+      std::vector<mshadow::Tensor<mshadow::cpu, 4> > extra_data;
+      for (mshadow::index_t j = 0; j < data.extra_data.size(); ++j){
+        extra_data.push_back(data.extra_data[j].Slice(begin, end));
+      }
+      nets_[i - 1]->PredictForward(mbatch, extra_data);
     }
     this->WaitAllJobs();
     // copy results out

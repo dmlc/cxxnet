@@ -12,7 +12,7 @@
 #include "iter_augment_proc-inl.hpp"
 #include "iter_batch_proc-inl.hpp"
 #include "iter_mem_buffer-inl.hpp"
-
+#include "iter_attach_txt-inl.hpp"
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
 #endif
@@ -44,6 +44,11 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       if (!strcmp(val, "membuffer")) {
         utils::Assert(it != NULL, "must specify input of memory buffer");
         it = new DenseBufferIterator(it);
+        continue;
+      }
+      if (!strcmp(val, "attachtxt")) {
+        utils::Assert(it != NULL, "must specify input of attach txt buffer");
+        it = new AttachTxtIterator(it);
         continue;
       }
       utils::Error("unknown iterator type %s", val);
