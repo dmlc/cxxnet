@@ -125,20 +125,20 @@ class WrapperNet {
     }
   }
   inline cxx_real_t *Predict(const DataBatch &batch, cxx_uint *out_size) {
-    res_pred.clear();
+    res_pred = 0.0f;
     net_->Predict(res_pred, batch);
-    *out_size = static_cast<cxx_uint>(res_pred.size());
-    return BeginPtr(res_pred);
+    *out_size = static_cast<cxx_uint>(res_pred.size(0));
+    return &res_pred[0];
   }
   inline cxx_real_t *PredictIter(WrapperIterator *iter, cxx_uint *out_size) {
     res_pred_all.clear();
     IIterator<DataBatch> *itr_data = iter->iter_;
     itr_data->BeforeFirst();
     while (itr_data->Next()) {
-      res_pred.clear();
+      res_pred = 0.0f;
       net_->Predict(res_pred, itr_data->Value());
-      *out_size += static_cast<cxx_uint>(res_pred.size());
-      for (cxx_uint i = 0; i < res_pred.size(); ++i) {
+      *out_size += static_cast<cxx_uint>(res_pred.size(0));
+      for (cxx_uint i = 0; i < res_pred.size(0); ++i) {
         res_pred_all.push_back(res_pred[i]);
       }
     }
@@ -156,7 +156,7 @@ class WrapperNet {
  protected:
   // returning cache
   std::string res_eval;
-  std::vector<cxx_real_t> res_pred;
+  mshadow::TensorContainer<mshadow::cpu, 1> res_pred;
   std::vector<cxx_real_t> res_pred_all;
  private:
   // the internal net

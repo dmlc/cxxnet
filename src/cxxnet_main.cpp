@@ -64,7 +64,7 @@ class CXXNetLearnTask {
       char name[256], val[256];
       if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
         this->SetParam(name, val);
-      } 
+      }
     }
     this->Init();
     if (!silent) {
@@ -250,14 +250,14 @@ class CXXNetLearnTask {
     printf("start predicting...\n");
     FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
     itr_pred->BeforeFirst();
+    mshadow::TensorContainer<mshadow::cpu, 1> pred;
     while (itr_pred->Next()) {
       const DataBatch& batch = itr_pred->Value();
-      std::vector<float> pred;
       net_trainer->Predict(pred, batch);
       utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
-      pred.resize(pred.size() - batch.num_batch_padd);
-
-      for (mshadow::index_t j = 0; j < pred.size(); ++j) {
+      printf("%d\n", batch.num_batch_padd);
+      mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
+      for (mshadow::index_t j = 0; j < sz; ++j) {
         fprintf(fo, "%g\n", pred[j]);
       }
     }
@@ -268,13 +268,15 @@ class CXXNetLearnTask {
     utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
     printf("start predicting...\n");
     FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
+    mshadow::TensorContainer<mshadow::cpu, 2> pred;
     itr_pred->BeforeFirst();
     while (itr_pred->Next()) {
       const DataBatch& batch = itr_pred->Value();
-      std::vector<std::vector<float> > pred;
       net_trainer->PredictRaw(pred, batch);
-      for (mshadow::index_t j = 0; j < pred.size(); ++j) {
-        for (mshadow::index_t k = 0; k < pred[j].size(); ++k) {
+      utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
+      mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
+      for (mshadow::index_t j = 0; j < sz; ++j) {
+        for (mshadow::index_t k = 0; k < pred.size(1); ++k) {
           fprintf(fo, "%g ", pred[j][k]);
         }
         fprintf(fo, "\n");
@@ -293,7 +295,7 @@ class CXXNetLearnTask {
 
     time_t start    = time(NULL);
     int sample_counter = 0;
-    std::vector<std::vector<float> > pred;
+    mshadow::TensorContainer<mshadow::cpu, 2> pred;
     while (itr_pred->Next()) {
       const DataBatch& batch = itr_pred->Value();
       if (extract_node_name != ""){
@@ -302,14 +304,13 @@ class CXXNetLearnTask {
         utils::Error("extract node name must be specified in task extract_feature.");
         exit(1);
       }
-      for (mshadow::index_t j = 0; j < pred.size(); ++j) {
-        for (mshadow::index_t k = 0; k < pred[j].size(); ++k) {
-          // TODO: change to write a vector
-          fwrite(&pred[j][k], sizeof(float), 1, fo);
-        }
+      utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
+      mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
+      for (mshadow::index_t j = 0; j < sz; ++j) {
+        fwrite(&pred[j][0], sizeof(float), pred.size(1), fo);
         row++;
       }
-      col = pred[0].size();
+      col = pred.size(1);
       if (++ sample_counter  % print_step == 0) {
         long elapsed = (long)(time(NULL) - start);
         if (!silent) {

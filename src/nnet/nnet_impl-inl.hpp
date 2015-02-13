@@ -59,7 +59,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       if (sscanf(name, "metric[%[^]]]", label_name) == 1){
         metric.AddMetric(val, label_name); train_metric.AddMetric(val, label_name);
       } else {
-        metric.AddMetric(val, "label"); train_metric.AddMetric(val, "label");  
+        metric.AddMetric(val, "label"); train_metric.AddMetric(val, "label");
       }
     }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
@@ -171,33 +171,33 @@ class CXXNetThreadTrainer : public INetTrainer {
       epoch_counter += 1;
     }
   }
-  virtual void Predict(std::vector<float> &preds, const DataBatch& data) {
+  virtual void Predict(mshadow::TensorContainer<mshadow::cpu, 1> &preds, const DataBatch& data) {
     this->ForwardToTemp(data, nets_[0]->net().nodes.size() - 1);
+    preds.Resize(mshadow::Shape1(out_temp.size(0)));
     for (index_t i = 0; i < out_temp.size(0); ++i) {
-      preds.push_back(this->TransformPred(out_temp[i][0][0]));
+      preds[i] = this->TransformPred(out_temp[i][0][0]);
     }
   }
-  virtual void PredictRaw(std::vector<std::vector<float> > &preds, const DataBatch& batch) {
+  virtual void PredictRaw(mshadow::TensorContainer<mshadow::cpu, 2> &preds, const DataBatch& batch) {
     this->ForwardToTemp(batch, nets_[0]->net().nodes.size() - 1);
-    preds.resize(out_temp.size(0));
+    preds.Resize(mshadow::Shape2(out_temp.size(0), out_temp.size(3)));
     for(index_t i = 0; i < out_temp.size(0); ++i) {
-      preds[i].resize(out_temp.size(3));
       for (index_t j = 0; j < out_temp.size(3); ++j) {
         preds[i][j] = out_temp[i][0][0][j];
       }
     }
   }
 
-  virtual void ExtractFeature(std::vector<std::vector<float> > &preds,
+  virtual void ExtractFeature(mshadow::TensorContainer<mshadow::cpu, 2> &preds,
     const DataBatch& batch, const std::string& node_name) {
     std::map<std::string, int>& name_map = net_cfg.node_name_map;
     utils::Check(name_map.find(node_name) != name_map.end(),
       "ExtractFeature: Cannot find node name: %s", node_name.c_str());
     const int node_id = name_map[node_name];
     this->ForwardToTemp(batch, node_id);
-    preds.resize(out_temp.size(0));
+    preds.Resize(mshadow::Shape2(out_temp.size(0),
+                                 out_temp.size(1) * out_temp.size(2) * out_temp.size(3)));
     for(index_t i = 0; i < out_temp.size(0); ++i) {
-      preds[i].resize(out_temp.size(1) * out_temp.size(2) * out_temp.size(3));
       index_t count = 0;
       for (index_t j = 0; j < out_temp.size(1); ++j) {
         for (index_t k = 0; k < out_temp.size(2); ++k) {
@@ -384,7 +384,7 @@ class CXXNetThreadTrainer : public INetTrainer {
   std::vector<NeuralNetThread<xpu>*> nets_;
 
   /*! \brief network configuration type */
-  NetConfig net_cfg;  
+  NetConfig net_cfg;
   /*! \brief history of configurations */
   std::vector< std::pair<std::string, std::string> > cfg;
 };

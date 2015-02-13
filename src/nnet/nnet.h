@@ -40,34 +40,34 @@ class INetTrainer{
    * \param training data batch
    */
   virtual void Update(const DataBatch& data) = 0;
-  /*! 
+  /*!
    * \brief evaluate a test statistics, output results as a string
    * \param iter_eval the iterator containing the evaluation data
    * \param data_name the name of the dataset, used to construct the returing string
    * \return a string containing the evaluation result in format data_name-metric:result
    */
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char* data_name) = 0;
-  /*! 
+  /*!
    * \brief predict labels for a given data batch
    * \param pred the prediction result for each data sample
    * \param batch the data to be predicted
    */
-  virtual void Predict(std::vector<real_t> &preds, const DataBatch& batch) = 0;
-  /*! 
+  virtual void Predict(mshadow::TensorContainer<mshadow::cpu, 1> &preds, const DataBatch& batch) = 0;
+  /*!
    * \brief output the raw data from the last classifier for a given data batch
    * \param preds the prediction result for each data sample
    * \param batch the data to be predicted
    */
-  virtual void PredictRaw( std::vector<std::vector<real_t> > &preds, const DataBatch &batch) = 0;
-  /*! 
+  virtual void PredictRaw(mshadow::TensorContainer<mshadow::cpu, 2>  &preds, const DataBatch &batch) = 0;
+  /*!
    * \brief extract the content of a node for a given data batch
    * \param preds the content for each data sample in the node
    * \param batch the data to be passed
    * \param node_name the name of the node to be extracted
    */
-  virtual void ExtractFeature( std::vector<std::vector<real_t> > &preds, const DataBatch &batch,
+  virtual void ExtractFeature(mshadow::TensorContainer<mshadow::cpu, 2> &preds, const DataBatch &batch,
     const std::string& node_name) = 0;
-  /*! 
+  /*!
    * \brief Initialize current model from a input stream. This method will copy the weight from corresponding layers if their names match.
    * \param fi the stream that the model will be initialized from
    */
