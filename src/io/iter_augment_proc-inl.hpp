@@ -43,7 +43,7 @@ public:
     mean_r_ = 0.0f;
     mean_g_ = 0.0f;
     mean_b_ = 0.0f;
-    flip_ = 0;
+    mirror_ = 0;
     rotate_ = -1.0f;
   }
   virtual ~AugmentIterator(void) {
@@ -69,7 +69,7 @@ public:
     if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
     if (!strcmp(name, "min_crop_size"))     min_crop_size_ = atoi(val);
     if (!strcmp(name, "max_crop_size"))     max_crop_size_ = atoi(val);
-    if (!strcmp(name, "flip")) flip_ = atoi(val);
+    if (!strcmp(name, "mirror")) mirror_ = atoi(val);
     if (!strcmp(name, "rotate")) rotate_ = atoi(val);
     if (!strcmp(name, "rotate_list")) {
       const char *end = val + strlen(val);
@@ -215,7 +215,7 @@ private:
       }
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
         d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
-        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || flip_ == 1) {
+        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || mirror_ == 1) {
           img_ = mirror(crop(d.data, img_[0].shape_, yy, xx)) * scale_;
         } else {
           img_ = crop(d.data, img_[0].shape_, yy, xx) * scale_ ;
@@ -228,7 +228,7 @@ private:
         }
       } else {
         // substract mean image
-        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || flip_ == 1) {
+        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || mirror_ == 1) {
           if (d.data.shape_ == meanimg_.shape_){
             img_ = mirror(crop(d.data - meanimg_, img_[0].shape_, yy, xx)) * scale_;
           } else {
@@ -321,8 +321,8 @@ private:
   float mean_b_;
   /*! \brief whether mean file is ready */
   bool meanfile_ready_;
-  /*! \brief whether to flip the image */
-  int flip_;
+  /*! \brief whether to mirror the image */
+  int mirror_;
   /*! \brief rotate angle */
   int rotate_;
   /*! \brief list of possible rotate angle */

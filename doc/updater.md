@@ -1,11 +1,11 @@
 #### Introduction 
 This page introduce updater setting for cxxnet
 
-* [General SGD Updater](https://github.com/antinucleon/cxxnet/wiki/Updater#updater)
-* [Constant Learning Rate Scheduling](https://github.com/antinucleon/cxxnet/wiki/Updater#constant-scheduling)
-* [Exp Decay Learning Rate Scheduling](https://github.com/antinucleon/cxxnet/wiki/Updater#exp-decay)
-* [Poly Decay Learning Rate Scheduling](https://github.com/antinucleon/cxxnet/wiki/Updater#poly-decay)
-* [Factor Decay Learning Rate Scheduling](https://github.com/antinucleon/cxxnet/wiki/Updater#factor-decay)
+* [General SGD Updater](#updater)
+* [Constant Learning Rate Scheduling](#constant-scheduling)
+* [Exp Decay Learning Rate Scheduling](#exp-decay)
+* [Poly Decay Learning Rate Scheduling](#poly-decay)
+* [Factor Decay Learning Rate Scheduling](#factor-decay)
 
 #### Updater
 In default, the cxxnet will use the SGDUpdater.

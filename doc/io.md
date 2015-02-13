@@ -26,9 +26,9 @@ iter = end
 ``` 
 =
 **Iterators**
-* [MNSIT](https://github.com/antinucleon/cxxnet/wiki/Data-Input#mnist-iterator)
-* [CIFAR](https://github.com/antinucleon/cxxnet/wiki/Data-Input#cifar-iterator)
-* [Image and Image Binary](https://github.com/antinucleon/cxxnet/wiki/Data-Input#image-and-image-binary-iterator)
+* [MNSIT](#mnist-iterator)
+* [CIFAR](#cifar-iterator)
+* [Image and Image Binary](#image-and-image-binary-iterator)
 
 =
 ##### Preprocessing Options
@@ -46,6 +46,7 @@ path_label = path to gz file of label
 input_flat = 1
 ```
 * **input_flat** means loading the data in shape 1,1,784 or 1,28,28 
+* You may check a full example [here](https://github.com/antinucleon/cxxnet/blob/master/example/MNIST/MNIST.conf)
 
 =
 ##### CIFAR Iterator
@@ -100,9 +101,9 @@ Image binary iterator aims to reduce to IO cost in random seek. It is especially
 image_list = path to the image list file
 image_bin = path to the image binary file
 ```
-* The **image_list** file is described [above](https://github.com/antinucleon/cxxnet/wiki/Data-Input#image-list-file)
+* The **image_list** file is described [above](#image-list-file)
 * To generate **image_bin** file, you need to use the tool [im2bin](https://github.com/antinucleon/cxxnet/blob/master/tools/im2bin.cpp) in the tools folder.
-
+* You may check an example [here](https://github.com/antinucleon/cxxnet/blob/master/example/ImageNet/ImageNet.conf)
 
 #### Preprocessing Option for Image/Image Binary
 ```bash
@@ -134,6 +135,6 @@ max_rotate_angle=180
 ##### Deterministic Transformations
 Deterministic transformations are usually used in test to generate diverse prediction results. Ensembling diverse prediction results could improve the performance.
 * **crop_x_start** and **crop_y_start**  denotes the left corner of the crop.
-* **flip** denotes whether mirror the input.
+* **mirror** denotes whether mirror the input.
 * **rotate** denotes the angle will rotate.
 
