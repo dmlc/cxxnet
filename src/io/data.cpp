@@ -12,6 +12,7 @@
 #include "iter_augment_proc-inl.hpp"
 #include "iter_batch_proc-inl.hpp"
 #include "iter_mem_buffer-inl.hpp"
+#include "iter_img-inl.hpp"
 #include "iter_attach_txt-inl.hpp"
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
@@ -33,6 +34,11 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       if (!strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIterator()));
+        continue;
+      }
+      if (!strcmp(val, "img")) {
+        utils::Assert(it == NULL, "image list iterator can not chain over other iterator");
+        it = new BatchAdaptIterator(new AugmentIterator(new ImageIterator()));
         continue;
       }
       #endif
