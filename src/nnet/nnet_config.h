@@ -213,10 +213,22 @@ struct NetConfig {
         sscanf(val, "%d", &num);
         for (int i = 0; i < num; ++i){
           char name[256];
-          sprintf(name, "%d", i + 1);
+          sprintf(name, "in_%d", i + 1);
           node_names.push_back(name);
           node_name_map[name] = i + 1;
         }
+      }
+      if (!strncmp(name, "extra_data_shape[", 17)){
+        int extra_num;
+        int x, y, z;
+        utils::Check(sscanf(name, "extra_data_shape[%d", &extra_num) == 1,
+          "extra data shape config incorrect");
+        utils::Check(sscanf(val, "%d,%d,%d", &x, &y, &z) == 3,
+          "extra data shape config incorrect");
+        param.reserved[extra_num * 3 + 1] = x;
+        param.reserved[extra_num * 3 + 2] = y;
+        param.reserved[extra_num * 3 + 3] = z;
+        ++param.reserved[0];
       }
       if (param.init_end == 0) {
         if (!strcmp( name, "input_shape")) {

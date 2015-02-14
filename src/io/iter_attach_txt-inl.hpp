@@ -29,9 +29,7 @@ class AttachTxtIterator : public IIterator<DataBatch> {
     delete base_;
     if (file_ != NULL) fclose(file_);
     if (out_.inst_index != NULL) delete[] out_.inst_index;
-    for (size_t i = 0; i < out_.extra_data.size(); ++i){
-      mshadow::FreeSpace(&out_.extra_data[i]);
-    }
+    mshadow::FreeSpace(&extra_data_);
   }
   virtual void Init(void) {
     base_->Init();
@@ -40,10 +38,9 @@ class AttachTxtIterator : public IIterator<DataBatch> {
       "AttachTxt: Open file failed: %s", filename_.c_str());
     utils::Assert(fscanf(file_, "%d", &dim_) == 1,
       "AttachTxt: First line should indicate the data dim.");
-    out_.inst_index = new unsigned[batch_size_];
-    out_.extra_data.push_back(mshadow::NewTensor<cpu>(
-                              mshadow::Shape4(batch_size_, 1, 1, dim_),
-                              0.0f, false));
+    extra_data_ = mshadow::NewTensor<cpu>(
+            mshadow::Shape4(batch_size_, 1, 1, dim_), 0.0f, false);
+    //out_.extra_data.push_back(extra_data_);
   }
   virtual void BeforeFirst(void) {
     base_->BeforeFirst();
@@ -54,10 +51,9 @@ class AttachTxtIterator : public IIterator<DataBatch> {
   }
   virtual bool Next(void) {
     if (base_->Next()){
-      out_.label = base_->Value().label;
-      out_.data = base_->Value().data;
-      memcpy(out_.inst_index, base_->Value().inst_index, batch_size_ * sizeof(unsigned));
-      out_.num_batch_padd = 0;
+      out_ = base_->Value();
+      out_.extra_data.clear();
+      out_.extra_data.push_back(extra_data_);
       bool failed = false;
       int top = 0;
       for (top = 0; top < batch_size_; ++top){
@@ -102,6 +98,8 @@ class AttachTxtIterator : public IIterator<DataBatch> {
   std::string filename_;
   /*! \brief file pointer of the file */
   FILE* file_;
+  /*! \brief file pointer of the file */
+  mshadow::Tensor<cpu, 4> extra_data_;
   /*! \brief base iterator */
   IIterator<DataBatch> *base_;
 };

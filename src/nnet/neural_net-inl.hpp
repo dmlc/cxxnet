@@ -211,6 +211,12 @@ struct NeuralNet {
     mshadow::Shape<3> s = cfg.param.input_shape;
     // setup input shape
     nodes[0].data.shape_ = mshadow::Shape4(max_batch, s[0], s[1], s[2]);
+    // setup extra data
+    for (int i = 0; i < cfg.param.reserved[0]; ++i){
+      const int* reserved = cfg.param.reserved;
+      nodes[i + 1].data.shape_ = mshadow::Shape4(
+        max_batch, reserved[i * 3 + 1], reserved[i * 3 + 2], reserved[i * 3 + 3]);
+    }
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
       const NetConfig::LayerInfo &info = cfg.layers[i];

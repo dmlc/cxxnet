@@ -151,8 +151,9 @@ public:
     utils::Assert(label.shape_ == src.label.shape_, "DataBatch: label shape mismatch");
     mshadow::Copy(label, src.label);
     mshadow::Copy(data, src.data);
+    //printf("%d, %d\n", extra_data.size(), src.extra_data.size());
     utils::Assert(extra_data.size() == src.extra_data.size(),
-      "DataBatch: extract data number mismatch");
+      "DataBatch: extra data number mismatch");
     for (mshadow::index_t i = 0; i < extra_data.size(); ++i){
       utils::Assert(label.shape_ == src.label.shape_,
         "DataBatch: extra data %d shape mismatch", i);

@@ -49,9 +49,8 @@ public:
         utils::Check(fscanf(fplst_, "%f", &tmp) == 1,
                "ImageList format:label_width=%d but only have %d labels per line",
                label_width_, i);
-        label[i] = tmp;
+        labels_.push_back(tmp);
       }
-      labels_.push_back(label);
       char name[256];
       utils::Assert(fscanf(fplst_, "%s\n", name) == 1, "ImageList: no file name");
       filenames_.push_back(name);
@@ -78,7 +77,9 @@ public:
         LoadImage(img_, out_, sname);
       }
       out_.index = index_list_[index];
-      out_.label = labels_[index];
+      mshadow::Tensor<cpu, 1> label_(&(labels_[0]) + label_width_ * index,
+        mshadow::Shape1(label_width_));
+      out_.label = label_;
       ++data_index_;
       return true;
     }
@@ -127,7 +128,7 @@ protected:
   // stores the reading orders
   std::vector<int> order_;
   // stores the labels of data
-  std::vector<mshadow::Tensor<cpu, 1> > labels_;
+  std::vector<float> labels_;
   // stores the file names of the images
   std::vector<std::string> filenames_;
   // stores the index list of images
