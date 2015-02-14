@@ -12,10 +12,10 @@
 #include "iter_augment_proc-inl.hpp"
 #include "iter_batch_proc-inl.hpp"
 #include "iter_mem_buffer-inl.hpp"
-#include "iter_img-inl.hpp"
 #include "iter_attach_txt-inl.hpp"
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
+#include "iter_img-inl.hpp"
 #endif
 
 namespace cxxnet {
