@@ -146,6 +146,8 @@ public:
   /*! \brief copy dense content from existing data, dense only */
   inline void CopyFromDense(const DataBatch &src) {
     utils::Assert(batch_size == src.batch_size, "DataBatch: the batch size is not set correctly");
+    num_batch_padd = src.num_batch_padd;
+    utils::Check(src.inst_index != NULL, "CopyFromDense need to copy instance index");
     memcpy(inst_index, src.inst_index, batch_size * sizeof(unsigned));
     utils::Assert(data.shape_ == src.data.shape_, "DataBatch: data shape mismatch");
     utils::Assert(label.shape_ == src.label.shape_, "DataBatch: label shape mismatch");

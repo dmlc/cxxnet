@@ -315,9 +315,7 @@ class NeuralNetThread {
       // wait until net is created
       job_end.Wait();
     } else {
-      if (!xpu::kDevCPU) {
-        mshadow::InitTensorEngine(device_id);
-      }
+      mshadow::InitTensorEngine<xpu>(device_id);
       stream = mshadow::NewStream<xpu>();
       net_ = new NeuralNet<xpu>(cfg, batch_size, seed, stream);
     }
@@ -334,9 +332,7 @@ class NeuralNetThread {
       } else {
         delete net_;
         mshadow::DeleteStream(stream);
-        if (!xpu::kDevCPU) {
-          mshadow::ShutdownTensorEngine();
-        }
+        mshadow::ShutdownTensorEngine<xpu>();
       }
     }
   }
@@ -441,9 +437,7 @@ class NeuralNetThread {
     return NULL;
   }
   inline void RunThread(void) {
-    if (!xpu::kDevCPU) {
-      mshadow::InitTensorEngine(device_id);
-    }
+    mshadow::InitTensorEngine<xpu>(device_id);
     stream = mshadow::NewStream<xpu>();
     // allocate net
     net_ = new NeuralNet<xpu>(cfg, batch_size, seed, stream);
@@ -457,9 +451,7 @@ class NeuralNetThread {
     }
     delete net_;
     mshadow::DeleteStream(stream);
-    if (!xpu::kDevCPU) {
-      mshadow::ShutdownTensorEngine();
-    }
+    mshadow::ShutdownTensorEngine<xpu>();
   }
   inline void ExecTask(void) {
     if (new_thread) {
