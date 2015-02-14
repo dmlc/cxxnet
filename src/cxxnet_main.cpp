@@ -255,7 +255,6 @@ class CXXNetLearnTask {
       const DataBatch& batch = itr_pred->Value();
       net_trainer->Predict(pred, batch);
       utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
-      printf("%d\n", batch.num_batch_padd);
       mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
       for (mshadow::index_t j = 0; j < sz; ++j) {
         fprintf(fo, "%g\n", pred[j]);
