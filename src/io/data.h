@@ -126,7 +126,6 @@ public:
                               const std::vector<mshadow::Shape<4> >& extra_shape,
                               bool pad = false) {
     AllocSpaceDense(shape, batch_size, label_width, pad);
-    extra_data.resize(extra_shape.size());
     for (mshadow::index_t i = 0; i < extra_shape.size(); ++i){
       extra_data.push_back(mshadow::NewTensor<mshadow::cpu>(extra_shape[i], 0.0f, pad));
     }
@@ -153,7 +152,6 @@ public:
     utils::Assert(label.shape_ == src.label.shape_, "DataBatch: label shape mismatch");
     mshadow::Copy(label, src.label);
     mshadow::Copy(data, src.data);
-    //printf("%d, %d\n", extra_data.size(), src.extra_data.size());
     utils::Assert(extra_data.size() == src.extra_data.size(),
       "DataBatch: extra data number mismatch");
     for (mshadow::index_t i = 0; i < extra_data.size(); ++i){
