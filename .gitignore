@@ -9,3 +9,5 @@ config.mk
 layer.h
 layer_impl-inl.hpp
 .gitignore
+*.so
+im2bin

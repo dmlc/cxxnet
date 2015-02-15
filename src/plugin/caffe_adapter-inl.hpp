@@ -1,5 +1,5 @@
 #ifndef CXXNET_CAFFE_ADAPTER_INL_HPP
-#define CXXNET_CAFEE_ADAPTER_INL_HPP
+#define CXXNET_CAFFE_ADAPTER_INL_HPP
 #pragma once
 /*!
  * \file cxxnet_caffee_adapter-inl.hpp

@@ -5,8 +5,8 @@
  * \author Tianqi Chen
  */
 /*! \brief whether to adapt caffe layers */
-#ifndef CXXNET_ADAPT_CAFFE
-#define CXXNET_ADAPT_CAFFE 0
+#ifndef CXXNET_USE_CAFFE_ADAPTOR
+#define CXXNET_USE_CAFFE_ADAPTOR 0
 #endif
 
 /*! 

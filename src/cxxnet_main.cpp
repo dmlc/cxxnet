@@ -22,7 +22,6 @@ class CXXNetLearnTask {
     this->itr_train = NULL;
     this->itr_pred  = NULL;
     name_model_dir = "models";
-    device = "gpu";
     num_round = 10;
     test_io = 0;
     silent = start_counter = 0;
@@ -34,7 +33,11 @@ class CXXNetLearnTask {
     print_step    = 100;
     reset_net_type = -1;
     extract_node_name = "";
+#if MSHADOW_USE_CUDA
     this->SetParam("dev", "gpu");
+#else
+    this->SetParam("dev", "cpu");
+#endif
   }
   ~CXXNetLearnTask(void) {
     if (net_trainer != NULL) {
