@@ -214,8 +214,10 @@ struct NetConfig {
         for (int i = 0; i < num; ++i){
           char name[256];
           sprintf(name, "in_%d", i + 1);
-          node_names.push_back(name);
-          node_name_map[name] = i + 1;
+          if (node_name_map.find(name) == node_name_map.end()){
+            node_names.push_back(name);
+            node_name_map[name] = i + 1;
+          }
         }
       }
       if (!strncmp(name, "extra_data_shape[", 17)){
