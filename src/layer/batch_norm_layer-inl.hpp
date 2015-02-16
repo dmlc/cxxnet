@@ -17,11 +17,14 @@ class BatchNormLayer : public ILayer<xpu> {
     init_slope_ = 0.25f;
     init_bias_ = 0.0f;
     eps_ = 0.01f;
+    reset_period_ = -1.0f;
+    period_ = 0.0f;
   }
   virtual void SetParam(const char *name, const char* val) {
     if (!strcmp(name, "init_slope")) init_slope_ = atof(val);
     if (!strcmp(name, "init_bias")) init_bias_ = atof(val);
     if (!strcmp(name, "eps")) eps_ = atof(val);
+    if (!strcmp(name, "reset_period")) reset_period_ = atof(val);
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("wmat", slope_, gslope_);
@@ -40,6 +43,7 @@ class BatchNormLayer : public ILayer<xpu> {
       // This is a conv layer
       channel_ = nodes_in[0]->data.size(1);
     }
+    nodes_out[0]->data.shape_ = nodes_in[0]->data.shape_;
   }
   virtual void InitModel(void) {
     temp_.Resize(in_shape_);
@@ -49,6 +53,11 @@ class BatchNormLayer : public ILayer<xpu> {
     var_.Resize(mshadow::Shape1(channel_));
     gexp_.Resize(slope_.shape_);
     gvar_.Resize(slope_.shape_);
+    hist_exp_.Resize(slope_.shape_);
+    hist_var_.Resize(slope_.shape_);
+    wtf_.Resize(slope_.shape_);
+    bias_.Resize(slope_.shape_);
+    gbias_.Resize(slope_.shape_);
     gslope_ = 0.0f;
     gexp_ = 0.0f;
     gvar_ = 0.0f;
@@ -56,16 +65,22 @@ class BatchNormLayer : public ILayer<xpu> {
   virtual void SaveModel(utils::IStream &fo) const{
     slope_.SaveBinary(fo);
     bias_.SaveBinary(fo);
+    hist_exp_.SaveBinary(fo);
+    hist_var_.SaveBinary(fo);
   }
   virtual void LoadModel(utils::IStream &fi){
     slope_.LoadBinary(fi);
     bias_.LoadBinary(fi);
+    hist_exp_.LoadBinary(fi);
+    hist_var_.LoadBinary(fi);
     temp_.Resize(in_shape_);
     gslope_.Resize(slope_.shape_);
     exp_.Resize(slope_.shape_);
     gexp_.Resize(slope_.shape_);
     var_.Resize(slope_.shape_);
     gvar_.Resize(slope_.shape_);
+    wtf_.Resize(slope_.shape_);
+    gbias_.Resize(slope_.shape_);
     gslope_ = 0.0f;
     gbias_ = 0.0f;
     gexp_ = 0.0f;
@@ -79,6 +94,11 @@ class BatchNormLayer : public ILayer<xpu> {
     var_.set_stream(stream);
     gvar_.set_stream(stream);
     temp_.set_stream(stream);
+    wtf_.set_stream(stream);
+    bias_.set_stream(stream);
+    gbias_.set_stream(stream);
+    hist_exp_.set_stream(stream);
+    hist_var_.set_stream(stream);
   }
   virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
                                   const std::vector<Node<xpu>*> &nodes_out,
@@ -89,12 +109,20 @@ class BatchNormLayer : public ILayer<xpu> {
                        const std::vector<Node<xpu>*> &nodes_in,
                        const std::vector<Node<xpu>*> &nodes_out,
                        ConnectState<xpu> *p_cstate) {
+    utils::Check(reset_period_ > 0.0f, "Reset period must be set for bn layer");
+    if (is_train && period_ > reset_period_) {
+      period_ = 0.0f;
+      hist_exp_ = 0.0f;
+      hist_var_ = 0.0f;
+    }
+    if (is_train) period_ += 1.0f;
+    else period_ = reset_period_;
     using namespace mshadow::expr;
     mshadow::Tensor<xpu, 4> &in = nodes_in[0]->data;
     mshadow::Tensor<xpu, 4> &out = nodes_out[0]->data;
     const float scale = 1.0f / in.size(0);
     if (is_train) {
-      mshadow::Copy(temp_, in, temp_.stream_);
+      mshadow::Copy(temp_, in, out.stream_);
       if (in.size(1) != 1) {
         exp_ = scale * sumall_except_dim<1>(in);
         var_ = scale * sumall_except_dim<1>(F<op::square>(in - broadcast<1>(exp_, in.shape_)));
@@ -108,8 +136,19 @@ class BatchNormLayer : public ILayer<xpu> {
           F<op::square_root>(broadcast<3>(var_ + eps_, in_shape_));
         out = in * broadcast<3>(slope_, in.shape_) + broadcast<3>(bias_, in.shape_);
       }
+      hist_exp_ += exp_;
+      hist_var_ += var_;
     } else {
+      if (in.size(1) != 1) {
+        out = broadcast<1>(slope_ / F<op::square_root>(hist_var_ / period_ + eps_), in.shape_) *
+          in + broadcast<1>(bias_ - (slope_ * hist_exp_ / period_) /
+                            F<op::square_root>(hist_var_ / period_ + eps_), in.shape_);
+      } else {
+        out = broadcast<3>(slope_ / F<op::square_root>(hist_var_ / period_ + eps_), in.shape_) *
+          in + broadcast<3>(bias_ - (slope_ * hist_exp_ / period_) /
+                            F<op::square_root>(hist_var_ / period_ + eps_), in.shape_);
 
+      }
     }
   }
   virtual void Backprop(bool prop_grad,
@@ -124,9 +163,11 @@ class BatchNormLayer : public ILayer<xpu> {
       gvar_ = sumall_except_dim<1>((out * broadcast<1>(slope_, in.shape_)) *
                         (temp_ - broadcast<1>(exp_, in.shape_)) *
                         -0.5f * F<op::power>(broadcast<1>(var_ + eps_, in.shape_), -1.5f));
-      gexp_ = sumall_except_dim<1>((out * broadcast<1>(slope_, in.shape_)) *
-                                    -1.0f / F<op::square_root>(broadcast<1>(var_ + eps_, in.shape_))) +
-              gvar_ * scale * sumall_except_dim<1>(-2.0f * (temp_ - broadcast<1>(exp_, in.shape_)));
+      gexp_ = sumall_except_dim<1>(out * broadcast<1>(slope_, in.shape_));
+      gexp_ *= -1.0f / F<op::square_root>(var_ + eps_);
+      wtf_ = scale * sumall_except_dim<1>(-2.0f * (temp_ - broadcast<1>(exp_, in.shape_)));
+      wtf_ *= gvar_;
+      gexp_ += wtf_;
       gslope_ += sumall_except_dim<1>(out * in);
       gbias_ += sumall_except_dim<1>(out);
       in = (out * broadcast<1>(slope_, in.shape_)) *
@@ -137,15 +178,18 @@ class BatchNormLayer : public ILayer<xpu> {
       gvar_ = sumall_except_dim<3>((out * broadcast<3>(slope_, in.shape_)) *
                         (temp_ - broadcast<3>(exp_, in.shape_)) *
                         -0.5f * F<op::power>(broadcast<3>(var_ + eps_, in.shape_), -1.5f));
-      gexp_ = sumall_except_dim<3>((out * broadcast<3>(slope_, in.shape_)) *
-                                    -1.0f / F<op::square_root>(broadcast<3>(var_ + eps_, in.shape_))) +
-              gvar_ * scale * sumall_except_dim<3>(-2.0f * (temp_ - broadcast<3>(exp_, in.shape_)));
+      gexp_ = sumall_except_dim<3>(out * broadcast<3>(slope_, in.shape_));
+      gexp_ *= -1.0f / F<op::square_root>(var_ + eps_);
+      wtf_ = scale * sumall_except_dim<3>(-2.0f * (temp_ - broadcast<3>(exp_, in.shape_)));
+      wtf_ *= gvar_;
+      gexp_ += wtf_;
       gslope_ += sumall_except_dim<3>(out * in);
       gbias_ += sumall_except_dim<3>(out);
       in = (out * broadcast<3>(slope_, in.shape_)) *
            broadcast<3>(1.0f / F<op::square_root>(var_ + eps_), in.shape_) +
            broadcast<3>(gvar_, in.shape_) * scale * 2.0f * (temp_ - broadcast<3>(exp_, in.shape_)) +
            broadcast<3>(gexp_, in.shape_) * scale;
+
     }
   }
 
@@ -154,6 +198,7 @@ class BatchNormLayer : public ILayer<xpu> {
   int channel_;
   mshadow::Shape<4> in_shape_;
   mshadow::TensorContainer<xpu, 4> temp_;
+  mshadow::TensorContainer<xpu, 1> wtf_; // potential mshadow bug
   mshadow::TensorContainer<xpu, 1> slope_;
   mshadow::TensorContainer<xpu, 1> gslope_;
   mshadow::TensorContainer<xpu, 1> bias_;
@@ -162,9 +207,13 @@ class BatchNormLayer : public ILayer<xpu> {
   mshadow::TensorContainer<xpu, 1> gexp_;
   mshadow::TensorContainer<xpu, 1> var_;
   mshadow::TensorContainer<xpu, 1> gvar_;
+  mshadow::TensorContainer<xpu, 1> hist_exp_;
+  mshadow::TensorContainer<xpu, 1> hist_var_;
   float init_slope_;
   float init_bias_;
   float eps_;
+  float period_;
+  float reset_period_;
 };  // class BatchNormLayer
 
 } // namespace layer

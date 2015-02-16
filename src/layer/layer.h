@@ -309,6 +309,7 @@ const int kL2Loss = 26;
 const int kMultiLogistic = 27;
 const int kChConcat = 28;
 const int kPRelu = 29;
+const int kBatchNorm = 30;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -344,6 +345,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "multi_logistic")) return kMultiLogistic;
   if (!strcmp(type, "ch_concat")) return kChConcat;
   if (!strcmp(type, "prelu")) return kPRelu;
+  if (!strcmp(type, "batch_norm")) return kBatchNorm;
   #if CXXNET_USE_CAFFE_ADAPTOR
   if (!strcmp(type, "caffe")) return kCaffe;
   #endif
