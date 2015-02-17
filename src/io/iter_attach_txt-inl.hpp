@@ -28,7 +28,6 @@ class AttachTxtIterator : public IIterator<DataBatch> {
   virtual ~AttachTxtIterator(void) {
     delete base_;
     if (file_ != NULL) fclose(file_);
-    if (out_.inst_index != NULL) delete[] out_.inst_index;
     mshadow::FreeSpace(&extra_data_);
   }
   virtual void Init(void) {
@@ -40,7 +39,6 @@ class AttachTxtIterator : public IIterator<DataBatch> {
       "AttachTxt: First line should indicate the data dim.");
     extra_data_ = mshadow::NewTensor<cpu>(
             mshadow::Shape4(batch_size_, 1, 1, dim_), 0.0f, false);
-    //out_.extra_data.push_back(extra_data_);
   }
   virtual void BeforeFirst(void) {
     base_->BeforeFirst();

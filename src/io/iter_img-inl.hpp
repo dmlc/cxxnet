@@ -67,7 +67,7 @@ public:
     }
   }
   virtual bool Next(void) {
-    if (data_index_ < order_.size()) {
+    if (data_index_ < static_cast<int>(order_.size())) {
       size_t index = order_[data_index_];
       if (path_imgdir_.length() == 0) {
         LoadImage(img_, out_, filenames_[index].c_str());
