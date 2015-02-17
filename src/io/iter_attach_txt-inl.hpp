@@ -27,7 +27,6 @@ class AttachTxtIterator : public IIterator<DataBatch> {
   }
   virtual ~AttachTxtIterator(void) {
     delete base_;
-    if (file_ != NULL) fclose(file_);
     mshadow::FreeSpace(&extra_data_);
   }
   virtual void Init(void) {
@@ -39,41 +38,34 @@ class AttachTxtIterator : public IIterator<DataBatch> {
       "AttachTxt: First line should indicate the data dim.");
     extra_data_ = mshadow::NewTensor<cpu>(
             mshadow::Shape4(batch_size_, 1, 1, dim_), 0.0f, false);
+    int cnt = 0;
+    int data_id = 0;
+    while (fscanf(file_, "%d", &data_id) != EOF) {
+      id_map_[data_id] = cnt++;
+      for (int i = 0; i < dim_; ++i) {
+        float tmp;
+        fscanf(file_, "%f", &tmp);
+        all_data_.push_back(tmp);
+      }
+    }
+    fclose(file_);
   }
   virtual void BeforeFirst(void) {
     base_->BeforeFirst();
-    if (file_ != NULL){
-      fseek(file_, 0, SEEK_SET);
-    }
-    fscanf(file_, "%d", &dim_);
   }
   virtual bool Next(void) {
-    if (base_->Next()){
+    if (base_->Next()) {
       out_ = base_->Value();
       out_.extra_data.clear();
       out_.extra_data.push_back(extra_data_);
-      bool failed = false;
-      int top = 0;
-      for (top = 0; top < batch_size_; ++top){
-        for (int j = 0; j < dim_; ++j){
-          if (fscanf(file_, "%f", &(out_.extra_data[0][top][0][0][j])) != 1){
-            failed = true; break;
-          }
-        }
-        if (failed){
-          break;
-        }
-      }
-      if (!failed) return true;
-      int read = top;
-      if (round_batch_ != 0){
-        for (; top < batch_size_; ++top){
-          for (int j = 0; j < dim_; ++j){
-            fscanf(file_, "%f", &(out_.extra_data[0][top][0][0][j]));
+      for (int top = 0; top < batch_size_; ++top) {
+        if (id_map_.find(out_.inst_index[top]) != id_map_.end()) {
+          int start = id_map_[out_.inst_index[top]] * dim_;
+          for (int i = 0; i < dim_; ++i) {
+            extra_data_[top][0][0][i] = all_data_[start++];  
           }
         }
       }
-      out_.num_batch_padd = batch_size_ - read;
       return true;
     } else {
       return false;
@@ -100,6 +92,8 @@ class AttachTxtIterator : public IIterator<DataBatch> {
   mshadow::Tensor<cpu, 4> extra_data_;
   /*! \brief base iterator */
   IIterator<DataBatch> *base_;
+  std::map<int, int> id_map_;
+  std::vector<float> all_data_;
 };
 }  // namespace cxxnet
 #endif  // CXXNET_ATTACH_TXT_ITER_INL_HPP_

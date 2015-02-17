@@ -106,7 +106,7 @@ struct NeuralNet {
     this->AdjustBatchSize(batch.size(0));
     // copy data into node
     mshadow::Copy(nodes[0].data, batch, stream);
-    for (size_t i = 0; i < extra_data.size(); ++i){
+    for (size_t i = 0; i < extra_data.size(); ++i) {
       mshadow::Copy(nodes[i + 1].data, extra_data[i], stream);
     }
     // setup updater notification
@@ -212,7 +212,7 @@ struct NeuralNet {
     // setup input shape
     nodes[0].data.shape_ = mshadow::Shape4(max_batch, s[0], s[1], s[2]);
     // setup extra data
-    for (int i = 0; i < cfg.param.extra_data_num; ++i){
+    for (int i = 0; i < cfg.param.extra_data_num; ++i) {
       const std::vector<int>& extra_shape = cfg.extra_shape;
       nodes[i + 1].data.shape_ = mshadow::Shape4(
         max_batch, extra_shape[i * 3], extra_shape[i * 3 + 1], extra_shape[i * 3 + 2]);
@@ -405,7 +405,7 @@ class NeuralNetThread {
     this->ExecTask();
   }
   // copy layer from a fs
-  inline void CopyLayer(int lid, utils::IStream& fi){
+  inline void CopyLayer(int lid, utils::IStream& fi) {
     iparam_fp = &fi;
     iparam_lid = lid;
     this->task = kCopyLayer;

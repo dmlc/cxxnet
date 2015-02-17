@@ -125,7 +125,7 @@ struct NetConfig {
    */
   inline void SaveNet(utils::IStream &fo) const {
     fo.Write(&param, sizeof(param));
-    if (param.extra_data_num != 0){
+    if (param.extra_data_num != 0) {
       fo.Write(extra_shape);
     }
     utils::Assert(param.num_layers == static_cast<int>(layers.size()),
@@ -153,7 +153,7 @@ struct NetConfig {
     utils::Check(fi.Read(&param, sizeof(param)) != 0,
                  "NetConfig: invalid model file");
     node_names.resize(param.num_nodes);
-    if (param.extra_data_num != 0){
+    if (param.extra_data_num != 0) {
       utils::Check(fi.Read(&extra_shape) != 0,
         "NetConfig: Reading extra data shape failed.");
     }
@@ -179,7 +179,7 @@ struct NetConfig {
       if (layers[i].type == layer::kSharedLayer) {
         utils::Check(layers[i].name.length() == 0, "SharedLayer must not have name");
       } else {
-        if (layers[i].name != ""){
+        if (layers[i].name != "") {
           utils::Check(layer_name_map.count(layers[i].name) == 0,
                        "NetConfig: invalid model file, duplicated layer name: %s",
                        layers[i].name.c_str());
@@ -223,17 +223,17 @@ struct NetConfig {
       if (!strcmp(name, "extra_data_num")) {
         int num;
         sscanf(val, "%d", &num);
-        for (int i = 0; i < num; ++i){
+        for (int i = 0; i < num; ++i) {
           char name[256];
           sprintf(name, "in_%d", i + 1);
-          if (node_name_map.find(name) == node_name_map.end()){
+          if (node_name_map.find(name) == node_name_map.end()) {
             node_names.push_back(name);
             node_name_map[name] = i + 1;
           }
         }
         param.extra_data_num = num;
       }
-      if (!strncmp(name, "extra_data_shape[", 17)){
+      if (!strncmp(name, "extra_data_shape[", 17)) {
         int extra_num;
         int x, y, z;
         utils::Check(sscanf(name, "extra_data_shape[%d", &extra_num) == 1,
