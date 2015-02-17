@@ -20,6 +20,7 @@ namespace nnet {
 class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
  public:
   CXXNetUpdater(void) : rnd(0) {
+    seed = 0;
   }
   virtual ~CXXNetUpdater(void) {
     for (std::map<int, UpdaterEntry*>::iterator
