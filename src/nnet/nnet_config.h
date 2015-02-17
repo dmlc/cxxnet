@@ -34,8 +34,10 @@ struct NetConfig {
     mshadow::Shape<3> input_shape;
     /*! \brief whether the configuration is finalized and the network structure is fixed */
     int init_end;
+    /*! \brief the number of extra data */
+    int extra_data_num;
     /*! \brief reserved fields, used to extend data structure */
-    int reserved[32];
+    int reserved[31];
     /*! \brief constructor */
     NetParam(void) {
       memset(reserved, 0, sizeof(reserved));
@@ -43,6 +45,7 @@ struct NetConfig {
       num_layers = 0;
       input_shape = mshadow::Shape3(0, 0, 0);
       init_end = 0;
+      extra_data_num = 0;
     }
   };
   /*! \brief information about each layer */
@@ -105,6 +108,8 @@ struct NetConfig {
   std::vector< std::pair< std::string, std::string > > defcfg;
   /*! \brief extra parameter configuration specific to this layer */
   std::vector< std::vector< std::pair<std::string, std::string> > > layercfg;
+  /*! \brief stores the shape of extra data */
+  std::vector<int> extra_shape;
   // constructor
   NetConfig(void) {
     updater_type = "sgd";
@@ -120,6 +125,9 @@ struct NetConfig {
    */
   inline void SaveNet(utils::IStream &fo) const {
     fo.Write(&param, sizeof(param));
+    if (param.extra_data_num != 0){
+      fo.Write(extra_shape);
+    }
     utils::Assert(param.num_layers == static_cast<int>(layers.size()),
                   "model inconsistent");
     utils::Assert(param.num_nodes == static_cast<int>(node_names.size()),
@@ -145,6 +153,10 @@ struct NetConfig {
     utils::Check(fi.Read(&param, sizeof(param)) != 0,
                  "NetConfig: invalid model file");
     node_names.resize(param.num_nodes);
+    if (param.extra_data_num != 0){
+      utils::Check(fi.Read(&extra_shape) != 0,
+        "NetConfig: Reading extra data shape failed.");
+    }
     for (int i = 0; i < param.num_nodes; ++i) {    
       utils::Check(fi.Read(&node_names[i]),
                    "NetConfig: invalid model file");
@@ -155,7 +167,7 @@ struct NetConfig {
     }
     layers.resize(param.num_layers);
     layercfg.resize(param.num_layers);
-    layer_name_map.clear();    
+    layer_name_map.clear();
     for (int i = 0; i < param.num_layers; ++i) {
       utils::Check(fi.Read(&layers[i].type, sizeof(layer::LayerType)) != 0,
                  "NetConfig: invalid model file");
@@ -219,6 +231,7 @@ struct NetConfig {
             node_name_map[name] = i + 1;
           }
         }
+        param.extra_data_num = num;
       }
       if (!strncmp(name, "extra_data_shape[", 17)){
         int extra_num;
@@ -227,10 +240,9 @@ struct NetConfig {
           "extra data shape config incorrect");
         utils::Check(sscanf(val, "%d,%d,%d", &x, &y, &z) == 3,
           "extra data shape config incorrect");
-        param.reserved[extra_num * 3 + 1] = x;
-        param.reserved[extra_num * 3 + 2] = y;
-        param.reserved[extra_num * 3 + 3] = z;
-        ++param.reserved[0];
+        extra_shape.push_back(x);
+        extra_shape.push_back(y);
+        extra_shape.push_back(z);
       }
       if (param.init_end == 0) {
         if (!strcmp( name, "input_shape")) {

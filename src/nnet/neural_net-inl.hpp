@@ -212,10 +212,10 @@ struct NeuralNet {
     // setup input shape
     nodes[0].data.shape_ = mshadow::Shape4(max_batch, s[0], s[1], s[2]);
     // setup extra data
-    for (int i = 0; i < cfg.param.reserved[0]; ++i){
-      const int* reserved = cfg.param.reserved;
+    for (int i = 0; i < cfg.param.extra_data_num; ++i){
+      const std::vector<int>& extra_shape = cfg.extra_shape;
       nodes[i + 1].data.shape_ = mshadow::Shape4(
-        max_batch, reserved[i * 3 + 1], reserved[i * 3 + 2], reserved[i * 3 + 3]);
+        max_batch, extra_shape[i * 3], extra_shape[i * 3 + 1], extra_shape[i * 3 + 2]);
     }
     // input layer
     for (int i = 0; i < cfg.param.num_layers; ++i) {
