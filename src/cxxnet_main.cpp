@@ -366,7 +366,11 @@ class CXXNetLearnTask {
       if (test_io == 0) {
         // code handling evaluation
         fprintf(stderr, "[%d]", start_counter);
-
+        // handle only with eval_train = 1, but not val data
+        if (itr_evals.size() == 0) {
+          std::string res = net_trainer->Evaluate(NULL, "train");
+          fprintf(stderr, "%s", res.c_str());
+        }
         for (size_t i = 0; i < itr_evals.size(); ++i) {
           std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
           fprintf(stderr, "%s", res.c_str());
