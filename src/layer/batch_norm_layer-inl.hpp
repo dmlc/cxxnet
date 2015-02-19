@@ -14,9 +14,9 @@ template<typename xpu>
 class BatchNormLayer : public ILayer<xpu> {
  public:
   BatchNormLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {
-    init_slope_ = 0.25f;
+    init_slope_ = 1.0f;
     init_bias_ = 0.0f;
-    eps_ = 0.01f;
+    eps_ = 1e-10f;
     reset_period_ = -1.0f;
     period_ = 0.0f;
   }
@@ -61,6 +61,8 @@ class BatchNormLayer : public ILayer<xpu> {
     gslope_ = 0.0f;
     gexp_ = 0.0f;
     gvar_ = 0.0f;
+    slope_ = init_slope_;
+    bias_ = init_bias_;
   }
   virtual void SaveModel(utils::IStream &fo) const{
     slope_.SaveBinary(fo);
@@ -120,7 +122,7 @@ class BatchNormLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     mshadow::Tensor<xpu, 4> &in = nodes_in[0]->data;
     mshadow::Tensor<xpu, 4> &out = nodes_out[0]->data;
-    const float scale = 1.0f / in.size(0);
+    float scale = 1.0f / in.shape_.Size() * channel_;
     if (is_train) {
       mshadow::Copy(temp_, in, out.stream_);
       if (in.size(1) != 1) {
@@ -135,6 +137,7 @@ class BatchNormLayer : public ILayer<xpu> {
         in = (in - broadcast<3>(exp_, in.shape_)) /
           F<op::square_root>(broadcast<3>(var_ + eps_, in_shape_));
         out = in * broadcast<3>(slope_, in.shape_) + broadcast<3>(bias_, in.shape_);
+        
       }
       hist_exp_ += exp_;
       hist_var_ += var_;
@@ -158,7 +161,7 @@ class BatchNormLayer : public ILayer<xpu> {
     using namespace mshadow::expr;
     mshadow::Tensor<xpu, 4> &in = nodes_in[0]->data;
     mshadow::Tensor<xpu, 4> &out = nodes_out[0]->data;
-    const float scale = 1.0f / in.size(0);
+    float scale = 1.0f / in.shape_.Size() * channel_;
     if (in.size(1) != 1){
       gvar_ = sumall_except_dim<1>((out * broadcast<1>(slope_, in.shape_)) *
                         (temp_ - broadcast<1>(exp_, in.shape_)) *
