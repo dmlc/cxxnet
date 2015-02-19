@@ -52,6 +52,11 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
     rnd.Seed(seed + rank * 17);
   }
   virtual void InitModel(int key, real_t *dptr, size_t size) {
+    if (updaters.find(key) != updaters.end()) {
+      // already inited
+      // TODO do some checks here
+      return;
+    }
     updaters[key] = new UpdaterEntry();
     UpdaterEntry &e = *updaters[key];
     e.key = key;
