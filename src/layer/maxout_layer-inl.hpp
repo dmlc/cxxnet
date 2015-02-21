@@ -40,7 +40,7 @@ class MaxoutLayer : public ILayer<xpu> {
       mshadow::Shape<2> pshape = nodes_out[0]->data[0][0].shape_;
       tmp = pool<Reducer>(nodes_in[0]->data, pshape, 1, num_maxout_, num_maxout_);
     } else {
-      tmp = chpool<Reducer>(nodes_in[0]->data, 1, num_maxout_, 0);
+      tmp = chpool<Reducer>(nodes_in[0]->data, num_maxout_, num_maxout_, 0);
     }
     mshadow::Copy(nodes_out[0]->data, tmp, nodes_out[0]->data.stream_);
   }
@@ -56,7 +56,7 @@ class MaxoutLayer : public ILayer<xpu> {
                                             nodes_out[0]->data, 1, num_maxout_, num_maxout_);
       } else {
         nodes_in[0]->data = ch_unpool<Reducer>(nodes_in[0]->data, tmp,
-                                               nodes_out[0]->data, 1, num_maxout_, 0);
+                                               nodes_out[0]->data, num_maxout_, num_maxout_, 0);
       }
     }
   }
