@@ -40,6 +40,7 @@ python make_submission.py /home/data/bowl/sampleSubmission.csv test.lst test.txt
 * Submit out.csv, you will get a result
 
 * Validation
+
 Run
 ```
 sh gen_tr_va.sh train.lst

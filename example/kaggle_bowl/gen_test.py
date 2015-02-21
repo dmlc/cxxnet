@@ -9,7 +9,7 @@ if len(sys.argv) < 3:
 fi = sys.argv[1]
 fo = sys.argv[2]
 
-cmd = "convert -resize 96x96\! "
+cmd = "convert -resize 48x48\! "
 imgs = os.listdir(fi)
 
 
