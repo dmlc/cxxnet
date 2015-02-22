@@ -28,6 +28,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     total_batch_size = 0;
     pull_at_backprop = 1;
     update_on_server = 0;
+    test_on_server = 0;
     bigarray_bound = 1000 * 1000;
     pull_not_issued = false;
   }
@@ -35,10 +36,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     delete updater;
   }
   virtual void Init(void) {
-    if (update_on_server != 0) {
-      utils::Check(pserver != NULL,
-                   "parameter server must not be empty");
-    } else {      
+    if (update_on_server == 0) {
       updater->Init();
     }
     if (pserver != NULL) {
@@ -48,11 +46,17 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
         pserver->SetParam(name, "gather");
       }
       pserver->InitKey(dw.shape_, data_key, devid);
+      if (test_on_server != 0) {
+        pserver->SetWeight_(w.FlatTo2D(), data_key, devid);
+      }
       // pull back weight directly if update on server
       if (update_on_server != 0) {
         pserver->PullReq(w, data_key, devid, priority,
                          CleanGrad_, this);
       }
+    } else {
+      utils::Check(update_on_server == 0 && test_on_server == 0,
+                   "parameter server must not be empty");
     }
   }
   virtual void SetStream(mshadow::Stream<xpu> *stream) {
@@ -137,7 +141,15 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     pserver->PullWait(data_key, devid);
   }
   virtual void StartRound(int round) {
-    if (updater != NULL) updater->StartRound(round);
+    if (updater != NULL) {
+      updater->StartRound(round);
+    }
+    if (test_on_server != 0) {
+      utils::Assert(update_on_server == 0,
+                    "test_on_server must set update_on_server = 0");
+      pserver->PullWait(data_key, devid);
+      pserver->CheckWeight_(w.FlatTo2D(), data_key, devid);
+    }
   }
   virtual void SetParam(const char *name, const char *val) {
     if (updater != NULL) updater->SetParam(name, val);
@@ -161,6 +173,9 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     }
     if (!strcmp(name, "update_on_server")) {
       update_on_server = atoi(val);
+    }
+    if (!strcmp(name, "test_on_server")) {
+      test_on_server = atoi(val);
     }
   }
   virtual void ApplyVisitor(typename IUpdater<xpu>::IVisitor *pvisitor) {
@@ -215,6 +230,8 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   size_t bigarray_bound;
   // perform update on server side
   int update_on_server;
+  // perform test on server side
+  int test_on_server;
   // the following data structure are used to support fullc_gather
   // use gather update for fullc layer
   int fullc_gather;

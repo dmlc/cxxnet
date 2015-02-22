@@ -5,6 +5,7 @@
  * \brief iterator that attach additional data store in txt file
  * \author Naiyan Wang
  */
+#include <map>
 #include <mshadow/tensor.h>
 #include "./data.h"
 #include "../utils/utils.h"
@@ -40,11 +41,12 @@ class AttachTxtIterator : public IIterator<DataBatch> {
             mshadow::Shape4(batch_size_, 1, 1, dim_), 0.0f, false);
     int cnt = 0;
     int data_id = 0;
-    while (fscanf(file_, "%d", &data_id) != EOF) {
+    while (fscanf(file_, "%d", &data_id) == 1) {
       id_map_[data_id] = cnt++;
       for (int i = 0; i < dim_; ++i) {
         float tmp;
-        fscanf(file_, "%f", &tmp);
+        utils::Check(fscanf(file_, "%f", &tmp) == 1,
+                     "AttachTxt: data do not match dimension specified");
         all_data_.push_back(tmp);
       }
     }
