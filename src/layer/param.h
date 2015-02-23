@@ -88,7 +88,7 @@ struct LayerParam {
       if (!strcmp(val, "gaussian")) random_type = 0;
       else if (!strcmp(val, "uniform")) random_type = 1;
       else if (!strcmp(val, "xavier")) random_type = 1;
-      else if (!strcmp(val, "sparse")) random_type = 2;
+      else if (!strcmp(val, "kaiming")) random_type = 2;
       else utils::Error("invalid random_type %s", val);
       // 3: mshadow binary file
     }
@@ -124,27 +124,15 @@ struct LayerParam {
       if (init_uniform > 0) a = init_uniform;
       prng->SampleUniform(&mat, -a, a);
     } else if (random_type == 2) {
-      // sparse initalization
-      real_t a = sqrt(3.0f / (in_num + out_num));
-      int rej = 0;
-      utils::Check(dim == 2, "Sparse init only support 2 dim");
-      std::vector<real_t> tmp(mat.MSize(), 0.0f);
-      mshadow::Tensor<cpu, dim> cpu_mat(&tmp[0], mat.shape_);
-      for (int i = 0; i < init_sparse; ++i) {
-        int j = i;
-        int idx = utils::NextUInt32(in_num);
-        int loc = j * mat.stride_ + idx;
-        while (tmp[loc] > 0.0f) {
-          rej++;
-
-          idx = utils::NextUInt32(in_num);
-          if (rej > 10) j = utils::NextUInt32(out_num);
-          if (rej > 20) break;
-        }
-        tmp[loc] = (utils::NextDouble() > 0.5f ? 1.0f : -1.0f) * \
-            a * static_cast<float>(utils::NextDouble());
+      // kaiming initalization
+      float sigma = 0.01;
+      if (num_hidden > 0) {
+        sigma = sqrt(2.0f / num_hidden);
+      } else {
+        sigma = sqrt(2.0f / (num_channel * kernel_width * kernel_height));
       }
-      mshadow::Copy(mat, cpu_mat, mat.stream_);
+      // printf("Sigma: %f\n", sigma);
+      prng->SampleGaussian(&mat, 0.0f, sigma);
     } else if (random_type == 3) {
       // mshadow::utils::LoadBinary(fi, mat, false);
     }

@@ -6,6 +6,7 @@
 #include <jpeglib.h>
 #include <setjmp.h>
 #include <jerror.h>
+#include <mshadow/tensor.h>
 #include "./utils.h"
 
 namespace cxxnet {
@@ -13,28 +14,22 @@ namespace utils {
 
 struct JpegDecoder {
 public:
-  JpegDecoder() : init(false) {}
-  ~JpegDecoder() {
-    if (init) jpeg_destroy_decompress(&cinfo);
+  JpegDecoder() {
+    cinfo.err = jpeg_std_error(&jerr.base);
+    jerr.base.error_exit = jerror_exit;
+    jerr.base.output_message = joutput_message;
+    jpeg_create_decompress(&cinfo);
   }
-  void Decode(unsigned char *src, size_t sz) {
-    if (!init) {
-      init = true;
-      cinfo.err = jpeg_std_error(&jerr.base);
-      jerr.base.error_exit = jerror_exit;
-      jerr.base.output_message = joutput_message;
-      jpeg_create_decompress(&cinfo);
-    }
+  ~JpegDecoder() {
+    jpeg_destroy_decompress(&cinfo);
+  }
+  void Decode(unsigned char *src, size_t sz, mshadow::TensorContainer<mshadow::cpu, 3, unsigned char> *p_data) {
+    p_data->set_pad(false);
     this->jpeg_mem_src(&cinfo, src, sz); // for old version libjpeg
     utils::Check(jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK, "invalid jpeg header");
     utils::Check(jpeg_start_decompress(&cinfo) == true, "libjpeg error");
-    data.resize(cinfo.output_width * cinfo.output_height * cinfo.output_components);
-    JSAMPROW jptr = &(data[0]);
-    while (cinfo.output_scanline < cinfo.output_height) {
-      utils::Check(jpeg_read_scanlines(&cinfo, &jptr, 1) == true, "jpeg decoder failed");
-      jptr += cinfo.output_width * cinfo.output_components;
-    }
-    utils::Check(jpeg_finish_decompress(&cinfo) == true, "jpeg decoder failed");
+    p_data->Resize(mshadow::Shape3(cinfo.output_components, cinfo.output_height, cinfo.output_width));
+    _Decode(&((*p_data)[0][0][0]));
   }
 private:
   struct jerror_mgr {
@@ -42,11 +37,16 @@ private:
     jmp_buf jmp;
   }; // struct jerror_mgr
 private:
-  bool init;
-  std::vector<unsigned char> data;
   struct jpeg_decompress_struct cinfo;
   jerror_mgr jerr;
 private:
+  void _Decode(JSAMPROW jptr) {
+    while (cinfo.output_scanline < cinfo.output_height) {
+      utils::Check(jpeg_read_scanlines(&cinfo, &jptr, 1) == true, "jpeg decoder failed");
+      jptr += cinfo.output_width * cinfo.output_components;
+    }
+    utils::Check(jpeg_finish_decompress(&cinfo) == true, "jpeg decoder failed");
+  }
   METHODDEF(void) jerror_exit(j_common_ptr jinfo) {
     jerror_mgr* err = (jerror_mgr*)jinfo->err;
     longjmp(err->jmp, 1);
