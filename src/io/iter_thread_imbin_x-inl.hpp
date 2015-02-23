@@ -17,9 +17,8 @@ class ThreadImagePageIteratorX: public IIterator<DataInst> {
 public:
   ThreadImagePageIteratorX(void) {
     idx_ = 0;
-    fplst_ = NULL;
     silent_ = 0;
-    itr.SetParam("buffer_size", "2048");
+    itr.SetParam("buffer_size", "2");
     img_conf_prefix_ = "";
     flag_ = true;
     label_width_ = 1;
@@ -27,7 +26,6 @@ public:
     dist_worker_rank_ = 0;
   }
   virtual ~ThreadImagePageIteratorX(void) {
-    if (fplst_ != NULL) fclose(fplst_);
   }
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "image_shape")) {
@@ -63,7 +61,6 @@ public:
   }
   virtual void Init(void) {
     this->ParseImageConf();
-    fplst_  = utils::FopenCheck(path_imglst_[0].c_str(), "r");
     if (silent_ == 0) {
       if (img_conf_prefix_.length() == 0) {
         printf("ThreadImagePageIterator:image_list=%s, bin=%s\n",
@@ -79,7 +76,6 @@ public:
     itr.get_factory().path_imglst = path_imglst_;
     itr.get_factory().data_shape = shape_;
     itr.get_factory().label_shape[1] = label_width_;
-    itr.get_factory().Ready();
     itr.Init();
     this->BeforeFirst();
   }
@@ -89,7 +85,7 @@ public:
   }
   virtual bool Next(void) {
     if (!flag_) return flag_;
-    utils::Assert(flag_ = itr.Next(out_), "Can't get the first element");
+    flag_ = itr.Next(out_);
     return flag_;
   }
   virtual const DataInst &Value(void) const {
@@ -109,8 +105,6 @@ protected:
   int label_width_;
   /*! \brief silent */
   int silent_;
-  /*! \brief file pointer to list file, information file */
-  FILE *fplst_;
   /*! \brief prefix path of image binary, path to input lst */
   // format: imageid label path
   std::vector<std::string> path_imgbin_, path_imglst_;
@@ -168,7 +162,7 @@ private:
     // seq of instance index
     std::vector<int> inst_idx;
     // jpeg decoders
-    std::vector<utils::TurboDecoder> decoders;
+    std::vector<utils::JpegDecoder> decoders;
     // buffer for decoders
     std::vector<mshadow::TensorContainer<cpu, 3, unsigned char> > decoder_buf;
     // buf of data instance inner id
@@ -198,6 +192,14 @@ private:
       decoder_buf.resize(4);
     }
     inline bool Init() {
+      lst_idx.resize(path_imgbin.size());
+      for (unsigned int i = 0; i < path_imgbin.size(); ++i) {
+        lst_idx[i] = i;
+      }
+      // shuffle lst_idx
+      fi.Open(path_imgbin[lst_idx[idx]].c_str(), "rb");
+      fp = utils::FopenCheck(path_imglst[lst_idx[idx]].c_str(), "r");
+      didx = -1;
       return true;
     }
     inline void SetParam(const char *name, const char *val) {}
@@ -239,17 +241,6 @@ private:
       return true;
     }
 
-    inline void Ready() {
-      lst_idx.resize(path_imgbin.size());
-      for (unsigned int i = 0; i < path_imgbin.size(); ++i) {
-        lst_idx[i] = i;
-      }
-      // shuffle lst_idx
-      fi.Open(path_imgbin[lst_idx[idx]].c_str(), "rb");
-      fp = utils::FopenCheck(path_imglst[lst_idx[idx]].c_str(), "r");
-      this->FillBuf();
-      didx = 0;
-    }
     inline bool LoadNext(DataInst &val) {
       if (!flag) return flag;
       if (didx == -1 || didx >= static_cast<int>(data_buf.size(0))) {
@@ -272,7 +263,7 @@ private:
         }
       } else {
         val.index = inst_idx[didx];
-        mshadow::Copy(val.data, data_buf[didx], data_buf.stream_);
+        val.data = mshadow::expr::tcast<float>(data_buf[didx]);
         mshadow::Copy(val.label, label_buf[didx++]);
         return true;
       }
@@ -298,13 +289,13 @@ private:
       if (path_imgbin.size() == 1) {
         fi.Seek(0);
         if (fp) fclose(fp);
-        utils::FopenCheck(path_imglst[lst_idx[idx]].c_str(), "r");
+        fp = utils::FopenCheck(path_imglst[lst_idx[idx]].c_str(), "r");
       } else {
         // shuffle lst_idx
         fi.Close();
         fi.Open(path_imgbin[lst_idx[idx]].c_str(), "rb");
         if (fp) fclose(fp);
-        utils::FopenCheck(path_imglst[lst_idx[idx]].c_str(), "r");
+        fp = utils::FopenCheck(path_imglst[lst_idx[idx]].c_str(), "r");
       }
       flag = true;
       idx = 0;
