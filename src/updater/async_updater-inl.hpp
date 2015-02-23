@@ -28,6 +28,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     total_batch_size = 0;
     pull_at_backprop = 1;
     update_on_server = 0;
+    init_on_worker = 0;
     test_on_server = 0;
     bigarray_bound = 1000 * 1000;
     pull_not_issued = false;
@@ -46,7 +47,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
         pserver->SetParam(name, "gather");
       }
       pserver->InitKey(dw.shape_, data_key, devid);
-      if (test_on_server != 0) {
+      if (test_on_server != 0|| init_on_worker != 0) {
         pserver->SetWeight_(w.FlatTo2D(), data_key, devid);
       }
       // pull back weight directly if update on server
@@ -177,6 +178,9 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
     if (!strcmp(name, "test_on_server")) {
       test_on_server = atoi(val);
     }
+    if (!strcmp(name, "init_on_worker")) {
+      init_on_worker = atoi(val);
+    }
   }
   virtual void ApplyVisitor(typename IUpdater<xpu>::IVisitor *pvisitor) {
     updater->ApplyVisitor(pvisitor);
@@ -232,6 +236,8 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   int update_on_server;
   // perform test on server side
   int test_on_server;
+  // perform init on slave side
+  int init_on_worker;
   // the following data structure are used to support fullc_gather
   // use gather update for fullc layer
   int fullc_gather;
