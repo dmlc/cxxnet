@@ -1,6 +1,6 @@
 #Document Home
 
-This is the documentation for cxxnet.
+This is the documentation for cxxnet, a 
 
 ### Configuration file structure
 
@@ -18,6 +18,7 @@ layer_settings
 netconfig=end
 
 updater_settings
+global_setting
 
 ```
 
@@ -36,4 +37,7 @@ To understand more about cxxnet setting, this section will introduce all paramet
   - Configure network, and setup each layers.
 
 * [Updater Setting](updater.md)
-  -  Set parameters(learning rate, momentum) for learning procedure
+  - Set parameters(learning rate, momentum) for learning procedure
+
+* [Global Setting](global.md)
+  - Set global parameters for neural network, related to device selection, running control.
