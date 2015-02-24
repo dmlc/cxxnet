@@ -17,20 +17,19 @@ namespace utils {
 
 struct JpegDecoder {
 public:
-  JpegDecoder():init(false) {}
-
-  ~JpegDecoder() {
-    if (init) jpeg_destroy_decompress(&cinfo);
+  JpegDecoder(void) {
+    cinfo.err = jpeg_std_error(&jerr.base);
+    jerr.base.error_exit = jerror_exit;
+    jerr.base.output_message = joutput_message;
+    jpeg_create_decompress(&cinfo);
   }
 
-  inline void Decode(unsigned char *ptr, size_t sz, mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
-    if (!init) {
-      init = true;
-      cinfo.err = jpeg_std_error(&jerr.base);
-      jerr.base.error_exit = jerror_exit;
-      jerr.base.output_message = joutput_message;
-      jpeg_create_decompress(&cinfo);
-    }
+  ~JpegDecoder() {
+    jpeg_destroy_decompress(&cinfo);
+  }
+
+  inline void Decode(unsigned char *ptr, size_t sz,
+                     mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
     // assert(setjmp(jerr.jmp) == true);
     this->jpeg_mem_src(&cinfo, ptr, sz);
     assert(jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK);
@@ -94,7 +93,6 @@ private:
   jerror_mgr jerr;
   JSAMPARRAY buffer;
   int row_stride;
-  bool init;
 };
 
 #if CXXNET_USE_OPENCV
@@ -109,9 +107,9 @@ struct OpenCVDecoder {
       for (int x = 0; x < res.cols; ++x) {
         cv::Vec3b bgr = res.at<cv::Vec3b>(y, x);
         // store in RGB order
-        (*p_data)[y][x][0] = bgr[0];
+        (*p_data)[y][x][2] = bgr[0];
         (*p_data)[y][x][1] = bgr[1];
-        (*p_data)[y][x][2] = bgr[2];
+        (*p_data)[y][x][0] = bgr[2];
       }
     }
     res.release();

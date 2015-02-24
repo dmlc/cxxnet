@@ -43,7 +43,6 @@ public:
     unsigned index;
     while (fscanf(fplst_, "%u", &index) == 1) {
       index_list_.push_back(index);
-      mshadow::Tensor<cpu, 1> label = mshadow::NewTensor<cpu>(mshadow::Shape1(label_width_), 0.0f);
       for (int i = 0; i < label_width_; ++i) {
         float tmp;
         utils::Check(fscanf(fplst_, "%f", &tmp) == 1,
