@@ -27,7 +27,7 @@ Sample configuration files can be found at example folder
 * [AlexNet for ImageNet](../example/ImageNet)
 
 ### Parameter Setting
-To understand more about cxxnet setting, this section will introduce all parameters of cxxnet and the effect of parameters. In general, cxxnet configuration file contains 4 kinds of configurations in a single file:
+To understand more about cxxnet setting, this section will introduce all parameters of cxxnet and the effect of parameters. In general, cxxnet configuration file contains 3 kinds of configurations in a single file:
 
 * [Data Input Iterator Setting](io.md)
   - Set input data configurations.
