@@ -1,34 +1,15 @@
 #Document Home
 
-This is the documentation for cxxnet, a 
+This is the documentation for cxxnet
 
-### Configuration file structure
+### Starter Guide
 
-A common structure for network configuration file is:
+Before you start, we highly recommend you to go through the [MNIST example](../example/MNIST/). including detailed tutorial of how to make a configuration file from zero, then train a fully connected network to a [convolution network] then to MPI distributed example. There is also an example for training MNIST network with Python interface. There are also more [examples](../example) for you to have a better view of how to use cxxnet.
 
-```
-train_data_iterator_settings
 
-validation_iterator_settings
-
-netconfig=start
-layer_settings
-...
-layer_settings
-netconfig=end
-
-updater_settings
-global_setting
-
-```
-
-Sample configuration files can be found at example folder
-* [Simple MNIST network](../example/MNIST/)
-* [Kaggle Data Science Bowl Net](../example/kaggle_bowl)
-* [AlexNet for ImageNet](../example/ImageNet)
 
 ### Parameter Setting
-To understand more about cxxnet setting, this section will introduce all parameters of cxxnet and the effect of parameters. In general, cxxnet configuration file contains 3 kinds of configurations in a single file:
+To understand more about cxxnet setting, this section will introduce all parameters of cxxnet and the effect of parameters. In general, cxxnet configuration file contains 4 kinds of configurations in a single file:
 
 * [Data Input Iterator Setting](io.md)
   - Set input data configurations.
