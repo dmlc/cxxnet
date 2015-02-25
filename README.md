@@ -1,11 +1,13 @@
 cxxnet
 ======
 
-CXXNET (spelled as: C plus plus net) is a fast, concise, distributed deep learning framework.
+CXXNET is a fast, concise, distributed deep learning framework.
 
 Contributors: https://github.com/antinucleon/cxxnet/graphs/contributors
 
-[Documentation and Tutorial](doc)
+* [Documentation](doc)
+* [Learning to use cxxnet by examples](example)
+* User Group(TODO)
 
 Feature Highlights
 =====
