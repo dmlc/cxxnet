@@ -8,6 +8,7 @@
 #include <jerror.h>
 #include <mshadow/tensor.h>
 #include "./utils.h"
+#include "assert.h"
 #if CXXNET_USE_OPENCV
   #include <opencv2/opencv.hpp>
 #endif
@@ -18,19 +19,26 @@ namespace utils {
 struct JpegDecoder {
 public:
   JpegDecoder(void) {
-    cinfo.err = jpeg_std_error(&jerr.base);
-    jerr.base.error_exit = jerror_exit;
-    jerr.base.output_message = joutput_message;
-    jpeg_create_decompress(&cinfo);
+    init = false;
   }
 
   ~JpegDecoder() {
-    jpeg_destroy_decompress(&cinfo);
+    if (init) jpeg_destroy_decompress(&cinfo);
   }
 
   inline void Decode(unsigned char *ptr, size_t sz,
                      mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
-    // assert(setjmp(jerr.jmp) == true);
+    if (!init) {
+      init = true;
+      cinfo.err = jpeg_std_error(&jerr.base);
+      jerr.base.error_exit = jerror_exit;
+      jerr.base.output_message = joutput_message;
+      jpeg_create_decompress(&cinfo);
+    }
+    if(setjmp(jerr.jmp)) {
+      jpeg_destroy_decompress(&cinfo);
+      utils::Error("Libjpeg fail to decode");
+    }
     this->jpeg_mem_src(&cinfo, ptr, sz);
     assert(jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK);
     assert(jpeg_start_decompress(&cinfo) == true);
@@ -55,44 +63,50 @@ private:
 
   METHODDEF(void) joutput_message(j_common_ptr) {}
 
-  static void init_source (j_decompress_ptr cinfo) {}
-
-  static boolean fill_input_buffer (j_decompress_ptr cinfo) {
+  static boolean mem_fill_input_buffer (j_decompress_ptr cinfo) {
+    #ifdef PROCESS_TRUNCATED_IMAGES
+    jpeg_source_mgr* src = cinfo->src;
+    static const JOCTET EOI_BUFFER[ 2 ] = { (JOCTET)0xFF, (JOCTET)JPEG_EOI };
+    src->next_input_byte = EOI_BUFFER;
+    src->bytes_in_buffer = sizeof( EOI_BUFFER );
+    #else
     ERREXIT(cinfo, JERR_INPUT_EMPTY);
+    #endif
     return true;
   }
 
-  static void skip_input_data (j_decompress_ptr cinfo, long num_bytes) {
+  static void mem_skip_input_data (j_decompress_ptr cinfo, long num_bytes) {
     struct jpeg_source_mgr* src = (struct jpeg_source_mgr*) cinfo->src;
     if (num_bytes > 0) {
       src->next_input_byte += (size_t) num_bytes;
       src->bytes_in_buffer -= (size_t) num_bytes;
     }
+    #ifdef PROCESS_TRUNCATED_IMAGES
+    src->bytes_in_buffer = 0;
+    #else
+    ERREXIT( cinfo, JERR_INPUT_EOF );
+    #endif
   }
 
-  static void term_source (j_decompress_ptr cinfo) {}
+  static void mem_term_source (j_decompress_ptr cinfo) {}
+  static void mem_init_source (j_decompress_ptr cinfo) {}
 
-  static void jpeg_mem_src (j_decompress_ptr cinfo, void* buffer, long nbytes) {
-    struct jpeg_source_mgr* src;
-    if (cinfo->src == NULL) {
-      cinfo->src = (struct jpeg_source_mgr *)
-        (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
-                                    sizeof(struct jpeg_source_mgr));
-    }
-    src = (struct jpeg_source_mgr*) cinfo->src;
-    src->init_source = init_source;
-    src->fill_input_buffer = fill_input_buffer;
-    src->skip_input_data = skip_input_data;
-    src->resync_to_restart = jpeg_resync_to_restart;
-    src->term_source = term_source;
-    src->bytes_in_buffer = nbytes;
-    src->next_input_byte = (JOCTET*)buffer;
+  void jpeg_mem_src (j_decompress_ptr cinfo, void* buffer, long nbytes) {
+    src.init_source = mem_init_source;
+    src.fill_input_buffer = mem_fill_input_buffer;
+    src.skip_input_data = mem_skip_input_data;
+    src.resync_to_restart = jpeg_resync_to_restart;
+    src.term_source = mem_term_source;
+    src.bytes_in_buffer = nbytes;
+    src.next_input_byte = (JOCTET*)buffer;
+    cinfo->src = &src;
   }
 private:
   struct jpeg_decompress_struct cinfo;
+  jpeg_source_mgr src;
   jerror_mgr jerr;
   JSAMPARRAY buffer;
-  int row_stride;
+  bool init;
 };
 
 #if CXXNET_USE_OPENCV

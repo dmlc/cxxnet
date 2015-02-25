@@ -7,9 +7,11 @@
  */
 #include "data.h"
 #include <cstdlib>
+#include <omp.h>
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
 #include "../utils/decoder.h"
+#include "../utils/global_random.h"
 
 namespace cxxnet {
 /*! \brief thread buffer iterator */
@@ -155,6 +157,8 @@ private:
     std::vector<std::string> path_imglst;
     // seq of list index
     std::vector<int> list_order;
+    // seq of inst index
+    std::vector<int> inst_order;
     // jpeg decoders
     std::vector<utils::JpegDecoder> decoders;
     // decoded data
@@ -171,21 +175,26 @@ private:
     int nthread;
     // file ptr for list
     FILE *fplist;
-
+    // shuffle
+    int shuffle;
   public:
     Factory(void) {
-      nthread = 1;
+      nthread = 3;
       label_width_ = 1;
       list_ptr = 0;
       data_ptr = 0;
       fplist = NULL;
+      shuffle = 0;
       decoders.resize(nthread);
     }
     inline bool Init(void) {
       list_order.resize(path_imgbin.size());
       for (size_t i = 0; i < path_imgbin.size(); ++i) {
         list_order[i] = i;
-      }      
+      }
+      if (shuffle) {
+        utils::Shuffle(list_order);
+      }
       // load in data
       list_ptr = 0;
       fi.Open(path_imgbin[list_order[0]].c_str(), "rb");
@@ -199,7 +208,10 @@ private:
       if (!strcmp(name, "label_width")) {
         label_width_ = atoi(val);
       }
-    }    
+      if (!strcmp(name, "shuffle")) {
+        shuffle = atoi(val);
+      }
+    }
     inline bool FillBuffer(void) {
       bool res = page.Load(fi);
       if (!res) return res;
@@ -207,11 +219,19 @@ private:
       entry.resize(std::max(entry.size(),
                             static_cast<size_t>(page.Size())),
                    CacheEntry(label_width_, data_shape));
+      if (shuffle) {
+        inst_order.resize(std::max(entry.size(),
+                                   static_cast<size_t>(page.Size())));
+        for (size_t i = 0; i < inst_order.size(); ++i) {
+          inst_order[i] = i;
+        }
+        utils::Shuffle(inst_order);
+      }
       // omp here
-      //#pragma omp parallel for num_threads(nthread)
-      for (int i = 0; i < page.Size(); ++i) {        
+      #pragma omp parallel for num_threads(nthread)
+      for (int i = 0; i < page.Size(); ++i) {
         utils::BinaryPage::Obj obj = page[i];
-        const int tid = 0; // omp here
+        const int tid = omp_get_thread_num();
         decoders[tid].Decode(static_cast<unsigned char*>(obj.dptr),
                              obj.sz,
                              &entry[i].img);
@@ -234,7 +254,7 @@ private:
     }
     inline DataInst Create(void) {
       DataInst a;
-      a.data.shape_ = data_shape;
+      a.data.shape_ = mshadow::Shape3(3, data_shape[1], data_shape[0]);
       a.label.shape_ = mshadow::Shape1(label_width_);
       mshadow::AllocSpace(&a.data, false);
       mshadow::AllocSpace(&a.label, false);
@@ -259,9 +279,20 @@ private:
           using namespace mshadow::expr;
           val.index = entry[data_ptr].inst_index;
           mshadow::Copy(val.label, entry[data_ptr].label);
-          utils::Check(val.data.shape_ == entry[data_ptr].img.shape_,
+          utils::Check(val.data.shape_[2] == entry[data_ptr].img.shape_[0] &&
+                       val.data.shape_[1] == entry[data_ptr].img.shape_[1],
                        "all the images in the bin must have same shape");
-          val.data = tcast<real_t>(swapaxis<2, 0>(entry[data_ptr].img));
+          if (entry[data_ptr].img.shape_[2] == 3) {
+            val.data = tcast<real_t>(swapaxis<2, 0>(entry[data_ptr].img));
+          } else {
+            for (unsigned int i = 0; i < entry[data_ptr].img.size(1); ++i) {
+              for (unsigned int j = 0; j < entry[data_ptr].img.size(0); ++j) {
+                val.data[0][i][j] = static_cast<real_t>(entry[data_ptr].img[j][i][0]);
+                val.data[1][i][j] = static_cast<real_t>(entry[data_ptr].img[j][i][0]);
+                val.data[2][i][j] = static_cast<real_t>(entry[data_ptr].img[j][i][0]);
+              }
+            }
+          }
           data_ptr += 1;
           return true;
         }
@@ -277,7 +308,9 @@ private:
         fi.Seek(0);
         fseek(fplist, 0, SEEK_SET);
       } else {
-        // shuffle lst_idx
+        if (shuffle) {
+          utils::Shuffle(list_order);
+        }
         fi.Close();
         fi.Open(path_imgbin[list_order[0]].c_str(), "rb");
         if (fplist != NULL) fclose(fplist);
