@@ -1,7 +1,7 @@
 cxxnet
 ======
 
-CXXNET (spelled as: C plus plus net) is a ***fast*** and ***concise*** ***distributed*** deep learning framework.
+CXXNET (spelled as: C plus plus net) is a fast, concise, distributed deep learning framework.
 
 Contributors: https://github.com/antinucleon/cxxnet/graphs/contributors
 
@@ -21,9 +21,8 @@ Feature Highlights
   - mshadow will generate high performance CUDA and CPU code for users
   - It brings concise and readable code, with performance matching hand crafted kernels
 
-Backbone Library
-=====
-cxxnet is build on [MShadow: Lightweight CPU/GPU Tensor Template Library](https://github.com/tqchen/mshadow)
+### Backbone Library
+CXXNET is built on [MShadow: Lightweight CPU/GPU Tensor Template Library](https://github.com/tqchen/mshadow)
 * MShadow is an efficient, device invariant and simple tensor library
   - MShadow allows user to write expressions for machine learning while still provides 
   - This means developer do not need to have knowledge on CUDA kernels to extend cxxnet.
