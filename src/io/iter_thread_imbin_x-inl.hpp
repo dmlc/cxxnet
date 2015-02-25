@@ -19,7 +19,7 @@ class ThreadImagePageIteratorX: public IIterator<DataInst> {
 public:
   ThreadImagePageIteratorX(void) {
     silent_ = 0;
-    itr.SetParam("buffer_size", "2048");
+    itr.SetParam("buffer_size", "512");
     img_conf_prefix_ = "";
     dist_num_worker_ = 0;
     dist_worker_rank_ = 0;
@@ -160,7 +160,7 @@ private:
     // seq of inst index
     std::vector<int> inst_order;
     // jpeg decoders
-    std::vector<utils::JpegDecoder> decoders;
+    std::vector<utils::JpegDecoder*> decoders;
     // decoded data
     std::vector<CacheEntry> entry;
     // image shape
@@ -185,7 +185,14 @@ private:
       data_ptr = 0;
       fplist = NULL;
       shuffle = 0;
-      decoders.resize(nthread);
+      for (int i = 0; i < nthread; ++i) {
+	decoders.push_back(new utils::JpegDecoder());
+      }
+    }
+    ~Factory() {
+      for (int  i = 0; i < nthread; ++i) {
+	delete decoders[i];       
+      }
     }
     inline bool Init(void) {
       list_order.resize(path_imgbin.size());
@@ -217,8 +224,7 @@ private:
       if (!res) return res;
       // always keep entry to maximum size to avoid re-allocation
       entry.resize(std::max(entry.size(),
-                            static_cast<size_t>(page.Size())),
-                   CacheEntry(label_width_, data_shape));
+                            static_cast<size_t>(page.Size())));
       if (shuffle) {
         inst_order.resize(std::max(entry.size(),
                                    static_cast<size_t>(page.Size())));
@@ -232,9 +238,9 @@ private:
       for (int i = 0; i < page.Size(); ++i) {
         utils::BinaryPage::Obj obj = page[i];
         const int tid = omp_get_thread_num();
-        decoders[tid].Decode(static_cast<unsigned char*>(obj.dptr),
-                             obj.sz,
-                             &entry[i].img);
+        decoders[tid]->Decode(static_cast<unsigned char*>(obj.dptr),
+			      obj.sz,
+			      &entry[i].img);
       }
       for (int i = 0; i < page.Size(); ++i) {
         utils::Check(fscanf(fplist, "%u", &entry[i].inst_index) == 1,
@@ -325,4 +331,3 @@ protected:
 }; // class ThreadImagePageIterator
 }; // namespace cxxnet
 #endif
-

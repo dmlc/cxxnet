@@ -19,22 +19,18 @@ namespace utils {
 struct JpegDecoder {
 public:
   JpegDecoder(void) {
-    init = false;
+    cinfo.err = jpeg_std_error(&jerr.base);
+    jerr.base.error_exit = jerror_exit;
+    jerr.base.output_message = joutput_message;
+    jpeg_create_decompress(&cinfo);
   }
-
-  ~JpegDecoder() {
-    if (init) jpeg_destroy_decompress(&cinfo);
+  // destructor
+  ~JpegDecoder(void) {
+    jpeg_destroy_decompress(&cinfo);
   }
 
   inline void Decode(unsigned char *ptr, size_t sz,
                      mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
-    if (!init) {
-      init = true;
-      cinfo.err = jpeg_std_error(&jerr.base);
-      jerr.base.error_exit = jerror_exit;
-      jerr.base.output_message = joutput_message;
-      jpeg_create_decompress(&cinfo);
-    }
     if(setjmp(jerr.jmp)) {
       jpeg_destroy_decompress(&cinfo);
       utils::Error("Libjpeg fail to decode");
@@ -63,55 +59,53 @@ private:
 
   METHODDEF(void) joutput_message(j_common_ptr) {}
 
-  static boolean mem_fill_input_buffer (j_decompress_ptr cinfo) {
-    #ifdef PROCESS_TRUNCATED_IMAGES
-    jpeg_source_mgr* src = cinfo->src;
-    static const JOCTET EOI_BUFFER[ 2 ] = { (JOCTET)0xFF, (JOCTET)JPEG_EOI };
-    src->next_input_byte = EOI_BUFFER;
-    src->bytes_in_buffer = sizeof( EOI_BUFFER );
-    #else
-    ERREXIT(cinfo, JERR_INPUT_EMPTY);
-    #endif
+  static boolean mem_fill_input_buffer_ (j_decompress_ptr cinfo) {
+    utils::Error("JpegDecoder: bad jpeg image");
     return true;
   }
 
-  static void mem_skip_input_data (j_decompress_ptr cinfo, long num_bytes) {
-    struct jpeg_source_mgr* src = (struct jpeg_source_mgr*) cinfo->src;
+  static void mem_skip_input_data_ (j_decompress_ptr cinfo, long num_bytes_) {
+    jpeg_source_mgr *src = cinfo->src;
+    size_t num_bytes = static_cast<size_t>(num_bytes_);
     if (num_bytes > 0) {
-      src->next_input_byte += (size_t) num_bytes;
-      src->bytes_in_buffer -= (size_t) num_bytes;
+      src->next_input_byte += num_bytes;
+      utils::Assert(src->bytes_in_buffer >= num_bytes,
+		    "fail to decode");
+      src->bytes_in_buffer -= num_bytes;
+    } else {
+      utils::Error("JpegDecoder: bad jpeg image");
+
     }
-    #ifdef PROCESS_TRUNCATED_IMAGES
-    src->bytes_in_buffer = 0;
-    #else
-    ERREXIT( cinfo, JERR_INPUT_EOF );
-    #endif
   }
 
-  static void mem_term_source (j_decompress_ptr cinfo) {}
-  static void mem_init_source (j_decompress_ptr cinfo) {}
-
+  static void mem_term_source_ (j_decompress_ptr cinfo) {}
+  static void mem_init_source_ (j_decompress_ptr cinfo) {}
+  static boolean jpeg_resync_to_restart_(j_decompress_ptr cinfo, int desired) {
+    utils::Error("JpegDecoder: bad jpeg image");    
+    return true;
+  }
   void jpeg_mem_src (j_decompress_ptr cinfo, void* buffer, long nbytes) {
-    src.init_source = mem_init_source;
-    src.fill_input_buffer = mem_fill_input_buffer;
-    src.skip_input_data = mem_skip_input_data;
-    src.resync_to_restart = jpeg_resync_to_restart;
-    src.term_source = mem_term_source;
+    src.init_source = mem_init_source_;
+    src.fill_input_buffer = mem_fill_input_buffer_;
+    src.skip_input_data = mem_skip_input_data_;
+    src.resync_to_restart = jpeg_resync_to_restart_;
+    src.term_source = mem_term_source_;
     src.bytes_in_buffer = nbytes;
-    src.next_input_byte = (JOCTET*)buffer;
+    src.next_input_byte = static_cast<JOCTET*>(buffer);
     cinfo->src = &src;
   }
+
 private:
-  struct jpeg_decompress_struct cinfo;
+  jpeg_decompress_struct cinfo;
   jpeg_source_mgr src;
   jerror_mgr jerr;
   JSAMPARRAY buffer;
-  bool init;
 };
 
 #if CXXNET_USE_OPENCV
 struct OpenCVDecoder {
   void Decode(unsigned char *ptr, size_t sz, mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
+    // can be improved without memcpy buf
     buf.resize(sz);
     memcpy(&buf[0], ptr, sz);
     cv::Mat res = cv::imdecode(buf, 1);

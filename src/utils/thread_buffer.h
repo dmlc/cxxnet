@@ -41,6 +41,8 @@ class ThreadBuffer {
    */
   inline bool Init(void) {
     if (!factory.Init()) return false;
+    bufA.reserve(buf_size);
+    bufB.reserve(buf_size);
     for (int i = 0; i < buf_size; ++i) {
       bufA.push_back(factory.Create());
       bufB.push_back(factory.Create());
