@@ -22,7 +22,6 @@
 #include "./xelu_layer-inl.hpp"
 #include "./insanity_layer-inl.hpp"
 #include "./insanity_pooling_layer-inl.hpp"
-#include "./maxout_layer-inl.hpp"
 #include "./prelu_layer-inl.hpp"
 #include "./batch_norm_layer-inl.hpp"
 #include "./loss/softmax_layer-inl.hpp"
@@ -63,7 +62,6 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kXelu: return new XeluLayer<xpu>();
     case kInsanity: return new InsanityLayer<xpu>(p_rnd);
     case kInsanityPooling: return new InsanityPoolingLayer<mshadow::red::maximum, kMaxPooling, xpu>(p_rnd);
-    case kMaxout: return new MaxoutLayer<mshadow::red::maximum, xpu>();
     case kPRelu: return new PReluLayer<xpu>(p_rnd);
     case kBatchNorm: return new BatchNormLayer<xpu>(p_rnd);
     case kL2Loss: return new L2LossLayer<xpu>(label_info);
