@@ -87,7 +87,7 @@ public:
   }
   virtual bool Next(void) {
     if (!this->Next_()) return false;
-    if (name_meanimg_.length() == 0) {
+    if (name_meanimg_.length() != 0) {
       img_ -= meanimg_;
     }    
     return true;
