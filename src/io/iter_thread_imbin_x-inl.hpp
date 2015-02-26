@@ -322,7 +322,7 @@ private:
                          obj.sz, &img);
           val->img.Resize(mshadow::Shape3(3, img.size(0), img.size(1)));         
           // assign image
-          if (img.size(0) == 3) {
+          if (img.size(2) == 3) {
             mshadow::Tensor<cpu, 3> dst = val->img;
             for (index_t i = 0; i < img.size(0); ++i) {
               for (index_t j = 0; j < img.size(1); ++j) {
