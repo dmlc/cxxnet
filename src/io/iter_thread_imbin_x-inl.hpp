@@ -219,7 +219,8 @@ private:
               
             }
             utils::Assert(fscanf(fplist, "%*[^\n]\n") == 0, "ignore");
-          }          
+          }
+          return true;
         } else {
           list_ptr += 1;
           if (list_ptr >= list_order.size()) return false;
