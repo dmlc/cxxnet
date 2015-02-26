@@ -191,9 +191,11 @@ class CXXNetThreadTrainer : public INetTrainer {
   virtual void ExtractFeature(mshadow::TensorContainer<mshadow::cpu, 2> &preds,
     const DataBatch& batch, const std::string& node_name) {
     std::map<std::string, int>& name_map = net_cfg.node_name_map;
-    utils::Check(name_map.find(node_name) != name_map.end(),
+    if (node_name != "top") {
+      utils::Check(name_map.find(node_name) != name_map.end(),
       "ExtractFeature: Cannot find node name: %s", node_name.c_str());
-    const int node_id = name_map[node_name];
+    }
+    const int node_id = node_name == "top" ? nets_[0]->net().nodes.size() - 2: name_map[node_name];
     this->ForwardToTemp(batch, node_id);
     preds.Resize(mshadow::Shape2(out_temp.size(0),
                                  out_temp.size(1) * out_temp.size(2) * out_temp.size(3)));
