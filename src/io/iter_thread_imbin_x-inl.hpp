@@ -11,7 +11,7 @@
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
 #include "../utils/decoder.h"
-#include "../utils/global_random.h"
+#include "../utils/random.h"
 
 namespace cxxnet {
 /*! \brief thread buffer iterator */
@@ -19,7 +19,7 @@ class ThreadImagePageIteratorX: public IIterator<DataInst> {
 public:
   ThreadImagePageIteratorX(void) {
     silent_ = 0;
-    itr.SetParam("buffer_size", "512");
+    itr.SetParam("buffer_size", "2048");
     img_conf_prefix_ = "";
     dist_num_worker_ = 0;
     dist_worker_rank_ = 0;
@@ -129,6 +129,18 @@ public:
   }
 
 private:
+  struct InstEntry {
+    // insance index
+    unsigned inst_index;
+    // label of each instance
+    mshadow::TensorContainer<cpu, 1> label;
+    // image data
+    mshadow::TensorContainer<cpu, 3> img;
+    // instance entry
+    InstEntry() : label(false), img(false) {
+      
+    }
+  };
   struct Factory {
   public:
     // put everything in cache entry
@@ -177,6 +189,7 @@ private:
     FILE *fplist;
     // shuffle
     int shuffle;
+
   public:
     Factory(void) {
       nthread = 3;
@@ -185,13 +198,15 @@ private:
       data_ptr = 0;
       fplist = NULL;
       shuffle = 0;
+      rnd.Seed(kRandMagic); 
+      // setup decoders
       for (int i = 0; i < nthread; ++i) {
-	decoders.push_back(new utils::JpegDecoder());
+        decoders.push_back(new utils::JpegDecoder());
       }
     }
-    ~Factory() {
+    ~Factory(void) {
       for (int  i = 0; i < nthread; ++i) {
-	delete decoders[i];       
+        delete decoders[i];       
       }
     }
     inline bool Init(void) {
@@ -199,8 +214,8 @@ private:
       for (size_t i = 0; i < path_imgbin.size(); ++i) {
         list_order[i] = i;
       }
-      if (shuffle) {
-        utils::Shuffle(list_order);
+      if (shuffle != 0) {
+        rnd.Shuffle(list_order);
       }
       // load in data
       list_ptr = 0;
@@ -218,6 +233,9 @@ private:
       if (!strcmp(name, "shuffle")) {
         shuffle = atoi(val);
       }
+      if (!strcmp(name, "seed_data")) {
+        rnd.Seed(atoi(val) + kRandMagic); 
+      }
     }
     inline bool FillBuffer(void) {
       bool res = page.Load(fi);
@@ -225,22 +243,21 @@ private:
       // always keep entry to maximum size to avoid re-allocation
       entry.resize(std::max(entry.size(),
                             static_cast<size_t>(page.Size())));
-      if (shuffle) {
-        inst_order.resize(std::max(entry.size(),
-                                   static_cast<size_t>(page.Size())));
-        for (size_t i = 0; i < inst_order.size(); ++i) {
+      if (shuffle != 0) {
+        inst_order.resize(page.Size());
+        for (int i = 0; i < page.Size(); ++i) {
           inst_order[i] = i;
         }
-        utils::Shuffle(inst_order);
+        rnd.Shuffle(inst_order);
       }
       // omp here
       #pragma omp parallel for num_threads(nthread)
       for (int i = 0; i < page.Size(); ++i) {
-        utils::BinaryPage::Obj obj = page[i];
+        utils::BinaryPage::Obj obj = (shuffle != 0) ? page[inst_order[i]] : page[i];
         const int tid = omp_get_thread_num();
         decoders[tid]->Decode(static_cast<unsigned char*>(obj.dptr),
-			      obj.sz,
-			      &entry[i].img);
+                              obj.sz,
+                              &entry[i].img);
       }
       for (int i = 0; i < page.Size(); ++i) {
         utils::Check(fscanf(fplist, "%u", &entry[i].inst_index) == 1,
@@ -314,8 +331,8 @@ private:
         fi.Seek(0);
         fseek(fplist, 0, SEEK_SET);
       } else {
-        if (shuffle) {
-          utils::Shuffle(list_order);
+        if (shuffle != 0) {
+          rnd.Shuffle(list_order);
         }
         fi.Close();
         fi.Open(path_imgbin[list_order[0]].c_str(), "rb");
@@ -324,6 +341,10 @@ private:
       }
       utils::Check(this->FillBuffer(), "the first bin was empty");
     }
+
+   private:
+    utils::RandomSampler rnd;
+    static const int kRandMagic = 111;
   };
 
 protected:

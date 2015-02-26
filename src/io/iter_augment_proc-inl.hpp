@@ -9,42 +9,34 @@
 #include "data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
-#include "../utils/global_random.h"
+#include "../utils/random.h"
 #include "../utils/thread_buffer.h"
 
 #if CXXNET_USE_OPENCV
-#include <opencv2/opencv.hpp>
+#include "./image_augmenter-inl.hpp"
 #endif
 
 namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
 class AugmentIterator: public IIterator<DataInst> {
 public:
-  AugmentIterator(IIterator<DataInst> *base): base_(base) {
+  AugmentIterator(IIterator<DataInst> *base) 
+      : base_(base) {
     rand_crop_ = 0;
     rand_mirror_ = 0;
-    // skip read, used for debug
-    test_skipread_ = 0;
+    crop_y_start_ = -1;
+    crop_x_start_ = -1;
     // scale data
     scale_ = 1.0f;
-    // number of overflow instances that readed in round_batch mode
-    num_overflow_ = 0;
     // silent
     silent_ = 0;
     // by default, not mean image file
     name_meanimg_ = "";
-    crop_y_start_ = -1;
-    crop_x_start_ = -1;
-    max_rotate_angle_ = 0.0f;
-    max_aspect_ratio_ = 0.0f;
-    max_shear_ratio_ = 0.0f;
-    min_crop_size_ = -1;
-    max_crop_size_ = -1;
     mean_r_ = 0.0f;
     mean_g_ = 0.0f;
     mean_b_ = 0.0f;
     mirror_ = 0;
-    rotate_ = -1.0f;
+    rnd.Seed(kRandMagic);
   }
   virtual ~AugmentIterator(void) {
     delete base_;
@@ -52,43 +44,30 @@ public:
   virtual void SetParam(const char *name, const char *val) {
     base_->SetParam(name, val);
     if (!strcmp(name, "input_shape")) {
-      utils::Assert(sscanf(val, "%u,%u,%u", &shape_[0], &shape_[1], &shape_[2]) == 3,
-                    "input_shape must be three consecutive integers without space example: 1,1,200 ");
+      utils::Check(sscanf(val, "%u,%u,%u", &shape_[0], &shape_[1], &shape_[2]) == 3,
+                   "input_shape must be three consecutive integers without space example: 1,1,200 ");
     }
-    if (!strcmp(name, "rand_crop"))   rand_crop_ = atoi(val);
-    if (!strcmp(name, "crop_y_start"))  crop_y_start_ = atoi(val);
-    if (!strcmp(name, "crop_x_start"))  crop_x_start_ = atoi(val);
+    if (!strcmp(name, "seed_data")) rnd.Seed(kRandMagic + atoi(val));
+    if (!strcmp(name, "rand_crop")) rand_crop_ = atoi(val);
+    if (!strcmp(name, "silent")) silent_ = atoi(val);
+    if (!strcmp(name, "divideby")) scale_ = static_cast<real_t>(1.0f / atof(val));
+    if (!strcmp(name, "scale")) scale_ = static_cast<real_t>(atof(val));
+    if (!strcmp(name, "image_mean")) name_meanimg_ = val;
+    if (!strcmp(name, "crop_y_start")) crop_y_start_ = atoi(val);
+    if (!strcmp(name, "crop_x_start")) crop_x_start_ = atoi(val);
     if (!strcmp(name, "rand_mirror")) rand_mirror_ = atoi(val);
-    if (!strcmp(name, "silent"))      silent_ = atoi(val);
-    if (!strcmp(name, "divideby"))    scale_ = static_cast<real_t>(1.0f / atof(val));
-    if (!strcmp(name, "scale"))       scale_ = static_cast<real_t>(atof(val));
-    if (!strcmp(name, "image_mean"))   name_meanimg_ = val;
-    if (!strcmp(name, "max_rotate_angle")) max_rotate_angle_ = atof(val);
-    if (!strcmp(name, "max_shear_ratio"))  max_shear_ratio_ = atof(val);
-    if (!strcmp(name, "max_aspect_ratio"))  max_aspect_ratio_ = atof(val);
-    if (!strcmp(name, "test_skipread"))    test_skipread_ = atoi(val);
-    if (!strcmp(name, "min_crop_size"))     min_crop_size_ = atoi(val);
-    if (!strcmp(name, "max_crop_size"))     max_crop_size_ = atoi(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
-    if (!strcmp(name, "rotate")) rotate_ = atoi(val);
-    if (!strcmp(name, "rotate_list")) {
-      const char *end = val + strlen(val);
-      char buf[128];
-      while (val < end) {
-        sscanf(val, "%[^,]", buf);
-        val += strlen(buf) + 1;
-        rotate_list_.push_back(atoi(buf));
-      }
-    }
     if (!strcmp(name, "mean_value")) {
-      utils::Assert(sscanf(val, "%f,%f,%f", &mean_b_, &mean_g_, &mean_r_) == 3,
-                    "mean value must be three consecutive float without space example: 128,127.5,128.2 ");
+      utils::Check(sscanf(val, "%f,%f,%f", &mean_b_, &mean_g_, &mean_r_) == 3,
+                   "mean value must be three consecutive float without space example: 128,127.5,128.2 ");
     }
+#if CXXNET_USE_OPENCV
+    aug.SetParam(name, val);
+#endif
   }
   virtual void Init(void) {
     base_->Init();
     printf("In augment init.\n");
-    meanfile_ready_ = false;
     if (name_meanimg_.length() != 0) {
       FILE *fi = fopen64(name_meanimg_.c_str(), "rb");
       if (fi == NULL) {
@@ -101,149 +80,76 @@ public:
         meanimg_.LoadBinary(fs);
         fclose(fi);
       }
-      meanfile_ready_ = true;
     }
   }
   virtual void BeforeFirst(void) {
     base_->BeforeFirst();
   }
   virtual bool Next(void) {
+    if (!this->Next_()) return false;
+    if (name_meanimg_.length() == 0) {
+      img_ -= meanimg_;
+    }    
+    return true;
+  }
+  virtual const DataInst &Value(void) const {
+    return out_;
+  }
+
+private:
+  inline void SetData(const DataInst &d) {
+    using namespace mshadow::expr;
+    out_.label = d.label;
+    out_.index = d.index;
+    mshadow::Tensor<cpu, 3> data = d.data;
+#if CXXNET_USE_OPENCV
+    data = aug.Process(data, &rnd);
+#endif
+
+    img_.Resize(mshadow::Shape3(data.shape_[0], shape_[1], shape_[2]));    
+    if (shape_[1] == 1) {
+      img_ = data * scale_;
+    } else {
+      utils::Assert(data.size(1) >= shape_[1] && data.size(2) >= shape_[2],
+                    "Data size must be bigger than the input size to net.");
+      mshadow::index_t yy = data.size(1) - shape_[1];
+      mshadow::index_t xx = data.size(2) - shape_[2];
+      if (rand_crop_ != 0 && (yy != 0 || xx != 0)) {
+        yy = rnd.NextUInt32(yy + 1);
+        xx = rnd.NextUInt32(xx + 1);
+      } else {
+        yy /= 2; xx /= 2;
+      }
+      if (data.size(1) != shape_[1] && crop_y_start_ != -1) {
+        yy = crop_y_start_;
+      }
+      if (data.size(2) != shape_[2] && crop_x_start_ != -1) {
+        xx = crop_x_start_;
+      }
+      if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
+        data[0] -= mean_b_; data[1] -= mean_g_; data[2] -= mean_r_;
+        if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
+          img_ = mirror(crop(data, img_[0].shape_, yy, xx)) * scale_;
+        } else {
+          img_ = crop(data, img_[0].shape_, yy, xx) * scale_ ;
+        }
+      } else {
+        if (rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) {
+          img_ = mirror(crop(data, img_[0].shape_, yy, xx)) * scale_;
+        } else {
+          img_ = crop(data, img_[0].shape_, yy, xx) * scale_ ;
+        }
+      }
+    }
+    out_.data = img_;
+  }
+  inline bool Next_(void) {
     if (!base_->Next()){
       return false;
     }
     const DataInst &d = base_->Value();
     this->SetData(d);
     return true;
-  }
-  virtual const DataInst &Value(void) const {
-    return out_;
-  }
-private:
-  inline void SetData(const DataInst &d) {
-    using namespace mshadow::expr;
-    bool cut = false;
-    out_.label = d.label;
-    out_.index = d.index;
-    img_.Resize(mshadow::Shape3(d.data.shape_[0], shape_[1], shape_[2]));
-    if (shape_[1] == 1) {
-      img_ = d.data * scale_;
-    } else {
-      utils::Assert(d.data.size(1) >= shape_[1] && d.data.size(2) >= shape_[2],
-        "Data size must be bigger than the input size to net.");
-      #if CXXNET_USE_OPENCV
-      cv::Mat res(d.data.size(1), d.data.size(2), CV_8UC3);
-      index_t out_h = d.data.size(1);
-      index_t out_w = d.data.size(2);
-      for (index_t i = 0; i < d.data.size(1); ++i) {
-        for (index_t j = 0; j < d.data.size(2); ++j) {
-          res.at<cv::Vec3b>(i, j)[0] = d.data[2][i][j];
-          res.at<cv::Vec3b>(i, j)[1] = d.data[1][i][j];
-          res.at<cv::Vec3b>(i, j)[2] = d.data[0][i][j];
-        }
-      }
-      if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
-          || rotate_ > 0 || rotate_list_.size() > 0) {
-        int angle = utils::NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
-        if (rotate_ > 0) angle = rotate_;
-        if (rotate_list_.size() > 0) angle = rotate_list_[utils::NextUInt32(rotate_list_.size() - 1)];
-        int len = std::max(res.cols, res.rows);
-        cv::Point2f pt(len / 2.0f, len / 2.0f);
-        cv::Mat M(2, 3, CV_32F);
-        float cs = cos(angle / 180.0 * M_PI);
-        float sn = sin(angle / 180.0 * M_PI);
-        float q = utils::NextDouble() * max_shear_ratio_ * 2 - max_shear_ratio_;
-        M.at<float>(0, 0) = cs;
-        M.at<float>(0, 1) = sn;
-        M.at<float>(0, 2) = (1 - cs - sn) * len / 2.0;
-        M.at<float>(1, 0) = q * cs - sn;
-        M.at<float>(1, 1) = q * sn + cs;
-        M.at<float>(1, 2) = (1 - cs + sn) * len / 2.0;
-        cv::Mat temp;
-        cv::warpAffine(res, temp, M, cv::Size(len, len),
-              cv::INTER_CUBIC,
-              cv::BORDER_CONSTANT,
-              cv::Scalar(255, 255, 255));
-        res = temp;
-      }
-      if (min_crop_size_ > 0 && max_crop_size_ > 0) {
-        int crop_size_x = utils::NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
-                                       min_crop_size_;
-        int crop_size_y = crop_size_x * (1 + utils::NextDouble() * \
-                                                      max_aspect_ratio_ * 2 - max_aspect_ratio_);
-        crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
-        mshadow::index_t y = res.rows - crop_size_y;
-        mshadow::index_t x = res.cols - crop_size_x;
-        if (rand_crop_ != 0) {
-          y = utils::NextUInt32(y + 1);
-          x = utils::NextUInt32(x + 1);
-        } else {
-          y /= 2; x /= 2;
-        }
-        if (crop_y_start_ != -1) y = crop_y_start_;
-        if (crop_x_start_ != -1) x = crop_x_start_;
-        cv::Rect roi(x, y, crop_size_x, crop_size_y);
-        res = res(roi);
-        cut = true;
-        cv::resize(res, res, cv::Size(shape_[1], shape_[2]));
-        out_h = shape_[1];
-        out_w = shape_[2];
-      }
-      for (index_t i = 0; i < out_h; ++i) {
-        for (index_t j = 0; j < out_w; ++j) {
-          cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
-          d.data[0][i][j] = bgr[2];
-          d.data[1][i][j] = bgr[1];
-          d.data[2][i][j] = bgr[0];
-        }
-      }
-      res.release();
-      #endif
-      mshadow::index_t yy = d.data.size(1) - shape_[1];
-      mshadow::index_t xx = d.data.size(2) - shape_[2];
-      if (rand_crop_ != 0) {
-        yy = utils::NextUInt32(yy + 1);
-        xx = utils::NextUInt32(xx + 1);
-      } else {
-        yy /= 2; xx /= 2;
-      }
-      if (cut) {
-        yy = 0;
-        xx = 0;
-      } else {
-        if (crop_y_start_ != -1) yy = crop_y_start_;
-        if (crop_x_start_ != -1) xx = crop_x_start_;
-      }
-      if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
-        d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
-        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || mirror_ == 1) {
-          img_ = mirror(crop(d.data, img_[0].shape_, yy, xx)) * scale_;
-        } else {
-          img_ = crop(d.data, img_[0].shape_, yy, xx) * scale_ ;
-        }
-      } else if (!meanfile_ready_ || name_meanimg_.length() == 0) {
-        if (rand_mirror_ != 0 && utils::NextDouble() < 0.5f) {
-          img_ = mirror(crop(d.data, img_[0].shape_, yy, xx)) * scale_;
-        } else {
-          img_ = crop(d.data, img_[0].shape_, yy, xx) * scale_ ;
-        }
-      } else {
-        // substract mean image
-        if ((rand_mirror_ != 0 && utils::NextDouble() < 0.5f) || mirror_ == 1) {
-          if (d.data.shape_ == meanimg_.shape_){
-            img_ = mirror(crop(d.data - meanimg_, img_[0].shape_, yy, xx)) * scale_;
-          } else {
-            img_ = mirror(crop(d.data, img_[0].shape_, yy, xx) - meanimg_) * scale_;
-          }
-        } else {
-          if (d.data.shape_ == meanimg_.shape_){
-            img_ = crop(d.data - meanimg_, img_[0].shape_, yy, xx) * scale_ ;
-          } else {
-            img_ = (crop(d.data, img_[0].shape_, yy, xx) - meanimg_) * scale_;
-          }
-        }
-      }
-    }
-    out_.data = img_;
   }
   inline void CreateMeanImg(void) {
     if (silent_ == 0) {
@@ -253,11 +159,11 @@ private:
     unsigned long elapsed = 0;
     size_t imcnt = 1;
 
-    utils::Assert(this->Next(), "input iterator failed.");
+    utils::Assert(this->Next_(), "input iterator failed.");
     meanimg_.Resize(mshadow::Shape3(shape_[0], shape_[1], shape_[2]));
-    mshadow::Copy(meanimg_, this->Value().data);
-    while (this->Next()) {
-      meanimg_ += this->Value().data; imcnt += 1;
+    mshadow::Copy(meanimg_, img_);
+    while (this->Next_()) {
+      meanimg_ += img_; imcnt += 1;
       elapsed = (long)(time(NULL) - start);
       if (imcnt % 1000 == 0 && silent_ == 0) {
         printf("\r                                                               \r");
@@ -280,53 +186,40 @@ private:
   mshadow::Shape<4> shape_;
   /*! \brief output data */
   DataInst out_;
-  /*! \brief skip read */
-  int test_skipread_;
   /*! \brief silent */
   int silent_;
   /*! \brief scale of data */
   real_t scale_;
   /*! \brief whether we do random cropping */
   int rand_crop_;
-  /*! \brief whether we do random mirroring */
-  int rand_mirror_;
   /*! \brief whether we do nonrandom croping */
   int crop_y_start_;
   /*! \brief whether we do nonrandom croping */
   int crop_x_start_;
-  /*! \brief number of overflow instances that readed in round_batch mode */
-  int num_overflow_;
+  /*! \brief whether we do random mirroring */
+  int rand_mirror_;
   /*! \brief mean image, if needed */
   mshadow::TensorContainer<cpu, 3> meanimg_;
   /*! \brief temp space */
   mshadow::TensorContainer<cpu, 3> img_;
   /*! \brief mean image file, if specified, will generate mean image file, and substract by mean */
   std::string name_meanimg_;
-  /*! \brief Indicate the max ratation angle for augmentation, we will random rotate */
-  /*! \brief [-max_rotate_angle, max_rotate_angle] */
-  int max_rotate_angle_;
-  /*! \brief max aspect ratio */
-  float max_aspect_ratio_;
-  /*! \brief random shear the image [-max_shear_ratio, max_shear_ratio] */
-  float max_shear_ratio_;
-  /*! \brief max crop size */
-  int max_crop_size_;
-  /*! \brief min crop size */
-  int min_crop_size_;
   /*! \brief mean value for r channel */
   float mean_r_;
   /*! \brief mean value for g channel */
   float mean_g_;
   /*! \brief mean value for b channel */
   float mean_b_;
-  /*! \brief whether mean file is ready */
-  bool meanfile_ready_;
   /*! \brief whether to mirror the image */
   int mirror_;
-  /*! \brief rotate angle */
-  int rotate_;
-  /*! \brief list of possible rotate angle */
-  std::vector<int> rotate_list_;
+  // augmenter
+#if CXXNET_USE_OPENCV
+  ImageAugmenter aug;
+#endif
+  // random sampler
+  utils::RandomSampler rnd;
+  // random magic number of this iterator
+  static const int kRandMagic = 0;
 };  // class AugmentIterator
 }  // namespace cxxnet
 #endif

@@ -9,12 +9,7 @@
 #include "./data.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
-#include "../utils/global_random.h"
 #include "../utils/thread_buffer.h"
-
-#if CXXNET_USE_OPENCV
-#include <opencv2/opencv.hpp>
-#endif
 
 namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */

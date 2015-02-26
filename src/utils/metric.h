@@ -10,7 +10,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
-#include "./global_random.h"
+#include "./random.h"
 #include "../layer/layer.h"
 namespace cxxnet {
 namespace utils {
@@ -146,7 +146,7 @@ struct MetricRecall : public MetricBase{
     for (index_t i = 0; i < pred.size(0); ++ i) {
       vec[i] = std::make_pair(pred[i], i);
     }
-    Shuffle(vec);
+    rnd.Shuffle(vec);
     std::sort(vec.begin(), vec.end(), CmpScore);
     int hit = 0;
     for (int i = 0; i < topn; ++ i) {
@@ -163,7 +163,9 @@ struct MetricRecall : public MetricBase{
   inline static bool CmpScore(const std::pair<float,index_t> &a, const std::pair<float,index_t> &b) {
     return a.first > b.first;
   }
+  
   std::vector< std::pair<float,index_t> > vec;
+  utils::RandomSampler rnd;
   int topn;
 };
 
