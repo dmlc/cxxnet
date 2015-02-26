@@ -8,7 +8,6 @@
  */
 #include <cstring>
 #include <string>
-#include "../utils/global_random.h"
 
 namespace cxxnet {
 namespace layer {

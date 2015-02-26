@@ -8,7 +8,7 @@
 #include <mshadow/tensor.h>
 #include "data.h"
 #include "../utils/io.h"
-#include "../utils/global_random.h"
+#include "../utils/random.h"
 
 namespace cxxnet {
 class MNISTIterator: public IIterator<DataBatch> {
@@ -19,18 +19,21 @@ class MNISTIterator: public IIterator<DataBatch> {
     inst_offset_ = 0;
     silent_ = 0;
     shuffle_ = 0;
-  }
+    rnd.Seed(kRandMagic);
+  }  
   virtual ~MNISTIterator(void) {
     if (img_.dptr_ != NULL) delete []img_.dptr_;
   }
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "silent")) silent_ = atoi(val);
-    if (!strcmp(name, "batch_size"))   batch_size_ = (index_t)atoi(val);
-    if (!strcmp(name, "input_flat"))   mode_ = atoi(val);
+    if (!strcmp(name, "batch_size")) batch_size_ = (index_t)atoi(val);
+    if (!strcmp(name, "input_flat")) mode_ = atoi(val);
     if (!strcmp(name, "shuffle")) shuffle_ = atoi(val);
     if (!strcmp(name, "index_offset")) inst_offset_ = atoi(val);
-    if (!strcmp(name, "path_img"))     path_img = val;
-    if (!strcmp(name, "path_label"))   path_label = val;
+    if (!strcmp(name, "path_img")) path_img = val;
+    if (!strcmp(name, "path_label")) path_label = val;
+    if (!strcmp(name, "path_img")) path_img = val;
+    if (!strcmp(name, "seed_data")) rnd.Seed(kRandMagic + atoi(val));
   }
   // intialize iterator loads data in
   virtual void Init(void) {
@@ -105,7 +108,7 @@ class MNISTIterator: public IIterator<DataBatch> {
     }
   }
   inline void Shuffle(void) {
-    utils::Shuffle(inst_);
+    rnd.Shuffle(inst_);
     std::vector<float> tmplabel(labels_.size());
     mshadow::TensorContainer<cpu,3> tmpimg(img_.shape_);
     for (size_t i = 0; i < inst_.size(); ++ i) {
@@ -146,6 +149,10 @@ class MNISTIterator: public IIterator<DataBatch> {
   unsigned inst_offset_;
   /*! \brief instance index */
   std::vector<unsigned> inst_;
+  // random sampler
+  utils::RandomSampler rnd;
+  // magic number to setup randomness
+  static const int kRandMagic = 0;
 }; //class MNISTIterator
 }  // namespace cxxnet
 #endif  // CXXNET_ITER_MNIST_INL_HPP_
