@@ -71,6 +71,7 @@ public:
     itrpage.get_factory().path_imglst = path_imglst_;
     itrpage.Init();
     itrimg.get_factory().itrpage = &itrpage;
+    itrimg.Init();
     this->BeforeFirst();
   }
   virtual void BeforeFirst(void) {
