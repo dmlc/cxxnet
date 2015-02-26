@@ -8,7 +8,6 @@
 #include <jerror.h>
 #include <mshadow/tensor.h>
 #include "./utils.h"
-#include "assert.h"
 #if CXXNET_USE_OPENCV
   #include <opencv2/opencv.hpp>
 #endif
@@ -36,15 +35,15 @@ public:
       utils::Error("Libjpeg fail to decode");
     }
     this->jpeg_mem_src(&cinfo, ptr, sz);
-    assert(jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK);
-    assert(jpeg_start_decompress(&cinfo) == true);
-    p_data->Resize(mshadow::Shape3(cinfo.output_width, cinfo.output_height, cinfo.output_components));
+    utils::Check(jpeg_read_header(&cinfo, TRUE) == JPEG_HEADER_OK, "libjpeg: failed to decode");
+    utils::Check(jpeg_start_decompress(&cinfo) == true, "libjpeg: failed to decode");
+    p_data->Resize(mshadow::Shape3(cinfo.output_height, cinfo.output_width, cinfo.output_components));
     JSAMPROW jptr = &((*p_data)[0][0][0]);
     while (cinfo.output_scanline < cinfo.output_height) {
-      assert(jpeg_read_scanlines(&cinfo, &jptr, 1) == true);
+      utils::Check(jpeg_read_scanlines(&cinfo, &jptr, 1) == true, "libjpeg: failed to decode");
       jptr += cinfo.output_width * cinfo.output_components;
     }
-    assert(jpeg_finish_decompress(&cinfo) == true);
+    utils::Check(jpeg_finish_decompress(&cinfo) == true, "libjpeg: failed to decode");
   }
 private:
   struct jerror_mgr {
@@ -69,8 +68,7 @@ private:
     size_t num_bytes = static_cast<size_t>(num_bytes_);
     if (num_bytes > 0) {
       src->next_input_byte += num_bytes;
-      utils::Assert(src->bytes_in_buffer >= num_bytes,
-		    "fail to decode");
+      utils::Assert(src->bytes_in_buffer >= num_bytes, "fail to decode");
       src->bytes_in_buffer -= num_bytes;
     } else {
       utils::Error("JpegDecoder: bad jpeg image");
@@ -81,7 +79,7 @@ private:
   static void mem_term_source_ (j_decompress_ptr cinfo) {}
   static void mem_init_source_ (j_decompress_ptr cinfo) {}
   static boolean jpeg_resync_to_restart_(j_decompress_ptr cinfo, int desired) {
-    utils::Error("JpegDecoder: bad jpeg image");    
+    utils::Error("JpegDecoder: bad jpeg image");
     return true;
   }
   void jpeg_mem_src (j_decompress_ptr cinfo, void* buffer, long nbytes) {
