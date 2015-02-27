@@ -26,7 +26,7 @@ USE_CUDA_PATH = NONE
 # imbin iterator
 USE_OPENCV = 1
 
-# whether use CUDNN library
+# whether use CUDNN R2 library
 USE_CUDNN = 0
 # add the path to CUDNN libary to link and compile flag
 # if you do not need that, or do not have that, leave it as NONE
@@ -35,11 +35,12 @@ USE_CUDNN_PATH = NONE
 #
 # choose the version of blas you want to use
 # can be: mkl, blas, atlas, openblas
+USE_STATIC_MKL = NONE
 USE_BLAS = mkl
 #
 # add path to intel libary, you may need it
 # for MKL, if you did not add the path to enviroment variable
-# 
+#
 USE_INTEL_PATH = NONE
 
 # whether compile with parameter server
@@ -48,7 +49,14 @@ PS_PATH = NONE
 PS_THIRD_PATH = NONE
 
 # the additional link flags you want to add
-ADD_LDFLAGS = 
+ADD_LDFLAGS = -ljpeg
 
 # the additional compile flags you want to add
-ADD_CFLAGS =  
+ADD_CFLAGS =
+#
+# If use MKL, choose static link automaticly to fix python wrapper
+#
+ifeq ($(USE_BLAS), mkl)
+	USE_STATIC_MKL = 1
+endif
+
