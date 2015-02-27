@@ -224,7 +224,7 @@ class CXXNetLearnTask {
           eval_names.push_back(evname);
         }
         if (flag == 3 && (task == "pred" || task == "pred_raw" ||
-          task == "extract_feature")) {
+                          task == "extract")) {
           utils::Assert(itr_pred == NULL, "can only have one data:test");
           itr_pred = cxxnet::CreateIterator(itcfg);
         }
@@ -282,7 +282,7 @@ class CXXNetLearnTask {
     while (itr_pred->Next()) {
       const DataBatch &batch = itr_pred->Value();
       if (extract_node_name != ""){
-        net_trainer->ExtractFeature(&pred, batch, extract_node_name);
+        net_trainer->ExtractFeature(&pred, batch, extract_node_name.c_str());
       } else {
         utils::Error("extract node name must be specified in task extract_feature.");
       }
