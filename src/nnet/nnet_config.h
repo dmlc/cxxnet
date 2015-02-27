@@ -287,6 +287,15 @@ struct NetConfig {
     }
     if (param.init_end == 0) this->InitNet();
   }
+  inline int GetLayerIndex(const char *name) const {
+    std::string key = name;
+    std::map<std::string, int>::const_iterator it
+        = node_name_map.find(key);
+    if (it == node_name_map.end() || key != it->first) {
+      utils::Error("unknown layer name %s", name);
+    }
+    return it->second;
+  }
 
  private:
   // configuration parser to parse layer info, support one to to one connection for now

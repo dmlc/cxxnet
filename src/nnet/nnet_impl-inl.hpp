@@ -182,7 +182,8 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
   virtual void ExtractFeature(mshadow::TensorContainer<mshadow::cpu, 4> *out_preds,
                               const DataBatch &batch,
-                              const std::string &node_name) {
+                              const char *node_name_) {
+    std::string node_name = node_name_;
     std::map<std::string, int> &name_map = net_cfg.node_name_map;
     int node_id, offset;
     if (sscanf(node_name.c_str(), "top[-%d]", &offset) == 1) {
@@ -214,6 +215,29 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     ret += metric.Print(data_name);
     return ret;
+  }
+  virtual void SetWeight(mshadow::Tensor<mshadow::cpu, 2> weight,
+                         const char *layer_name,
+                         const char *weight_tag) {
+    utils::Check(!strcmp(weight_tag, "bias") ||
+                 !strcmp(weight_tag, "wmat"),
+                 "NNet.SetWeight: weight tag can only be bias or wmat");
+    int layer_index = net_cfg.GetLayerIndex(layer_name);
+    for (size_t i = 0; i < nets_.size(); ++i) {
+      nets_[i]->SetWeight(layer_index, weight, weight_tag);
+    }
+    this->WaitAllJobs();
+  }
+  virtual void GetWeight(mshadow::TensorContainer<mshadow::cpu, 2> *out_weight,
+                         std::vector<index_t> *out_shape,
+                         const char *layer_name,
+                         const char *weight_tag) {
+    utils::Check(!strcmp(weight_tag, "bias") ||
+                 !strcmp(weight_tag, "wmat"),
+                 "NNet.GetWeight: weight tag can only be bias or wmat");
+    int layer_index = net_cfg.GetLayerIndex(layer_name);
+    nets_[0]->GetWeight(layer_index, out_weight, out_shape, weight_tag);
+    nets_[0]->WaitJob();
   }
 
  private:

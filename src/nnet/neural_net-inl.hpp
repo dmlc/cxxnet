@@ -9,6 +9,7 @@
 #include <utility>
 #include <mshadow/tensor.h>
 #include "../layer/layer.h"
+#include "../layer/visitor.h"
 #include "../updater/updater.h"
 #include "../utils/utils.h"
 #include "../utils/io.h"
@@ -390,28 +391,50 @@ class NeuralNetThread {
     this->ExecTask();
   }
   /*! \brief run a predicting forward pass, copy final layer  */
-  inline void PredictForward(mshadow::Tensor<cpu,4> batch,
-                             const std::vector<mshadow::Tensor<mshadow::cpu, 4> >& extra_data) {
+  inline void PredictForward(mshadow::Tensor<cpu, 4> batch,
+                             const std::vector<mshadow::Tensor<mshadow::cpu, 4> > &extra_data) {
     iparam_batch = batch;
     iparam_extra_data = extra_data;
     this->task = kPredForward;
     this->ExecTask();
   }
   // copy node data out
-  inline void CopyNodeData(int nid, mshadow::Tensor<cpu,4> out_data) {
+  inline void CopyNodeData(int nid, mshadow::Tensor<cpu, 4> out_data) {
     iparam_nid = nid;
     oparam_node = out_data;
     this->task = kCopyNode;
     this->ExecTask();
   }
   // copy layer from a fs
-  inline void CopyLayer(int lid, utils::IStream& fi) {
+  inline void CopyLayer(int lid, utils::IStream &fi) {
     iparam_fp = &fi;
     iparam_lid = lid;
     this->task = kCopyLayer;
     this->ExecTask();
   }
+  // set weight into certain layer
+  inline void SetWeight(int lid,
+                        mshadow::Tensor<cpu, 2> weight,
+                        const char *tag) {
+    iparam_lid = lid;
+    iparam_weight = weight;
+    iparam_tag = tag;
+    this->task = kSetWeight;
+    this->ExecTask();
+  }
 
+  // set weight into certain layer
+  inline void GetWeight(int lid,
+                        mshadow::TensorContainer<cpu, 2> *out_weight,
+                        std::vector<index_t> *out_shape,
+                        const char *tag) {
+    iparam_lid = lid;
+    oparam_weight = out_weight;
+    oparam_shape = out_shape;
+    iparam_tag = tag;
+    this->task = kGetWeight;
+    this->ExecTask();
+  }
   // return reference of node
   inline const NeuralNet<xpu> &net(void) const{
     return *net_;
@@ -428,7 +451,9 @@ class NeuralNetThread {
     kTrainProp,
     kPredForward,
     kCopyNode,
-    kCopyLayer
+    kCopyLayer,
+    kSetWeight,
+    kGetWeight
   };
   // thread related code
   inline static CXXNET_THREAD_PREFIX ThreadEntry(void *pthread) {
@@ -502,15 +527,50 @@ class NeuralNetThread {
         return;
       }
       case kCopyLayer: {
-        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()), "lid out of range");
+        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()),
+                      "lid out of range");
         net_->connections[iparam_lid].layer->LoadModel(*iparam_fp);
+        return;
+      }
+      case kSetWeight: {
+        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()),
+                      "lid out of range");
+        mshadow::TensorContainer<xpu, 2> tmp;
+        tmp.Resize(iparam_weight.shape_);
+        mshadow::Copy(tmp, iparam_weight, stream);
+        stream->Wait();
+        std::vector<mshadow::Tensor<xpu, 2> > data;
+        data.push_back(tmp);
+        layer::SetWeightVisitor<xpu> vs(data, "weight", iparam_tag.c_str());
+        net_->connections[iparam_lid].layer->ApplyVisitor(&vs);
+        return;
+      }
+      case kGetWeight: {
+        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()),
+                      "lid out of range");
+        layer::GetWeightVisitor<xpu> vs("weight", iparam_tag.c_str());
+        net_->connections[iparam_lid].layer->ApplyVisitor(&vs);
+        if (vs.data.size() == 0) {
+          oparam_shape->resize(0);
+          oparam_weight->Resize(mshadow::Shape2(0, 0));
+        } else {
+          oparam_weight->Resize(vs.data[0].shape_);
+          mshadow::Copy(*oparam_weight, vs.data[0]);
+          *oparam_shape = vs.shapes[0];
+          utils::Assert(vs.fields[0] == iparam_tag,
+                        "GetWeight:shape mismatch");
+        }
         return;
       }
     }
   }
   // the following are fields that are used to pass parameters in or out
   // used to copy out fields in the last layer
-  mshadow::Tensor<cpu,4> oparam_node;
+  mshadow::Tensor<cpu, 4> oparam_node;
+  // output weight parameter
+  mshadow::TensorContainer<cpu, 2> *oparam_weight;
+  // output shape parameter
+  std::vector<index_t> *oparam_shape;
   // input flag
   bool iparam_flag;
   // special input flag for update
@@ -524,7 +584,11 @@ class NeuralNetThread {
   // input parameters of file pointers
   utils::IStream *iparam_fp;
   // input batch
-  mshadow::Tensor<cpu,4> iparam_batch;
+  mshadow::Tensor<cpu, 2> iparam_weight;
+  // input tag
+  std::string iparam_tag;
+  // input batch
+  mshadow::Tensor<cpu, 4> iparam_batch;
   // input extra data
   std::vector<mshadow::Tensor<cpu,4> > iparam_extra_data;
   // current task

@@ -27,6 +27,8 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
  public:
   /*! \brief the weight contents of the layer */
   std::vector<mshadow::Tensor<xpu, 2> > data;
+  /*! \brief shapes of ach weight */
+  std::vector<std::vector<index_t> > shapes;
   /*! \brief field name of each of the data */
   std::vector<std::string> fields;
   /*!
@@ -76,6 +78,10 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
                      mshadow::Tensor<xpu, dim> grad) {
     if (strncmp(prefix_.c_str(), field_name, prefix_.length()) != 0) return;
     fields.push_back(std::string(field_name));
+    shapes.push_back(std::vector<index_t>(dim));
+    for (int i = 0; i < dim; ++i) {
+      shapes.back()[i] = weight.size(i);
+    }
     if (mode_ == 0) {
       data.push_back(weight.FlatTo2D());
     } else {

@@ -122,8 +122,8 @@ extern "C" {
                                              cxx_uint *out_size);
 
   CXXNET_DLL const cxx_real_t *CXNNetPredictBatch(void *handle,
-                                                 void *data_handle,
-                                                 cxx_uint *out_size);
+                                                  void *data_handle,
+                                                  cxx_uint *out_size);
   /*!
    * \brief evaluate the net using the data source
    * \param handle net handle

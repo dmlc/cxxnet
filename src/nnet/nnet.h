@@ -39,14 +39,15 @@ class INetTrainer{
    * \brief update model parameter
    * \param training data batch
    */
-  virtual void Update(const DataBatch& data) = 0;
+  virtual void Update(const DataBatch &data) = 0;
   /*!
    * \brief evaluate a test statistics, output results as a string
    * \param iter_eval the iterator containing the evaluation data
    * \param data_name the name of the dataset, used to construct the returing string
    * \return a string containing the evaluation result in format data_name-metric:result
    */
-  virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char* data_name) = 0;
+  virtual std::string Evaluate(IIterator<DataBatch> *iter_eval,
+                               const char *data_name) = 0;
   /*!
    * \brief predict labels for a given data batch
    * \param out_preds the prediction result for each data sample
@@ -62,13 +63,32 @@ class INetTrainer{
    */
   virtual void ExtractFeature(mshadow::TensorContainer<mshadow::cpu, 4> *out_preds,
                               const DataBatch &batch,
-                              const std::string &node_name) = 0;
+                              const char *node_name) = 0;
   /*!
-   * \brief Initialize current model from a input stream. This method will copy the weight from corresponding layers if their names match.
+   * \brief Initialize current model from a input stream.
+   *  This method will copy the weight from corresponding layers if their names match.
    * \param fi the stream that the model will be initialized from
    */
-  virtual void CopyModelFrom(utils::IStream &fi) = 0;
-  
+  virtual void CopyModelFrom(utils::IStream &fi) = 0;   
+  /*!
+   * \brief set weight of certain layer
+   * \param layer_name the name of the layer
+   * \param weight_tag type of weight can be "wmat" or "bias"
+   */
+  virtual void SetWeight(mshadow::Tensor<mshadow::cpu, 2> weight,
+                         const char *layer_name,
+                         const char *weight_tag) = 0;
+  /*!
+   * \brief set weight of certain layer
+   * \param out_weight hold the output weight data, Flattened to 2D
+   * \param out_shape hold the shape of the weight
+   * \param 
+   * \param weight_tag type of weight can be "wmat" or "bias"
+   */
+  virtual void GetWeight(mshadow::TensorContainer<mshadow::cpu, 2> *out_weight,
+                         std::vector<index_t> *out_shape,
+                         const char *layer_name,
+                         const char *weight_tag) = 0;
 };
 
 /*!
