@@ -159,7 +159,7 @@ private:
       list_ptr = 0;
       fplist = NULL;
       shuffle = 0;
-      rnd.Seed(kRandMagic); 
+      rnd.Seed(kRandMagic);
     }
     inline void SetParam(const char *name, const char *val) {
       if (!strcmp(name, "label_width")) {
@@ -169,7 +169,7 @@ private:
         shuffle = atoi(val);
       }
       if (!strcmp(name, "seed_data")) {
-        rnd.Seed(atoi(val) + kRandMagic); 
+        rnd.Seed(atoi(val) + kRandMagic);
       }
     }
     inline bool Init(void) {
@@ -216,7 +216,7 @@ private:
               utils::Check(fscanf(fplist, "%f", &(a->labels[i * label_width + j])) == 1,
                            "ImageList format:label_width=%u but only have %d labels per line",
                            label_width, j);
-              
+
             }
             utils::Assert(fscanf(fplist, "%*[^\n]\n") == 0, "ignore");
           }
@@ -238,7 +238,7 @@ private:
       fi.Close();
       if (fplist != NULL) fclose(fplist);
     }
-   
+
    private:
     // file stream for binary page
     utils::StdFile fi;
@@ -255,8 +255,8 @@ private:
     // random sampler
     utils::RandomSampler rnd;
     // magic seed number for random sampler
-    static const int kRandMagic = 121;    
-  };  
+    static const int kRandMagic = 121;
+  };
   // put everything in inst entry
   struct ImageEntry {
     // insance index
@@ -278,7 +278,8 @@ private:
       shuffle = 0;
       end_of_data = false;
       page = NULL;
-      rnd.Seed(kRandMagic);       
+      rnd.Seed(kRandMagic);
+      img.set_pad(false);
     }
     inline void SetParam(const char *name, const char *val) {
       if (!strcmp(name, "label_width")) {
@@ -288,7 +289,7 @@ private:
         shuffle = atoi(val);
       }
       if (!strcmp(name, "seed_data")) {
-        rnd.Seed(atoi(val) + kRandMagic); 
+        rnd.Seed(atoi(val) + kRandMagic);
       }
     }
     inline bool Init(void) {
@@ -320,14 +321,14 @@ private:
           utils::BinaryPage::Obj obj = page->page[idx];
           decoder.Decode(static_cast<unsigned char*>(obj.dptr),
                          obj.sz, &img);
-          val->img.Resize(mshadow::Shape3(3, img.size(0), img.size(1)));         
+          val->img.Resize(mshadow::Shape3(3, img.size(0), img.size(1)));
           // assign image
           if (img.size(2) == 3) {
             mshadow::Tensor<cpu, 3> dst = val->img;
             for (index_t i = 0; i < img.size(0); ++i) {
               for (index_t j = 0; j < img.size(1); ++j) {
                 for (index_t k = 0; k < 3; ++k) {
-                  dst[k][i][j] = static_cast<real_t>(img[i][j][k]);                
+                  dst[k][i][j] = static_cast<real_t>(img[i][j][k]);
                 }
               }
             }
@@ -363,11 +364,11 @@ private:
     // mark end of data
     bool end_of_data;
     // current page
-    PageEntry *page;    
+    PageEntry *page;
     // seq of inst index
     std::vector<int> inst_order;
     // jpeg decoder
-    utils::JpegDecoder decoder;    
+    utils::JpegDecoder decoder;
     // id for data
     int data_ptr;
     // shuffle
