@@ -2,32 +2,31 @@
 This page will introduce data input method in cxxnet. cxxnet use data iterator to provide data to the neural network.  Iterators do some preprocessing and generate batch for the neural network.
 
 * We provide basic iterators for MNIST, CIFAR-10, Image, Binary Image.
-* To boost performance, we provide thread buffer for loading. 
+* To boost performance, we provide thread buffer for loading.
   - Putting threadbuffer iterator after input iterator will open an independent thread to fetch from the input, this allows parallelism of learning process and data fetching.
   - We recommend you use thread buffer in all cases to avoid IO bottle neck.
 
 Declarer the iterator in the form
 ```bash
 iter = iterator_type
-options 1 = 
-options 2 = 
+options 1 =
+options 2 =
 ...
 iter = end
-``` 
-* The basic iterator type is **mnist** , **cifar** , **image** , **imgbin**
+```
+* The basic iterator type is **mnist** , **image** , **imgbin**
 * To use thread buffer, declare in this form
 ```bash
 iter = iterator_type
-options 1 = 
-options 2 = 
+options 1 =
+options 2 =
 ...
 iter = threadbuffer
 iter = end
-``` 
+```
 =
 **Iterators**
 * [MNSIT](#mnist-iterator)
-* [CIFAR](#cifar-iterator)
 * [Image and Image Binary](#image-and-image-binary-iterator)
 
 =
@@ -45,24 +44,8 @@ path_img = path to gz file of image
 path_label = path to gz file of label
 input_flat = 1
 ```
-* **input_flat** means loading the data in shape 1,1,784 or 1,28,28 
+* **input_flat** means loading the data in shape 1,1,784 or 1,28,28
 * You may check a full example [here](https://github.com/antinucleon/cxxnet/blob/master/example/MNIST/MNIST.conf)
-
-=
-##### CIFAR Iterator
-* Required fields
-```bash
-path = path to CIFAR file folder
-input_flat = 0
-test = 1
-batch1 = 1
-batch2 = 0
-batch3 = 1
-batch4 = 0
-batch5 = 0
-```
-* **input_flat** means loading the data in shape 1,1,1024 or 1,32,32 
-* **test** , **batch1** , **batch2** , **batch3** , **batch4** , **batch5** , is binary variable to choose which batch file to be used.
 
 =
 ##### Image and Image Binary Iterator
@@ -76,7 +59,7 @@ image_list = path to the image list file
 image_root = path to the image folder
 ```
 ###### Image list file
-The **image_list** is a formatted file. The format is 
+The **image_list** is a formatted file. The format is
 ```c++
 image_index \t label \t file_name
 ```
@@ -91,7 +74,7 @@ A valid image list file is like the following (NO header):
 6       1       dog.9329.jpg
 ```
 
- 
+
 * **image_root** is the path to the folder contains files in the image list file.
 
 ##### Image binary iterator
@@ -105,7 +88,7 @@ image_bin = path to the image binary file
 * To generate **image_bin** file, you need to use the tool [im2bin](https://github.com/antinucleon/cxxnet/blob/master/tools/im2bin.cpp) in the tools folder.
 * You may check an example [here](https://github.com/antinucleon/cxxnet/blob/master/example/ImageNet/ImageNet.conf)
 
-#### Preprocessing Option for Image/Image Binary
+#### Realtime Preprocessing Option for Image/Image Binary
 ```bash
 rand_crop = 1
 rand_mirror = 1
@@ -120,7 +103,7 @@ max_rotate_angle=180
 ```
 ##### Common Parameters
 * **divideby** normalize the data by dividing a value
-* **image_mean** minus the image by the mean of all image. The value is the path of the mean image file. If the file doesn't exist, cxxnet will generate one. 
+* **image_mean** minus the image by the mean of all image. The value is the path of the mean image file. If the file doesn't exist, cxxnet will generate one.
 * **mean_value** minus the image by the value specified in this field. Note that only one of **image_mean** and **mean_value** should be specified.
 
 ##### Random Augmenations
@@ -137,4 +120,3 @@ Deterministic transformations are usually used in test to generate diverse predi
 * **crop_x_start** and **crop_y_start**  denotes the left corner of the crop.
 * **mirror** denotes whether mirror the input.
 * **rotate** denotes the angle will rotate.
-
