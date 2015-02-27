@@ -75,8 +75,7 @@ class CXXNetLearnTask {
     }
     if (task == "train" || task == "finetune") this->TaskTrain();
     if (task == "pred")   this->TaskPredict();
-    if (task == "pred_raw") this->TaskPredictRaw();
-    if (task == "extract_feature") this->TaskExtractFeature();
+    if (task == "extract") this->TaskExtractFeature();
     return 0;
   }
 
@@ -256,7 +255,7 @@ class CXXNetLearnTask {
     mshadow::TensorContainer<mshadow::cpu, 1> pred;
     while (itr_pred->Next()) {
       const DataBatch& batch = itr_pred->Value();
-      net_trainer->Predict(pred, batch);
+      net_trainer->Predict(&pred, batch);
       utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
       mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
       for (mshadow::index_t j = 0; j < sz; ++j) {
@@ -266,29 +265,11 @@ class CXXNetLearnTask {
     fclose(fo);
     printf("finished prediction, write into %s\n", name_pred.c_str());
   }
-  inline void TaskPredictRaw() {
-    utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
-    printf("start predicting...\n");
-    FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
-    mshadow::TensorContainer<mshadow::cpu, 2> pred;
-    itr_pred->BeforeFirst();
-    while (itr_pred->Next()) {
-      const DataBatch& batch = itr_pred->Value();
-      net_trainer->PredictRaw(pred, batch);
-      utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
-      mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
-      for (mshadow::index_t j = 0; j < sz; ++j) {
-        for (mshadow::index_t k = 0; k < pred.size(1); ++k) {
-          fprintf(fo, "%g ", pred[j][k]);
-        }
-        fprintf(fo, "\n");
-      }
-    }
-  }
   inline void TaskExtractFeature() {
-    int row = 0;
-    int col = 0;
-    utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
+    long nrow = 0;
+    mshadow::Shape<3> dshape;
+    utils::Check(itr_pred != NULL,
+                 "must specify a predict iterator to generate predictions");
     printf("start predicting...\n");
     FILE *fo = utils::FopenCheck(name_pred.c_str(), "wb");
     std::string name_meta = name_pred + ".meta";
@@ -297,22 +278,26 @@ class CXXNetLearnTask {
 
     time_t start    = time(NULL);
     int sample_counter = 0;
-    mshadow::TensorContainer<mshadow::cpu, 2> pred;
+    mshadow::TensorContainer<mshadow::cpu, 4> pred;
     while (itr_pred->Next()) {
-      const DataBatch& batch = itr_pred->Value();
+      const DataBatch &batch = itr_pred->Value();
       if (extract_node_name != ""){
-        net_trainer->ExtractFeature(pred, batch, extract_node_name);
+        net_trainer->ExtractFeature(&pred, batch, extract_node_name);
       } else {
         utils::Error("extract node name must be specified in task extract_feature.");
-        exit(1);
       }
       utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
       mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
+      nrow += sz;
       for (mshadow::index_t j = 0; j < sz; ++j) {
-        fwrite(&pred[j][0], sizeof(float), pred.size(1), fo);
-        row++;
+        mshadow::Tensor<mshadow::cpu, 2> d = pred[j].FlatTo2D();
+        for (mshadow::index_t k = 0; k < d.size(0); ++k) {
+          fwrite(d[k].dptr_, sizeof(float), d.size(1), fo);
+        }
       }
-      col = pred.size(1);
+      if (sz != 0) {
+        dshape = pred[0].shape_;
+      }
       if (++ sample_counter  % print_step == 0) {
         long elapsed = (long)(time(NULL) - start);
         if (!silent) {
@@ -327,7 +312,7 @@ class CXXNetLearnTask {
     printf("batch:[%8d] %ld sec elapsed\n", sample_counter, elapsed);
 
     fclose(fo);
-    fprintf(fm, "%d\n%d\n", row, col);
+    fprintf(fm, "%ld,%u,%u,%u\n", nrow, dshape[0], dshape[1], dshape[2]);
     fclose(fm);
     printf("finished prediction, write into %s\n", name_pred.c_str());
   }
