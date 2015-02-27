@@ -20,9 +20,14 @@ else:
 cxnlib = ctypes.cdll.LoadLibrary(CXXNET_PATH)
 cxnlib.CXNIOCreateFromConfig.restype = ctypes.c_void_p
 cxnlib.CXNIONext.restype = ctypes.c_int
+cxnlib.CXNIOGetData.restype = ctypes.POINTER(ctypes.c_float)
+cxnlib.CXNIOGetLabel.restype = ctypes.POINTER(ctypes.c_float)
 cxnlib.CXNNetCreate.restype = ctypes.c_void_p
 cxnlib.CXNNetPredictBatch.restype = ctypes.POINTER(ctypes.c_float)
 cxnlib.CXNNetPredictIter.restype = ctypes.POINTER(ctypes.c_float)
+cxnlib.CXNNetExtractBatch.restype = ctypes.POINTER(ctypes.c_float)
+cxnlib.CXNNetExtractIter.restype = ctypes.POINTER(ctypes.c_float)
+cxnlib.CXNNetGetWeight.restype = ctypes.POINTER(ctypes.c_float)
 cxnlib.CXNNetEvaluate.restype = ctypes.c_char_p
 
 
@@ -32,6 +37,29 @@ def ctypes2numpy(cptr, length, dtype=numpy.float32):
     res = numpy.zeros(length, dtype=dtype)
     assert ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0])
     return res
+
+def ctypes2numpyT(cptr, shape, dtype=numpy.float32, stride = None):
+    """convert a ctypes pointer array to numpy array """
+    size = 1
+    for x in shape:
+        size *= x
+    if stride is None:
+        res = numpy.zeros(size, dtype=dtype)
+        assert ctypes.memmove(res.ctypes.data, cptr, size * res.strides[0])
+    else:
+        dsize = size / shape[-1] * stride
+        res = numpy.zeros(dsize, dtype=dtype)
+        assert ctypes.memmove(res.ctypes.data, cptr, dsize * res.strides[0])
+        res = res.reshape((dsize / shape[-1], shape[-1]))
+        res = res[:, 0 :shape[-1]]        
+    return res.reshape(shape)
+
+def shape2ctypes(data):
+    shape = (ctypes.c_uint * data.ndim)()
+    for i in range(data.ndim):
+        shape[i] = data.shape[i] 
+    return shape
+    
 
 class DataIter:
     """data iterator of cxxnet"""
@@ -45,8 +73,8 @@ class DataIter:
     def next(self):
         ret = cxnlib.CXNIONext(self.handle)
         self.head = False
-        self.tail = ret != 0
-        return self.tail
+        self.tail = ret == 0
+        return ret != 0
     def before_first(self):
         cxnlib.CXNIOBeforeFirst(self.handle)
         self.head = True
@@ -55,7 +83,20 @@ class DataIter:
         if self.head:
             raise Exception('iterator was at head state, call next to get to valid state')
         if self.tail:
-            raise Exception('iterator reaches end')                    
+            raise Exception('iterator reaches end')
+    def get_data(self):
+        oshape = (ctypes.c_uint * 4)()   
+        ostride = ctypes.c_uint()
+        ret = cxnlib.CXNIOGetData(self.handle,
+                                  oshape, ctypes.byref(ostride))
+        return ctypes2numpyT(ret, [x for x in oshape], 'float32', ostride.value)
+    def get_label(self):
+        oshape = (ctypes.c_uint * 2)()   
+        ostride = ctypes.c_uint()
+        ret = cxnlib.CXNIOGetLabel(self.handle,
+                                   oshape, ctypes.byref(ostride))
+        return ctypes2numpyT(ret, [x for x in oshape], 'float32', ostride.value)
+
 class Net:
     """neural net object"""
     def __init__(self, dev = 'cpu', cfg = ''):
@@ -127,16 +168,16 @@ class Net:
                 raise Exception('Net.update: data size mismatch')
             cxnlib.CXNNetUpdateBatch(self.handle,
                                      data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                                     numpy.array(data.shape).ctypes.data_as(ctypes.POINTER(ctypes.c_uint)),
+                                     shape2ctypes(data),
                                      label.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                                     numpy.array(label.shape).ctypes.data_as(ctypes.POINTER(ctypes.c_uint)))
+                                     shape2ctypes(label))
         else:
             raise Exception('update do not support type %s' % str(type(data)))
 
     def evaluate(self, data, name):
-        """ update the net using the data
+        """ evaluate the model using data iterator
         Parameters
-            data: input can be DataIter or numpy.ndarray
+            data: input can be DataIter
             name: str
                 name of the input data
         """
@@ -155,11 +196,52 @@ class Net:
         elif isinstance(data, numpy.ndarray):
             if data.ndim != 4:
                 raise Exception('need 4 dimensional tensor to use predict')
+
             ret = cxnlib.CXNNetPredictBatch(self.handle,
                                             data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                                            numpy.array(data.shape).ctypes.data_as(ctypes.POINTER(ctypes.c_uint)),
+                                            shape2ctypes(data),
                                             ctypes.byref(olen));
         return ctypes2numpy(ret, olen.value, 'float32')
+
+    def extract(self, data, name):
+        oshape = (ctypes.c_uint * 4)()
+        if isinstance(data, DataIter):
+            data.check_valid()
+            ret = cxnlib.CXNNetExtractIter(self.handle,
+                                           data.handle,
+                                           ctypes.c_char_p(name.encode('utf-8')),
+                                           oshape);
+        elif isinstance(data, numpy.ndarray):
+            if data.ndim != 4:
+                raise Exception('need 4 dimensional tensor to use extract')
+            ret = cxnlib.CXNNetExtractBatch(self.handle,
+                                            data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                                            shape2ctypes(data),
+                                            ctypes.c_char_p(name.encode('utf-8')),
+                                            oshape)        
+        return ctypes2numpyT(ret, [x for x in oshape], 'float32')
+
+    def set_weight(self, weight, layer_name, tag):
+        if tag != 'bias' and tag != 'wmat':
+            raise Exception('tag must be bias or wmat')
+        cxnlib.CXNNetSetWeight(self.handle,
+                               weight.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                               weight.size,
+                               ctypes.c_char_p(layer_name.encode('utf-8')),
+                               ctypes.c_char_p(tag.encode('utf-8')))
+
+    def get_weight(self, layer_name, tag):
+        if tag != 'bias' and tag != 'wmat':
+            raise Exception('tag must be bias or wmat')
+        oshape = (ctypes.c_uint * 4)()
+        odim = ctypes.c_uint()
+        ret = cxnlib.CXNNetGetWeight(self.handle,
+                                     ctypes.c_char_p(layer_name.encode('utf-8')),
+                                     ctypes.c_char_p(tag.encode('utf-8')),
+                                     oshape, ctypes.byref(odim))        
+        if odim.value == 0 or ret is None:
+            return None
+        return ctypes2numpyT(ret, [oshape[i] for i in range(odim.value)], 'float32')
 
 def train(cfg, data, num_round, param, eval_data = None):
     net = Net(cfg = cfg)
@@ -170,7 +252,13 @@ def train(cfg, data, num_round, param, eval_data = None):
     net.init_model()
     for r in range(num_round):
         net.start_round(r)
-        net.update(data)
+        data.before_first()
+        scounter = 0
+        while data.next():
+            net.update(data)            
+            scounter += 1
+            if scounter % 100  == 0:
+                print '[%d] %d batch passed' % (r, scounter)
         if eval_data is not None:
             seval = net.evaluate(eval_data, 'eval')
         sys.stderr.write(seval + '\n')

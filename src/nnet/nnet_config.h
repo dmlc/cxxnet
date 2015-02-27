@@ -290,8 +290,8 @@ struct NetConfig {
   inline int GetLayerIndex(const char *name) const {
     std::string key = name;
     std::map<std::string, int>::const_iterator it
-        = node_name_map.find(key);
-    if (it == node_name_map.end() || key != it->first) {
+        = layer_name_map.find(key);
+    if (it == layer_name_map.end() || key != it->first) {
       utils::Error("unknown layer name %s", name);
     }
     return it->second;

@@ -1,6 +1,7 @@
 import sys
 sys.path.append('../../wrapper/')
 import cxxnet
+import numpy as np
 
 data = cxxnet.DataIter("""
 iter = mnist
@@ -46,4 +47,66 @@ param['dev'] = 'cpu'
 param['momentum'] = 0.9
 param['metric[label]'] = 'error'
 
-net = cxxnet.train(cfg, data, 10, param, eval_data = deval)
+net = cxxnet.train(cfg, data, 1, param, eval_data = deval)
+
+weights = []
+for layer in ['fc1', 'fc2']:
+    for tag in ['wmat', 'bias']:
+        weights.append((layer, tag, net.get_weight(layer, tag)))
+
+data.before_first()
+data.next()
+# extract 
+print 'predict'
+pred = net.predict(data)
+print 'predict finish'
+dbatch = data.get_data()
+print dbatch.shape
+print 'get data'
+pred2 = net.predict(dbatch)
+
+print np.sum(np.abs(pred - pred2))
+print np.sum(np.abs(net.extract(data, 'sg1') - net.extract(dbatch, 'sg1')))
+
+# evaluate
+deval.before_first()
+werr = 0
+wcnt = 0
+while deval.next():
+    label = deval.get_label()
+    pred = net.predict(deval)
+    werr += np.sum(label[:,0] !=  pred[:])
+    wcnt += len(label[:,0])
+print 'eval-error=%f' % (float(werr) / wcnt)
+
+# training
+data.before_first()
+while data.next():
+    label = data.get_label()    
+    batch = data.get_data()
+    net.update(batch, label)
+
+# evaluate
+deval.before_first()
+werr = 0
+wcnt = 0
+while deval.next():
+    label = deval.get_label()
+    pred = net.predict(deval)
+    werr += np.sum(label[:,0] !=  pred[:])
+    wcnt += len(label[:,0])
+print 'eval-error2=%f' % (float(werr) / wcnt)
+
+for layer, tag, wt in weights:
+    net.set_weight(wt, layer, tag)
+
+# evaluate
+deval.before_first()
+werr = 0
+wcnt = 0
+while deval.next():
+    label = deval.get_label()
+    pred = net.predict(deval)
+    werr += np.sum(label[:,0] !=  pred[:])
+    wcnt += len(label[:,0])
+print 'eval-error-after-setback=%f' % (float(werr) / wcnt)

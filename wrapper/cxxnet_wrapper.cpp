@@ -77,7 +77,8 @@ class WrapperIterator {
 class WrapperNet {
  public:
   WrapperNet(const char *device, const char *s_cfg)
-      : res_pred(false), net_(NULL) {
+      : res_pred(false), temp2(false),
+        temp4(false), net_(NULL) {
     device = "gpu";
     net_type = 0;
     silent = 0;
@@ -131,6 +132,34 @@ class WrapperNet {
   inline void StartRound(int round) {
     round_counter = round;
   }
+  inline cxx_real_t *GetWeight(const char *layer_name,
+                               const char *wtag,
+                               cxx_uint wshape[4],
+                               cxx_uint *out_dim) {
+    std::vector<index_t> shape;
+    net_->GetWeight(&temp2, &shape, layer_name, wtag);
+    *out_dim = static_cast<cxx_uint>(shape.size());
+    if (shape.size() == 0) return NULL;
+    utils::Check(shape.size() <= 4, "GetWeight only works for dim<=4");
+    for (size_t i = 0; i < shape.size(); ++i) {
+      wshape[i] = shape[i];
+    }
+    return temp2.dptr_;
+  }
+  inline cxx_real_t *Extract(const DataBatch &batch,
+                             const char *node_name,
+                             cxx_uint oshape[4]) {
+    net_->ExtractFeature(&temp4, batch, node_name);
+    for (int i = 0; i < 4; ++i) {
+      oshape[i] = temp4.size(i);
+    }
+    return temp4.dptr_;
+  }
+  inline cxx_real_t *Extract(WrapperIterator *iter,
+                             const char *node_name,
+                             cxx_uint oshape[4]) {
+    return this->Extract(iter->iter_->Value(), node_name, oshape);
+  }
   inline void UpdateIter(WrapperIterator *iter) {
     net_->Update(iter->iter_->Value());
   }
@@ -155,7 +184,8 @@ class WrapperNet {
   // returning cache
   std::string res_eval;
   mshadow::TensorContainer<mshadow::cpu, 1> res_pred;
-
+  mshadow::TensorContainer<mshadow::cpu, 2> temp2;
+  mshadow::TensorContainer<mshadow::cpu, 4> temp4;
  private:
   // the internal net
   nnet::INetTrainer *net_;
@@ -211,7 +241,17 @@ extern "C" {
     return static_cast<WrapperIterator*>(handle)->Next();
   }
   void CXNIOBeforeFirst(void *handle) {
-    static_cast<WrapperIterator*>(handle)->BeforeFirst();    
+    static_cast<WrapperIterator*>(handle)->BeforeFirst();
+  }
+  const cxx_real_t *CXNIOGetData(void *handle,
+                             cxx_uint oshape[4],
+                             cxx_uint *ostride) {
+    return static_cast<WrapperIterator*>(handle)->GetData(oshape, ostride);
+  }
+  const cxx_real_t *CXNIOGetLabel(void *handle,
+                              cxx_uint oshape[2],
+                              cxx_uint *ostride) {
+    return static_cast<WrapperIterator*>(handle)->GetLabel(oshape, ostride);
   }
   void CXNIOFree(void *handle) {
     delete static_cast<WrapperIterator*>(handle);
@@ -236,6 +276,21 @@ extern "C" {
   }
   void CXNNetStartRound(void *handle, int round) {
     static_cast<WrapperNet*>(handle)->StartRound(round);
+  }
+  void CXNNetSetWeight(void *handle,
+                       cxx_real_t *p_weight,
+                       cxx_uint size_weight,
+                       const char *layer_name,
+                       const char *wtag) {
+    mshadow::Tensor<cpu, 2> weight(p_weight, mshadow::Shape2(1, size_weight));
+    static_cast<WrapperNet*>(handle)->net()->SetWeight(weight, layer_name, wtag);
+  }
+  const cxx_real_t *CXNNetGetWeight(void *handle,
+                                    const char *layer_name,
+                                    const char *wtag,
+                                    cxx_uint wshape[4],
+                                    cxx_uint *out_dim) {
+    return static_cast<WrapperNet*>(handle)->GetWeight(layer_name, wtag, wshape, out_dim);
   }
   void CXNNetUpdateIter(void *handle, void *data_handle) {
     static_cast<WrapperNet*>(handle)->
@@ -269,6 +324,24 @@ extern "C" {
                                        cxx_uint *out_size) {
     WrapperIterator* iter = static_cast<WrapperIterator*>(data_handle);
     return static_cast<WrapperNet*>(handle)->PredictIter(iter, out_size);
+  }
+  const cxx_real_t *CXNNetExtractBatch(void *handle,
+                                       cxx_real_t *p_data,
+                                       const cxx_uint dshape[4],
+                                       const char *node_name,
+                                       cxx_uint oshape[4]) {
+    DataBatch batch;
+    batch.batch_size = dshape[0];
+    batch.data = mshadow::Tensor<cpu, 4>
+        (p_data, mshadow::Shape4(dshape[0], dshape[1], dshape[2], dshape[3]));
+    return static_cast<WrapperNet*>(handle)->Extract(batch, node_name, oshape);    
+  }
+  const cxx_real_t *CXNNetExtractIter(void *handle,
+                                      void *data_handle,
+                                      const char *node_name,
+                                      cxx_uint oshape[4]) {
+    return static_cast<WrapperNet*>(handle)->Extract
+        (static_cast<WrapperIterator*>(data_handle), node_name, oshape);    
   }
   const char *CXNNetEvaluate(void *handle,
                              void *data_handle,

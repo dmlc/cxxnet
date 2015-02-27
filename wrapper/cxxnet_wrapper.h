@@ -39,6 +39,24 @@ extern "C" {
    */
   CXXNET_DLL void CXNIOBeforeFirst(void *handle);
   /*!
+   * \brief call iterator.Value().data
+   * \param handle the handle to iterator
+   * \param oshape the shape of output
+   * \param ostride the stride of the output tensor
+   */
+  CXXNET_DLL const cxx_real_t *CXNIOGetData(void *handle,
+                                            cxx_uint oshape[4],
+                                            cxx_uint *ostride);
+  /*!
+   * \brief call iterator.Value().label
+   * \param handle the handle to iterator
+   * \param oshape the shape of output
+   * \param ostride the stride of the output tensor
+   */
+  CXXNET_DLL const cxx_real_t *CXNIOGetLabel(void *handle,
+                                             cxx_uint oshape[2],
+                                             cxx_uint *ostride);
+  /*!
    * \brief free the cxxnet io iterator handle
    * \param handle the handle pointer to the data iterator
    */
@@ -86,6 +104,36 @@ extern "C" {
    */
   CXXNET_DLL void CXNNetStartRound(void *handle, int round);
   /*!
+   * \brief set weight by inputing an flattened array with same layout as original weight
+   * \param handle net handle
+   * \param p_weight pointer to the weight
+   * \param size_weight size of the weight
+   * \param layer_name the name of the layer
+   * \param wtag the tag of weight, can be bias or wmat
+   */
+  CXXNET_DLL void CXNNetSetWeight(void *handle,
+                                  cxx_real_t *p_weight,
+                                  cxx_uint size_weight,
+                                  const char *layer_name,
+                                  const char *wtag);
+  /*!
+   * \brief get weight out
+   * \param handle net handle
+   * \param layer_name the name of the layer
+   * \param wtag the tag of weight, can be bias or wmat
+   * \param wshape the array holding output shape, weight can be maximumly 4 dim
+   * \param out_dim the place holding dimension of output
+   * \return the pointer to contiguous space of weight,
+   *    can be NULL if weight do not exist
+   */
+  CXXNET_DLL const cxx_real_t *
+  CXNNetGetWeight(void *handle,
+                  const char *layer_name,
+                  const char *wtag,
+                  cxx_uint wshape[4],
+                  cxx_uint *out_dim);
+                                  
+  /*!
    * \brief update the model, using current position on iterator
    * \param handle net handle
    * \param data_handle the data iterator handle
@@ -123,7 +171,7 @@ extern "C" {
   /*!
    * \brief make a prediction based on iterator input
    * \param handle net handle
-   * \param data_handle on
+   * \param data_handle
    *
    * \return the pointer to the result field, the caller must copy the result out
    *         before calling any other cxxnet functions
@@ -131,6 +179,38 @@ extern "C" {
   CXXNET_DLL const cxx_real_t *CXNNetPredictIter(void *handle,
                                                  void *data_handle,
                                                  cxx_uint *out_size);
+  /*!
+   * \brief make a feature extraction based on node name
+   * \param handle net handle
+   * \param p_data pointer to the data tensor, shape=(nbatch, nchannel, height, width)
+   * \param dshape shape of input batch
+   * \param out_size the final size of output label
+   * \param node_name name of the node to be get feature from
+   * \param oshape the shape out extracted data
+   *
+   * \return the pointer to the result field, the caller must copy the result out
+   *         before calling any other cxxnet functions
+   */
+  CXXNET_DLL const cxx_real_t *
+  CXNNetExtractBatch(void *handle,
+                     cxx_real_t *p_data,
+                     const cxx_uint dshape[4],
+                     const char *node_name,
+                     cxx_uint oshape[4]);
+  /*!
+   * \brief make a prediction based on iterator input
+   * \param handle net handle
+   * \param data_handle 
+   * \param node_name name of the node to be get feature from
+   * \param oshape the shape out extracted data
+
+   * \return the pointer to the result field, the caller must copy the result out
+   *         before calling any other cxxnet functions
+   */  
+  CXXNET_DLL const cxx_real_t *CXNNetExtractIter(void *handle,
+                                                 void *data_handle,
+                                                 const char *node_name,
+                                                 cxx_uint oshape[4]);
   /*!
    * \brief evaluate the net using the data source
    * \param handle net handle
