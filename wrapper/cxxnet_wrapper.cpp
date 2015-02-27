@@ -126,7 +126,7 @@ class WrapperNet {
   }
   inline cxx_real_t *Predict(const DataBatch &batch, cxx_uint *out_size) {
     res_pred = 0.0f;
-    net_->Predict(res_pred, batch);
+    net_->Predict(&res_pred, batch);
     *out_size = static_cast<cxx_uint>(res_pred.size(0));
     return &res_pred[0];
   }
@@ -136,7 +136,7 @@ class WrapperNet {
     itr_data->BeforeFirst();
     while (itr_data->Next()) {
       res_pred = 0.0f;
-      net_->Predict(res_pred, itr_data->Value());
+      net_->Predict(&res_pred, itr_data->Value());
       *out_size += static_cast<cxx_uint>(res_pred.size(0));
       for (cxx_uint i = 0; i < res_pred.size(0); ++i) {
         res_pred_all.push_back(res_pred[i]);
