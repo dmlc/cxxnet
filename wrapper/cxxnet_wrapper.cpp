@@ -46,6 +46,28 @@ class WrapperIterator {
   ~WrapperIterator(void) {
     delete iter_;
   }
+  inline void BeforeFirst() {
+    iter_->BeforeFirst();
+  }
+  inline bool Next() {
+    return iter_->Next();
+  }
+  inline const cxx_real_t *GetData(cxx_uint dshape[4], cxx_uint *p_stride) const {
+    const DataBatch &batch = iter_->Value();
+    for (index_t i = 0; i < 4; ++i) {
+      dshape[i] = batch.data.size(i);
+    }
+    *p_stride = batch.data.stride_;
+    return batch.data.dptr_;
+  }
+  inline const cxx_real_t *GetLabel(cxx_uint lshape[4], cxx_uint *p_stride) const {
+    const DataBatch &batch = iter_->Value();
+    for (index_t i = 0; i < 2; ++i) {
+      lshape[i] = batch.label.size(i);
+    }
+    *p_stride = batch.label.stride_;
+    return batch.label.dptr_;    
+  }
 
  private:
   friend class WrapperNet;
@@ -55,7 +77,7 @@ class WrapperIterator {
 class WrapperNet {
  public:
   WrapperNet(const char *device, const char *s_cfg)
-      : net_(NULL) {
+      : res_pred(false), net_(NULL) {
     device = "gpu";
     net_type = 0;
     silent = 0;
@@ -109,40 +131,16 @@ class WrapperNet {
   inline void StartRound(int round) {
     round_counter = round;
   }
-  inline void UpdateOneIter(WrapperIterator *iter) {
-    IIterator<DataBatch> *itr_train = iter->iter_;
-    int sample_counter = 0;
-    itr_train->BeforeFirst();
-    while (itr_train->Next()) {
-      net_->Update(itr_train->Value());
-      if (++sample_counter % print_step == 0) {
-        if (silent == 0) {
-          printf("\r                                                               \r");
-          printf("round %8d:[%8d] ", round_counter, sample_counter);
-          fflush(stdout);
-        }
-      }
-    }
+  inline void UpdateIter(WrapperIterator *iter) {
+    net_->Update(iter->iter_->Value());
   }
   inline cxx_real_t *Predict(const DataBatch &batch, cxx_uint *out_size) {
-    res_pred = 0.0f;
     net_->Predict(&res_pred, batch);
     *out_size = static_cast<cxx_uint>(res_pred.size(0));
-    return &res_pred[0];
+    return res_pred.dptr_;
   }
   inline cxx_real_t *PredictIter(WrapperIterator *iter, cxx_uint *out_size) {
-    res_pred_all.clear();
-    IIterator<DataBatch> *itr_data = iter->iter_;
-    itr_data->BeforeFirst();
-    while (itr_data->Next()) {
-      res_pred = 0.0f;
-      net_->Predict(&res_pred, itr_data->Value());
-      *out_size += static_cast<cxx_uint>(res_pred.size(0));
-      for (cxx_uint i = 0; i < res_pred.size(0); ++i) {
-        res_pred_all.push_back(res_pred[i]);
-      }
-    }
-    return BeginPtr(res_pred_all);
+    return Predict(iter->iter_->Value(), out_size);
   }
   inline const char *Evaluate(WrapperIterator *iter, const char *data_name) {
     res_eval = net_->Evaluate(iter->iter_, data_name);
@@ -157,7 +155,7 @@ class WrapperNet {
   // returning cache
   std::string res_eval;
   mshadow::TensorContainer<mshadow::cpu, 1> res_pred;
-  std::vector<cxx_real_t> res_pred_all;
+
  private:
   // the internal net
   nnet::INetTrainer *net_;
@@ -209,6 +207,12 @@ extern "C" {
   void *CXNIOCreateFromConfig(const char *cfg) {
     return new WrapperIterator(cfg);
   }
+  int CXNIONext(void *handle) {
+    return static_cast<WrapperIterator*>(handle)->Next();
+  }
+  void CXNIOBeforeFirst(void *handle) {
+    static_cast<WrapperIterator*>(handle)->BeforeFirst();    
+  }
   void CXNIOFree(void *handle) {
     delete static_cast<WrapperIterator*>(handle);
   }
@@ -233,37 +237,31 @@ extern "C" {
   void CXNNetStartRound(void *handle, int round) {
     static_cast<WrapperNet*>(handle)->StartRound(round);
   }
-  void CXNNetUpdateOneIter(void *handle, void *data_handle) {
+  void CXNNetUpdateIter(void *handle, void *data_handle) {
     static_cast<WrapperNet*>(handle)->
-        UpdateOneIter(static_cast<WrapperIterator*>(data_handle));
+        UpdateIter(static_cast<WrapperIterator*>(data_handle));
   }
-  void CXNNetUpdateOneBatch(void *handle,
-                            cxx_real_t *p_data,
-                            cxx_uint nbatch,
-                            cxx_uint nchannel,
-                            cxx_uint height,
-                            cxx_uint width,
-                            cxx_real_t *p_label,
-                            cxx_uint label_width) {
+  void CXNNetUpdateBatch(void *handle,
+                         cxx_real_t *p_data,
+                         const cxx_uint dshape[4],
+                         cxx_real_t *p_label,
+                         const cxx_uint lshape[2]) {
     DataBatch batch;
     batch.label = mshadow::Tensor<cpu, 2>
-        (p_label, mshadow::Shape2(nbatch, label_width));
-    batch.batch_size = nbatch;
+        (p_label, mshadow::Shape2(lshape[0], lshape[1]));
+    batch.batch_size = dshape[0];
     batch.data = mshadow::Tensor<cpu, 4>
-        (p_data, mshadow::Shape4(nbatch, nchannel, height, width));
+        (p_data, mshadow::Shape4(dshape[0], dshape[1], dshape[2], dshape[3]));
     static_cast<WrapperNet*>(handle)->net()->Update(batch);
   }
-  const cxx_real_t *CXNNetPredict(void *handle,
-                                  cxx_real_t *p_data,
-                                  cxx_uint nbatch,
-                                  cxx_uint nchannel,
-                                  cxx_uint height,
-                                  cxx_uint width,
-                                  cxx_uint *out_size) {
+  const cxx_real_t *CXNNetPredictBatch(void *handle,
+                                       cxx_real_t *p_data,
+                                       const cxx_uint dshape[4],
+                                       cxx_uint *out_size) {
     DataBatch batch;
-    batch.batch_size = nbatch;
+    batch.batch_size = dshape[0];
     batch.data = mshadow::Tensor<cpu, 4>
-        (p_data, mshadow::Shape4(nbatch, nchannel, height, width));
+        (p_data, mshadow::Shape4(dshape[0], dshape[1], dshape[2], dshape[3]));
     return static_cast<WrapperNet*>(handle)->Predict(batch, out_size);
   }
   const cxx_real_t *CXNNetPredictIter(void *handle,

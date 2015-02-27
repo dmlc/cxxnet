@@ -19,17 +19,12 @@ else:
 # load in xgboost library
 cxnlib = ctypes.cdll.LoadLibrary(CXXNET_PATH)
 cxnlib.CXNIOCreateFromConfig.restype = ctypes.c_void_p
+cxnlib.CXNIONext.restype = ctypes.c_int
 cxnlib.CXNNetCreate.restype = ctypes.c_void_p
-cxnlib.CXNNetPredict.restype = ctypes.POINTER(ctypes.c_float)
+cxnlib.CXNNetPredictBatch.restype = ctypes.POINTER(ctypes.c_float)
+cxnlib.CXNNetPredictIter.restype = ctypes.POINTER(ctypes.c_float)
 cxnlib.CXNNetEvaluate.restype = ctypes.c_char_p
 
-class DataIter:
-    """data iterator of cxxnet"""
-    def __init__(self, cfg):
-        self.handle = cxnlib.CXNIOCreateFromConfig(ctypes.c_char_p(cfg.encode('utf-8')))
-    def __del__(self):
-        """destructor"""
-        cxnlib.CXNIOFree(self.handle)
 
 def ctypes2numpy(cptr, length, dtype=numpy.float32):
     """convert a ctypes pointer array to numpy array """
@@ -38,6 +33,29 @@ def ctypes2numpy(cptr, length, dtype=numpy.float32):
     assert ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0])
     return res
 
+class DataIter:
+    """data iterator of cxxnet"""
+    def __init__(self, cfg):        
+        self.handle = cxnlib.CXNIOCreateFromConfig(ctypes.c_char_p(cfg.encode('utf-8')))
+        self.head = True
+        self.tail = False
+    def __del__(self):
+        """destructor"""
+        cxnlib.CXNIOFree(self.handle)
+    def next(self):
+        ret = cxnlib.CXNIONext(self.handle)
+        self.head = False
+        self.tail = ret != 0
+        return self.tail
+    def before_first(self):
+        cxnlib.CXNIOBeforeFirst(self.handle)
+        self.head = True
+        self.tail = False
+    def check_valid(self):
+        if self.head:
+            raise Exception('iterator was at head state, call next to get to valid state')
+        if self.tail:
+            raise Exception('iterator reaches end')                    
 class Net:
     """neural net object"""
     def __init__(self, dev = 'cpu', cfg = ''):
@@ -92,7 +110,8 @@ class Net:
             label: the label of the data batch
         """
         if isinstance(data, DataIter):
-            cxnlib.CXNNetUpdateOneIter(self.handle, data.handle)
+            data.check_valid()
+            cxnlib.CXNNetUpdateIter(self.handle, data.handle)
         elif isinstance(data, numpy.ndarray):
             if data.ndim != 4:
                 raise Exception('Net.update: need 4 dimensional tensor (batch, channel, height, width)')
@@ -106,12 +125,11 @@ class Net:
                 raise Exception('Net.update: label need to be 2 dimension or one dimension ndarray')
             if label.shape[0] != data.shape[0]:
                 raise Exception('Net.update: data size mismatch')
-            cxnlib.CXNNetUpdateOneBatch(self.handle,
-                                        data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                                        data.shape[0], data.shape[1],
-                                        data.shape[2], data.shape[3],
-                                        label.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                                        label.shape[1])
+            cxnlib.CXNNetUpdateBatch(self.handle,
+                                     data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                                     numpy.array(data.shape).ctypes.data_as(ctypes.POINTER(ctypes.c_uint)),
+                                     label.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                                     numpy.array(label.shape).ctypes.data_as(ctypes.POINTER(ctypes.c_uint)))
         else:
             raise Exception('update do not support type %s' % str(type(data)))
 
@@ -126,20 +144,21 @@ class Net:
             return cxnlib.CXNNetEvaluate(self.handle, data.handle, name)
         else:
             raise Exception('update do not support type %s' % str(type(data)))
-    def predict_iter(self, data):
-        olen = ctypes.c_uint()
-        ret = cxnlib.CXNNetPredictIter(self.handle, data.handle, ctypes.byref(olen))
-        return ctypes2numpy(ret, olen.value, 'float32')
+
     def predict(self, data):
-        assert isinstance(numpy.ndarray)
-        if data.ndim != 4:
-            raise Exception('need 4 dimensional tensor to use predict')
         olen = ctypes.c_uint()
-        ret = cxnlib.CXNNetPredict(self.handle,
-                                   data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                                   data.shape[0], data.shape[1],
-                                   data.shape[2], data.shape[3],
-                                   ctypes.byref(olen));
+        if isinstance(data, DataIter):
+            data.check_valid()
+            ret = cxnlib.CXNNetPredictIter(self.handle,
+                                           data.handle,
+                                           ctypes.byref(olen));
+        elif isinstance(data, numpy.ndarray):
+            if data.ndim != 4:
+                raise Exception('need 4 dimensional tensor to use predict')
+            ret = cxnlib.CXNNetPredictBatch(self.handle,
+                                            data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                                            numpy.array(data.shape).ctypes.data_as(ctypes.POINTER(ctypes.c_uint)),
+                                            ctypes.byref(olen));
         return ctypes2numpy(ret, olen.value, 'float32')
 
 def train(cfg, data, num_round, param, eval_data = None):

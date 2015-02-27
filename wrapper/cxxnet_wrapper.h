@@ -28,6 +28,17 @@ extern "C" {
    */
   CXXNET_DLL void *CXNIOCreateFromConfig(const char *cfg);
   /*!
+   * \brief move iterator to next position
+   * \param handle the handle to iterator
+   * \return whether it can be moved
+   */
+  CXXNET_DLL int CXNIONext(void *handle);
+  /*!
+   * \brief call iterator.BeforeFirst
+   * \param handle the handle to iterator
+   */
+  CXXNET_DLL void CXNIOBeforeFirst(void *handle);
+  /*!
    * \brief free the cxxnet io iterator handle
    * \param handle the handle pointer to the data iterator
    */
@@ -75,55 +86,51 @@ extern "C" {
    */
   CXXNET_DLL void CXNNetStartRound(void *handle, int round);
   /*!
-   * \brief update the model for one iteration
+   * \brief update the model, using current position on iterator
    * \param handle net handle
    * \param data_handle the data iterator handle
    */
-  CXXNET_DLL void CXNNetUpdateOneIter(void *handle,
-                                      void *data_handle);
+  CXXNET_DLL void CXNNetUpdateIter(void *handle,
+                                   void *data_handle);
   /*!
    * \brief update the model using one batch of image
    * \param handle net handle
    * \param p_data pointer to the data tensor, shape=(nbatch, nchannel, height, width)
-   * \param nbatch number of batch in the image
-   * \param nchannel number of channels in the image
-   * \param height height of image
-   * \param width width of image
+   * \param dshape shape of input batch
    * \param p_label pointer to the label field, shape=(nbatch, label_width)
-   * \param label_width number of labels
+   * \param lshape shape of input label
    */
-  CXXNET_DLL void CXNNetUpdateOneBatch(void *handle,
-                                       cxx_real_t *p_data,
-                                       cxx_uint nbatch,
-                                       cxx_uint nchannel,
-                                       cxx_uint height,
-                                       cxx_uint width,
-                                       cxx_real_t *p_label,
-                                       cxx_uint label_width);
+  CXXNET_DLL void CXNNetUpdateBatch(void *handle,
+                                    cxx_real_t *p_data,
+                                    const cxx_uint dshape[4],
+                                    cxx_real_t *p_label,
+                                    const cxx_uint lshape[2]);
   /*!
    * \brief make a prediction
    * \param handle net handle
    * \param p_data pointer to the data tensor, shape=(nbatch, nchannel, height, width)
-   * \param nbatch number of batch in the image
-   * \param nchannel number of channels in the image
-   * \param height height of image
-   * \param width width of image
+   * \param dshape shape of input batch
    * \param out_size the final size of output label
    *
    * \return the pointer to the result field, the caller must copy the result out
    *         before calling any other cxxnet functions
    */
-  CXXNET_DLL const cxx_real_t *CXNNetPredict(void *handle,
-                                             cxx_real_t *p_data,
-                                             cxx_uint nbatch,
-                                             cxx_uint nchannel,
-                                             cxx_uint height,
-                                             cxx_uint width,
-                                             cxx_uint *out_size);
-
-  CXXNET_DLL const cxx_real_t *CXNNetPredictBatch(void *handle,
-                                                  void *data_handle,
-                                                  cxx_uint *out_size);
+  CXXNET_DLL const cxx_real_t *
+  CXNNetPredictBatch(void *handle,
+                     cxx_real_t *p_data,
+                     const cxx_uint dshape[4],
+                     cxx_uint *out_size);
+  /*!
+   * \brief make a prediction based on iterator input
+   * \param handle net handle
+   * \param data_handle on
+   *
+   * \return the pointer to the result field, the caller must copy the result out
+   *         before calling any other cxxnet functions
+   */  
+  CXXNET_DLL const cxx_real_t *CXNNetPredictIter(void *handle,
+                                                 void *data_handle,
+                                                 cxx_uint *out_size);
   /*!
    * \brief evaluate the net using the data source
    * \param handle net handle
