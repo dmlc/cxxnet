@@ -3,7 +3,8 @@ Document Home
 This is the documentation for cxxnet
 
 Links of Resources
-* [Learning CXXNET by Examples](../example) 
+* [Learning CXXNET by Examples](../example)
+* [Multi-GPU/Distributed Training](multigpu.md)
 
 Configuration of CXXNET
 ====
@@ -15,5 +16,5 @@ In general, cxxnet configuration file contains four kinds of configurations in a
   - Configure network, and setup each layers.
 * [Updater Setting](updater.md)
   - Set parameters(learning rate, momentum) for learning procedure
-* [Global Setting](global.md)
-  - Set global parameters for neural network, related to device selection, running control.
+* [Other Setting](other.md)
+  - Set other parameters for neural network, related to device selection, running control.
