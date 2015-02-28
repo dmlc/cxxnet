@@ -11,3 +11,4 @@ layer_impl-inl.hpp
 .gitignore
 *.so
 im2bin
+*.pyc
