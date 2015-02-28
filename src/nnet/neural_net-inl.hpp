@@ -373,7 +373,7 @@ class NeuralNetThread {
   inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
                                    const std::vector<mshadow::Tensor<mshadow::cpu, 4> >& extra_data,
                                    const layer::LabelInfo &label_info,
-                                   mshadow::Tensor<cpu,4> out_data,
+                                   std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > >& req,
                                    bool prop_to_input,
                                    bool need_sync,
                                    bool need_update,
@@ -382,7 +382,7 @@ class NeuralNetThread {
     net_->label_info = label_info;
     iparam_batch = batch;
     iparam_flag = prop_to_input;
-    oparam_node = out_data;
+    oparam_req = req;
     iparam_need_sync = need_sync;
     iparam_need_update = need_update;
     iparam_epoch = update_epoch;
@@ -508,8 +508,10 @@ class NeuralNetThread {
       case kTrainProp: {
         if (iparam_batch.size(0) == 0) return;
         net_->Forward(true, iparam_batch, iparam_extra_data, iparam_need_sync);
-        if (oparam_node.dptr_ != NULL) {
-          mshadow::Copy(oparam_node, net_->nodes.back().data, stream);
+        for (index_t i = 0; i < oparam_req.size(); ++i) {
+          index_t id = oparam_req[i].first + (oparam_req[i].first < 0 ? net_->nodes.size() : 0);
+          oparam_req[i].second->Resize(net_->nodes[id].data.shape_);
+          mshadow::Copy(*(oparam_req[i].second), net_->nodes[id].data, stream);
         }
         net_->Backprop(iparam_flag, iparam_need_update, iparam_epoch);
         stream->Wait();
@@ -567,6 +569,8 @@ class NeuralNetThread {
   // the following are fields that are used to pass parameters in or out
   // used to copy out fields in the last layer
   mshadow::Tensor<cpu, 4> oparam_node;
+  // used to copy out fields in a given layer
+  std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > > oparam_req;
   // output weight parameter
   mshadow::TensorContainer<cpu, 2> *oparam_weight;
   // output shape parameter

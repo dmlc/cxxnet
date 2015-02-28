@@ -198,14 +198,16 @@ struct MetricSet{
       evals_[i]->Clear();
     }
   }
-  inline void AddEval(const mshadow::Tensor<cpu,2> &predscore,
+  inline void AddEval(const std::vector<mshadow::Tensor<cpu, 2> >& predscores,
     const layer::LabelInfo& labels) {
+    utils::Assert(predscores.size() == evals_.size(),
+      "Metric: Number of predict scores and number of metrics should be equal.");
     for (size_t i = 0; i < evals_.size(); ++ i) {
       std::map<std::string, size_t>::const_iterator it =
         labels.name2findex->find(label_fields_[i]);
       utils::Check(it != labels.name2findex->end(), "Metric: unknown target = %s",
                  label_fields_[i].c_str());
-      evals_[i]->AddEval(predscore, labels.fields[it->second]);
+      evals_[i]->AddEval(predscores[i], labels.fields[it->second]);
     }
   }
   inline std::string Print(const char *evname) {
