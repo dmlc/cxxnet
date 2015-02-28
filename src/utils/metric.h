@@ -45,7 +45,7 @@ struct MetricBase : public IMetric{
     sum_metric = 0.0; cnt_inst = 0;
   }
   virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore, const LabelRecord& labels) {
-    for (index_t i = 0; i < predscore.size(0); ++ i) {                    
+    for (index_t i = 0; i < predscore.size(0); ++ i) {
       sum_metric += CalcMetric(predscore[i], labels.label[i]);
       cnt_inst+= 1;
     }
@@ -124,7 +124,9 @@ struct MetricLogloss : public MetricBase{
     }else{
       const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
       const float y = label[0];
-      return  - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
+      const float res = - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
+      utils::Check(res == res, "NaN detected!");
+      return res;
     }
   }
 };
@@ -141,7 +143,7 @@ struct MetricRecall : public MetricBase{
     const mshadow::Tensor<cpu,1> &label) {
     utils::Check(pred.size(0) >= (index_t)topn,
       "it is meaningless to take rec@n for list shorter than n, evaluating rec@%d, list=%u\n",
-      topn, pred.size(0));          
+      topn, pred.size(0));
     vec.resize(pred.size(0));
     for (index_t i = 0; i < pred.size(0); ++ i) {
       vec[i] = std::make_pair(pred[i], i);
@@ -163,7 +165,7 @@ struct MetricRecall : public MetricBase{
   inline static bool CmpScore(const std::pair<float,index_t> &a, const std::pair<float,index_t> &b) {
     return a.first > b.first;
   }
-  
+
   std::vector< std::pair<float,index_t> > vec;
   utils::RandomSampler rnd;
   int topn;
