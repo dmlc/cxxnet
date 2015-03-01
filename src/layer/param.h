@@ -119,7 +119,7 @@ struct LayerParam {
       prng->SampleGaussian(&mat, 0.0f, init_sigma);
     } else if (random_type == 1) {
       // uniform initialization
-      real_t a = sqrt(3.0f / (in_num + out_num));
+      real_t a = sqrt(6.0f / (in_num + out_num));
       if (init_uniform > 0) a = init_uniform;
       prng->SampleUniform(&mat, -a, a);
     } else if (random_type == 2) {
