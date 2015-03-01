@@ -510,6 +510,7 @@ class NeuralNetThread {
         net_->Forward(true, iparam_batch, iparam_extra_data, iparam_need_sync);
         for (index_t i = 0; i < oparam_req.size(); ++i) {
           index_t id = oparam_req[i].first + (oparam_req[i].first < 0 ? net_->nodes.size() : 0);
+          utils::Assert(id < net_->nodes.size(), "nid out of range");
           oparam_req[i].second->Resize(net_->nodes[id].data.shape_);
           mshadow::Copy(*(oparam_req[i].second), net_->nodes[id].data, stream);
         }
