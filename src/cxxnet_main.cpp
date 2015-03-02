@@ -153,6 +153,7 @@ class CXXNetLearnTask {
     utils::FileStream fs(fi);
     net_trainer->LoadModel(fs);
     fclose(fi);
+    ++start_counter;
   }
   // save model into file
   inline void SaveModel(void) {
@@ -175,6 +176,7 @@ class CXXNetLearnTask {
 #if MSHADOW_USE_CUDA
       net = nnet::CreateNet<mshadow::gpu>(net_type);
 #else
+      net = NULL;
       utils::Error("MSHADOW_USE_CUDA was not enabled");
 #endif
     } else {
@@ -319,7 +321,7 @@ class CXXNetLearnTask {
   inline void TaskTrain(void) {
     time_t start    = time(NULL);
     unsigned long elapsed = 0;
-    if (continue_training == 0) {
+    if (continue_training == 0 && name_model_in == "NULL") {
       this->SaveModel();
     }
     if (test_io != 0) {
