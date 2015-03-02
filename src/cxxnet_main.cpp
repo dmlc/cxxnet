@@ -33,6 +33,7 @@ class CXXNetLearnTask {
     print_step    = 100;
     reset_net_type = -1;
     extract_node_name = "";
+    output_format = 1;
 #if MSHADOW_USE_CUDA
     this->SetParam("dev", "gpu");
 #else
@@ -96,6 +97,10 @@ class CXXNetLearnTask {
     if (!strcmp(name, "dev"))               device = val;
     if (!strcmp(name, "test_io"))           test_io = atoi(val);
     if (!strcmp(name, "extract_node_name"))         extract_node_name = val;
+    if (!strcmp(name, "output_format")) {
+      if  (!strcmp(val, "txt")) output_format = 1;
+      else output_format = 0;
+    }
     cfg.push_back(std::make_pair(std::string(name), std::string(val)));
   }
  private:
@@ -292,7 +297,16 @@ class CXXNetLearnTask {
       for (mshadow::index_t j = 0; j < sz; ++j) {
         mshadow::Tensor<mshadow::cpu, 2> d = pred[j].FlatTo2D();
         for (mshadow::index_t k = 0; k < d.size(0); ++k) {
-          fwrite(d[k].dptr_, sizeof(float), d.size(1), fo);
+          if (output_format) {
+            for (mshadow::index_t m = 0; m < d.size(1); ++m) {
+              fprintf(fo, "%g ", d[k].dptr_[m]);
+            }
+          } else {
+            fwrite(d[k].dptr_, sizeof(float), d.size(1), fo);
+          }
+        }
+        if (output_format) {
+          fprintf(fo, "\n");
         }
       }
       if (sz != 0) {
@@ -427,6 +441,8 @@ class CXXNetLearnTask {
   std::string name_pred;
   /*! \brief the layer name to be extracted */
   std::string extract_node_name;
+  /*! \brief output format of network */
+  int output_format;
  };
 }  // namespace cxxnet
 
