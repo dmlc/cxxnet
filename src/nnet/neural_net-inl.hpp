@@ -373,7 +373,7 @@ class NeuralNetThread {
   inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
                                    const std::vector<mshadow::Tensor<mshadow::cpu, 4> >& extra_data,
                                    const layer::LabelInfo &label_info,
-                                   std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > >& req,
+                                   const std::vector<std::pair<int, mshadow::Tensor<cpu, 4> > >& req,
                                    bool prop_to_input,
                                    bool need_sync,
                                    bool need_update,
@@ -511,8 +511,7 @@ class NeuralNetThread {
         for (index_t i = 0; i < oparam_req.size(); ++i) {
           index_t id = oparam_req[i].first + (oparam_req[i].first < 0 ? net_->nodes.size() : 0);
           utils::Assert(id < net_->nodes.size(), "nid out of range");
-          oparam_req[i].second->Resize(net_->nodes[id].data.shape_);
-          mshadow::Copy(*(oparam_req[i].second), net_->nodes[id].data, stream);
+          mshadow::Copy(oparam_req[i].second, net_->nodes[id].data, stream);
         }
         net_->Backprop(iparam_flag, iparam_need_update, iparam_epoch);
         stream->Wait();
@@ -571,7 +570,7 @@ class NeuralNetThread {
   // used to copy out fields in the last layer
   mshadow::Tensor<cpu, 4> oparam_node;
   // used to copy out fields in a given layer
-  std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > > oparam_req;
+  std::vector<std::pair<int, mshadow::Tensor<cpu, 4> > > oparam_req;
   // output weight parameter
   mshadow::TensorContainer<cpu, 2> *oparam_weight;
   // output shape parameter

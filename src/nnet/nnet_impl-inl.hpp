@@ -27,9 +27,6 @@ class CXXNetThreadTrainer : public INetTrainer {
   }
   virtual ~CXXNetThreadTrainer(void) {
     this->FreeNet();
-    for (index_t i = 0; i < eval_req.size(); ++i) {
-      delete eval_req[i].second;
-    }
   }
   virtual void SetParam(const char *name, const char *val) {
     if (!strcmp(name, "dev")) {
@@ -152,7 +149,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     bool need_sync = sample_counter % update_period == 0;
     bool need_update = (sample_counter + 1) % update_period == 0;
     layer::LabelInfo info = GetLabelInfo(data);
-
+    this->InitEvalReq(eval_req);
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
@@ -160,19 +157,24 @@ class CXXNetThreadTrainer : public INetTrainer {
       for (mshadow::index_t j = 0; j < data.extra_data.size(); ++j){
         extra_data.push_back(data.extra_data[j].Slice(begin, end));
       }
+      std::vector<std::pair<int, mshadow::Tensor<cpu, 4> > > batch_eval_req;
+      for (index_t j = 0; j < eval_req.size(); ++j) {
+        batch_eval_req.push_back(
+          std::make_pair(eval_req[j].first, eval_req[j].second.Slice(begin, end)));
+      }
       nets_[i - 1]->TrainForwardBackprop(data.data.Slice(begin, end),
                                          extra_data,
                                          info.Slice(begin, end),
-                                         eval_req,
+                                         batch_eval_req,
                                          false, need_sync,
                                          need_update, epoch_counter);
+
     }
     this->WaitAllJobs();
-    // evlauate training loss
     if (eval_train != 0) {
       std::vector<mshadow::Tensor<mshadow::cpu, 2> > scores;
       for (index_t i = 0; i < eval_req.size(); ++i) {
-        scores.push_back(eval_req[i].second->FlatTo2D());
+        scores.push_back(eval_req[i].second.FlatTo2D());
       }
       train_metric.AddEval(scores, info);
     }
@@ -184,8 +186,8 @@ class CXXNetThreadTrainer : public INetTrainer {
   virtual void Predict(mshadow::TensorContainer<mshadow::cpu, 1> *out_preds,
                        const DataBatch &data) {
     mshadow::TensorContainer<mshadow::cpu, 1> &preds = *out_preds;
-    std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > > req;
-    req.push_back(std::make_pair(nets_[0]->net().nodes.size() - 1, &out_temp));
+    std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4> > > req;
+    req.push_back(std::make_pair(nets_[0]->net().nodes.size() - 1, out_temp));
     this->ForwardTo(req, data);
     preds.Resize(mshadow::Shape1(out_temp.size(0)));
     for (index_t i = 0; i < out_temp.size(0); ++i) {
@@ -208,8 +210,8 @@ class CXXNetThreadTrainer : public INetTrainer {
                    "ExtractFeature: Cannot find node name: %s", node_name.c_str());
       node_id = name_map[node_name];
     }
-    std::vector <std::pair<int, mshadow::TensorContainer<cpu, 4>* > > req;
-    req.push_back(std::make_pair(node_id, out_preds));
+    std::vector <std::pair<int, mshadow::TensorContainer<cpu, 4> > > req;
+    req.push_back(std::make_pair(node_id, *out_preds));
     this->ForwardTo(req, batch);
   }
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char *data_name) {
@@ -226,8 +228,8 @@ class CXXNetThreadTrainer : public INetTrainer {
       this->ForwardTo(eval_req, batch);
       std::vector<mshadow::Tensor<cpu, 2> > scores;
       for (index_t i = 0; i < eval_req.size(); ++i) {
-        scores.push_back(eval_req[i].second->Slice(
-          0, eval_req[i].second->size(0) - batch.num_batch_padd).FlatTo2D());
+        scores.push_back(eval_req[i].second.Slice(
+          0, eval_req[i].second.size(0) - batch.num_batch_padd).FlatTo2D());
       }
       metric.AddEval(scores, GetLabelInfo(batch));
     }
@@ -288,14 +290,9 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     return maxidx;
   }
-  inline void ForwardTo(std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > >& req,
+  inline void ForwardTo(std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4> > >& req,
                         const DataBatch &data) {
-    for (mshadow::index_t i = 0; i < req.size(); ++i) {
-      index_t id = req[i].first + (req[i].first < 0 ? nets_[0]->net().nodes.size() : 0);
-      mshadow::Shape<4> oshape = nets_[0]->net().nodes[id].data.shape_;
-      oshape[0] = data.batch_size;
-      req[i].second->Resize(oshape);
-    }
+    this->InitEvalReq(req);
     const size_t ndevice = devices_.size();
     mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
@@ -314,7 +311,7 @@ class CXXNetThreadTrainer : public INetTrainer {
       for (mshadow::index_t i = nets_.size(); i != 0; --i) {
         mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
         mshadow::index_t end = std::min(i * step, data.batch_size);
-        nets_[i - 1]->CopyNodeData(req[j].first, req[j].second->Slice(begin, end));
+        nets_[i - 1]->CopyNodeData(req[j].first, req[j].second.Slice(begin, end));
       }
       this->WaitAllJobs();
     }
@@ -357,14 +354,15 @@ class CXXNetThreadTrainer : public INetTrainer {
       printf("finish initialization with %lu devices\n", devices_.size());
     }
     for (index_t i = 0; i < eval_nodes.size(); ++i) {
+      std::map<std::string, int> &name_map = net_cfg.node_name_map;
       if (eval_nodes[i].second < 0) {
-        eval_req.push_back(std::make_pair(-1, new mshadow::TensorContainer<cpu, 4>));
+        eval_req.push_back(std::make_pair(net_cfg.param.num_nodes - 1,
+          mshadow::TensorContainer<cpu, 4>()));
       } else {
-        std::map<std::string, int> &name_map = net_cfg.node_name_map;
         utils::Check(name_map.find(eval_nodes[i].first) != name_map.end(),
           "Cannot find node name: %s\n", eval_nodes[i].first.c_str());
         eval_req.push_back(std::make_pair(name_map[eval_nodes[i].first],
-          new mshadow::TensorContainer<cpu, 4>));
+          mshadow::TensorContainer<cpu, 4>()));
       }
     }
   }
@@ -398,6 +396,15 @@ class CXXNetThreadTrainer : public INetTrainer {
       pserver = NULL;
     }
   }
+  inline void InitEvalReq(
+    std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4> > >& req) {
+    for (mshadow::index_t i = 0; i < req.size(); ++i) {
+      index_t id = req[i].first;
+      mshadow::Shape<4> oshape = nets_[0]->net().nodes[id].data.shape_;
+      oshape[0] = batch_size;
+      req[i].second.Resize(oshape);
+    }
+  }
   /*! \brief parameter server */
   mshadow::ps::ISharedModel<xpu, real_t> *pserver;
   /*! \brief type of parameter server */
@@ -421,7 +428,8 @@ class CXXNetThreadTrainer : public INetTrainer {
   /*! \brief final space of output node */
   mshadow::TensorContainer<cpu, 4> out_temp;
   /*! \brief request of copy out nodes, used in evaluation */
-  std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4>* > > eval_req;
+  std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4> > > eval_req;
+  /*! \brief the name of nodes used in evaluation */
   std::vector<std::pair<std::string, int > > eval_nodes;
   // ------- model part --------
   /*! \brief batch size */
