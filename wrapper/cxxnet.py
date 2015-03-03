@@ -298,3 +298,17 @@ def train(cfg, data, num_round, param, eval_data = None):
             seval = net.evaluate(eval_data, 'eval')
         sys.stderr.write(seval + '\n')
     return net
+def train(cfg, data, label, num_round, param):
+    net = Net(cfg = cfg)
+    if isinstance(param, dict):
+        param = param.items()
+    for k, v in param:
+        net.set_param(k, v)
+    net.init_model()
+    for r in range(num_round):
+        print "Training in round %d" % r
+        net.start_round(r)
+        net.update(data=data, label=label)
+    return net
+
+

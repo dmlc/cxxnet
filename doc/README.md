@@ -4,6 +4,7 @@ This is the documentation for cxxnet
 
 Links of Resources
 * [Learning CXXNET by Examples](../example)
+* [Python Interface](python.md)
 * [Multi-GPU/Distributed Training](multigpu.md)
 
 Configuration of CXXNET
