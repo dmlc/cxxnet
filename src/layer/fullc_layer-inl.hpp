@@ -43,12 +43,12 @@ class FullConnectLayer : public ILayer<xpu> {
     gbias_.Resize(bias_.shape_);
     gwmat_ = 0.0f; gbias_ = 0.0f;
   }
-  virtual void SaveModel(utils::IStream &fo) const{
+  virtual void SaveModel(utils::IStream &fo) const {
     fo.Write(&param_, sizeof(LayerParam));
     wmat_.SaveBinary(fo);
     bias_.SaveBinary(fo);
   }
-  virtual void LoadModel(utils::IStream &fi){
+  virtual void LoadModel(utils::IStream &fi) {
     utils::Check(fi.Read(&param_, sizeof(LayerParam)) != 0,
                   "FullConnectLayer:LoadModel invalid model file");    
     wmat_.LoadBinary(fi);

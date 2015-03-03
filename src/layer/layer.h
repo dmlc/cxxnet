@@ -310,6 +310,7 @@ const int kMultiLogistic = 27;
 const int kChConcat = 28;
 const int kPRelu = 29;
 const int kBatchNorm = 30;
+const int kFixConnect = 31;
 /*! \brief gap used to encode pairtest layer */
 const int kPairTestGap = 1024;
 /*! \brief use integer to encode layer types */
@@ -321,6 +322,7 @@ typedef int LayerType;
 inline LayerType GetLayerType(const char *type) {
   if (!strncmp(type, "share", 5)) return kSharedLayer;
   if (!strcmp(type, "fullc")) return kFullConnect;
+  if (!strcmp(type, "fixconn")) return kFixConnect;
   if (!strcmp(type, "bias")) return kBias;
   if (!strcmp(type, "softmax")) return kSoftmax;
   if (!strcmp(type, "relu")) return kRectifiedLinear;
