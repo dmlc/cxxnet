@@ -67,6 +67,11 @@ struct NeuralNet {
     this->InitNet();
     this->ConfigConntions();
     for (size_t i = 0; i < connections.size(); ++i) {
+      if (this->cfg.layers[i].name != "") {
+        printf("Initializing layer: %s\n", this->cfg.layers[i].name.c_str());
+      } else {
+        printf("Initializing layer: %d\n", static_cast<int>(i));
+      }
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
       c.SetStream(stream);
