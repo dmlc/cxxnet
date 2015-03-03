@@ -158,6 +158,7 @@ class CXXNetLearnTask {
     utils::FileStream fs(fi);
     net_trainer->LoadModel(fs);
     fclose(fi);
+    ++start_counter;
   }
   // save model into file
   inline void SaveModel(void) {
@@ -180,6 +181,7 @@ class CXXNetLearnTask {
 #if MSHADOW_USE_CUDA
       net = nnet::CreateNet<mshadow::gpu>(net_type);
 #else
+      net = NULL;
       utils::Error("MSHADOW_USE_CUDA was not enabled");
 #endif
     } else {
@@ -333,56 +335,70 @@ class CXXNetLearnTask {
   inline void TaskTrain(void) {
     time_t start    = time(NULL);
     unsigned long elapsed = 0;
-    if (continue_training == 0) {
+    if (continue_training == 0 && name_model_in == "NULL") {
       this->SaveModel();
-    }
-    if (test_io != 0) {
-      printf("start I/O test\n");
-    }
-    int cc = max_round;
-    while (start_counter <= num_round && cc --) {
+    } else {
       if (!silent) {
-        printf("update round %d", start_counter -1); fflush(stdout);
+        printf("continuing from round %d", start_counter-1);
+        fflush(stdout);
       }
-      int sample_counter = 0;
-      net_trainer->StartRound(start_counter);
-      itr_train->BeforeFirst();
-      while (itr_train->Next()) {
-        if (test_io == 0) {
-          net_trainer->Update(itr_train->Value());
+      for (size_t i = 0; i < itr_evals.size(); ++i) {
+        std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
+        fprintf(stderr, "%s", res.c_str());
+      }
+      fprintf(stderr, "\n");
+      fflush(stderr);
+    }
+    
+    if (itr_train != NULL) {
+      if (test_io != 0) {
+        printf("start I/O test\n");
+      }
+      int cc = max_round;
+      while (start_counter <= num_round && cc --) {
+        if (!silent) {
+          printf("update round %d", start_counter -1); fflush(stdout);
         }
-        if (++ sample_counter  % print_step == 0) {
-          elapsed = (long)(time(NULL) - start);
-          if (!silent) {
-            printf("\r                                                               \r");
-            printf("round %8d:[%8d] %ld sec elapsed", start_counter-1,
-                   sample_counter, elapsed);
-            fflush(stdout);
+        int sample_counter = 0;
+        net_trainer->StartRound(start_counter);
+        itr_train->BeforeFirst();
+        while (itr_train->Next()) {
+          if (test_io == 0) {
+            net_trainer->Update(itr_train->Value());
+          }
+          if (++ sample_counter  % print_step == 0) {
+            elapsed = (long)(time(NULL) - start);
+            if (!silent) {
+              printf("\r                                                               \r");
+              printf("round %8d:[%8d] %ld sec elapsed", start_counter-1,
+                     sample_counter, elapsed);
+              fflush(stdout);
+            }
           }
         }
-      }
 
-      if (test_io == 0) {
-        // code handling evaluation
-        fprintf(stderr, "[%d]", start_counter);
-        // handle only with eval_train = 1, but not val data
-        if (itr_evals.size() == 0) {
-          std::string res = net_trainer->Evaluate(NULL, "train");
-          fprintf(stderr, "%s", res.c_str());
+        if (test_io == 0) {
+          // code handling evaluation
+          fprintf(stderr, "[%d]", start_counter);
+          // handle only with eval_train = 1, but not val data
+          if (itr_evals.size() == 0) {
+            std::string res = net_trainer->Evaluate(NULL, "train");
+            fprintf(stderr, "%s", res.c_str());
+          }
+          for (size_t i = 0; i < itr_evals.size(); ++i) {
+            std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
+            fprintf(stderr, "%s", res.c_str());
+          }
+          fprintf(stderr, "\n");
+          fflush(stderr);
         }
-        for (size_t i = 0; i < itr_evals.size(); ++i) {
-          std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
-          fprintf(stderr, "%s", res.c_str());
-        }
-        fprintf(stderr, "\n");
-        fflush(stderr);
+        elapsed = (unsigned long)(time(NULL) - start);
+        this->SaveModel();
       }
-      elapsed = (unsigned long)(time(NULL) - start);
-      this->SaveModel();
-    }
-
-    if (!silent) {
-      printf("\nupdating end, %lu sec in all\n", elapsed);
+      
+      if (!silent) {
+        printf("\nupdating end, %lu sec in all\n", elapsed);
+      }
     }
   }
 
