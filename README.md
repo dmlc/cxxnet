@@ -1,6 +1,8 @@
 cxxnet
 ======
 
+### We are going to update to V2 soon. New version supports multi-GPU/distributed training and CuDNN. Still tuned!
+
 CXXNET (spelled as: C plus plus net) is a neural network toolkit build on mshadow(https://github.com/tqchen/mshadow). It is yet another implementation of (convolutional) neural network. It is in C++, with about 1000 lines of [network layer implementations](https://github.com/antinucleon/cxxnet/blob/master/cxxnet/core/cxxnet_layer-inl.hpp), easily configuration via config file, and can get the state of art performance.
 
 
