@@ -188,10 +188,13 @@ class CXXNetThreadTrainer : public INetTrainer {
     mshadow::TensorContainer<mshadow::cpu, 1> &preds = *out_preds;
     std::vector<std::pair<int, mshadow::TensorContainer<cpu, 4> > > req;
     req.push_back(std::make_pair(nets_[0]->net().nodes.size() - 1, out_temp));
+    mshadow::Shape<4> s = nets_[0]->net().nodes.back().data.shape_;
+    s[0] = batch_size;
+    req[0].second.Resize(s);
     this->ForwardTo(req, data);
-    preds.Resize(mshadow::Shape1(out_temp.size(0)));
-    for (index_t i = 0; i < out_temp.size(0); ++i) {
-      preds[i] = this->TransformPred(out_temp[i][0][0]);
+    preds.Resize(mshadow::Shape1(batch_size));
+    for (index_t i = 0; i < batch_size; ++i) {
+      preds[i] = this->TransformPred(req[0].second[i][0][0]);
     }
   }
   virtual void ExtractFeature(mshadow::TensorContainer<mshadow::cpu, 4> *out_preds,
@@ -212,7 +215,11 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
     std::vector <std::pair<int, mshadow::TensorContainer<cpu, 4> > > req;
     req.push_back(std::make_pair(node_id, *out_preds));
+    mshadow::Shape<4> s = nets_[0]->net().nodes[node_id].data.shape_;
+    s[0] = batch_size;
+    req[0].second.Resize(s);
     this->ForwardTo(req, batch);
+    *out_preds = req[0].second;
   }
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char *data_name) {
     std::string ret;
