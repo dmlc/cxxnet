@@ -106,20 +106,28 @@ class CXXNetLearnTask {
  private:
   // configure trainer
   inline void Init(void) {
-    if (continue_training == 0 || SyncLastestModel() == 0) {
-      continue_training = 0;
-      if (name_model_in == "NULL") {
-        utils::Assert(task == "train", "must specify model_in if not training");
-        net_trainer = this->CreateNet();
-        net_trainer->InitModel();
-      }else{
-        if (task == "finetune"){
-          this->CopyModel();
-        } else {
-          this->LoadModel();
-        }
+    if (task == "train" && continue_training) {
+      if (SyncLastestModel()) {
+        utils::Error("Init: Cannot find models for continue training. \
+          Please specify it by model_in instead.");
+      } else {
+        printf("Init: Continue training from %d\n", start_counter);
+        return;
       }
     }
+    continue_training = 0;
+    if (name_model_in == "NULL") {
+      utils::Assert(task == "train", "must specify model_in if not training");
+      net_trainer = this->CreateNet();
+      net_trainer->InitModel();
+    } else {
+      if (task == "finetune") {
+        this->CopyModel();
+      } else {
+        this->LoadModel();
+      }
+    }
+  
     this->CreateIterators();
   }
   // load in latest model from model_folder
