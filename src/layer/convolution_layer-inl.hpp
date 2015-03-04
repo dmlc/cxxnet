@@ -78,9 +78,9 @@ class ConvolutionLayer : public ILayer<xpu> {
     const index_t nbatch = in.size(0);
     for (index_t i = 0; i < nbatch; i += nstep_) {
       // resize, incase last batch is smaller
-      const index_t step = std::min(nstep_, nbatch-i);
-      temp_col_.Resize(mshadow::Shape2(shape_colunit_[0], shape_colunit_[1]*step));
-      temp_dst_.Resize(mshadow::Shape3(shape_dstunit_[0], shape_dstunit_[1], shape_dstunit_[2]*step));
+      const index_t step = std::min(nstep_, nbatch - i);
+      temp_col_.Resize(mshadow::Shape2(shape_colunit_[0], shape_colunit_[1] * step));
+      temp_dst_.Resize(mshadow::Shape3(shape_dstunit_[0], shape_dstunit_[1], shape_dstunit_[2] * step));
 
       if (param_.pad_x == 0 && param_.pad_y == 0) {
         temp_col_ = unpack_patch2col(in.Slice(i, i+step), param_.kernel_height, param_.kernel_width, param_.stride);
@@ -97,6 +97,7 @@ class ConvolutionLayer : public ILayer<xpu> {
       out.Slice(i, i + step) =
           swapaxis<1,0>(reshape(temp_dst_,
                                 mshadow::Shape4(param_.num_channel, step, out.size(2), out.size(3))));
+      
     }
     if (param_.no_bias == 0) {
       // add bias, broadcast bias to dim 1: channel

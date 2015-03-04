@@ -1,5 +1,5 @@
-#ifndef BATCH_NORM_LAYER_INL_HPP
-#define BATCH_NROM_LAYER_INL_HPP
+#ifndef BATCH_NORM_LAYER_INL_HPP_
+#define BATCH_NORM_LAYER_INL_HPP_
 #pragma once
 
 #include <mshadow/tensor.h>

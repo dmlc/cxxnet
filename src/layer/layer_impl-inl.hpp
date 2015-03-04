@@ -11,6 +11,7 @@
 #include "./bias_layer-inl.hpp"
 #include "./dropout_layer-inl.hpp"
 #include "./fullc_layer-inl.hpp"
+#include "./fixconn_layer-inl.hpp"
 #include "./lrn_layer-inl.hpp"
 #include "./flatten_layer-inl.hpp"
 #include "./pooling_layer-inl.hpp"
@@ -48,6 +49,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kBias: return new BiasLayer<xpu>();
     case kDropout: return new DropoutLayer<xpu>(p_rnd);
     case kFullConnect: return new FullConnectLayer<xpu>(p_rnd);
+    case kFixConnect: return new FixConnectLayer<xpu>();
     case kLRN: return new LRNLayer<xpu>();
     case kFlatten: return new FlattenLayer<xpu>();
     case kReluMaxPooling: return
