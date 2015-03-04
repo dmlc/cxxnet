@@ -107,11 +107,12 @@ class CXXNetLearnTask {
   // configure trainer
   inline void Init(void) {
     if (task == "train" && continue_training) {
-      if (SyncLastestModel()) {
+      if (SyncLastestModel() == 0) {
         utils::Error("Init: Cannot find models for continue training. \
           Please specify it by model_in instead.");
       } else {
-        printf("Init: Continue training from %d\n", start_counter);
+        printf("Init: Continue training from round %d\n", start_counter);
+        this->CreateIterators();
         return;
       }
     }
