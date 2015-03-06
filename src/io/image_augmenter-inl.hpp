@@ -25,6 +25,9 @@ class ImageAugmenter {
     min_crop_size_ = -1;
     max_crop_size_ = -1;
     rotate_ = -1.0f;
+    min_scale_ratio_ = -1.0f;
+    max_scale_ratio_ = -1.0f;
+    fill_value_ = 255;
   }
   virtual ~ImageAugmenter() {
   }
@@ -41,6 +44,8 @@ class ImageAugmenter {
     if (!strcmp(name, "max_aspect_ratio")) max_aspect_ratio_ = atof(val);
     if (!strcmp(name, "min_crop_size")) min_crop_size_ = atoi(val);
     if (!strcmp(name, "max_crop_size")) max_crop_size_ = atoi(val);
+    if (!strcmp(name, "min_scale_ratio")) min_scale_ratio_ = atof(val);
+    if (!strcmp(name, "max_scale_ratio")) max_scale_ratio_ = atof(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
     if (!strcmp(name, "rotate")) rotate_ = atoi(val);
     if (!strcmp(name, "rotate_list")) {
@@ -64,6 +69,21 @@ class ImageAugmenter {
   virtual cv::Mat Process(const cv::Mat &src,
                           utils::RandomSampler *prnd) {
     cv::Mat res = src;
+    if (min_scale_ratio_ > 0.0f && max_scale_ratio_ > 0.0f) {
+      utils::Check(min_scale_ratio_ < max_scale_ratio_, "Incorrect scale range");
+      float scale_ = static_cast<float>(prnd->NextDouble()) * (max_scale_ratio_ - min_scale_ratio_) + min_scale_ratio_;
+      int target_rows = res.rows * scale_;
+      int target_cols = res.cols * scale_;
+      if (target_rows < res.rows && target_cols < res.cols) {
+        int pad = (res.rows - target_rows) / 2;
+        cv::resize(res, temp0, cv::Size(target_rows, target_cols));
+        res.setTo(cv::Scalar::all(fill_value_));
+        temp0.copyTo(res(cv::Rect(pad, pad, temp0.rows, temp0.cols)));
+      } else {
+        cv::resize(res, temp0, cv::Size(target_rows, target_cols));
+        res = temp0;
+      }
+    }
     if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
         || rotate_ > 0 || rotate_list_.size() > 0) {
       int angle = prnd->NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
@@ -86,7 +106,7 @@ class ImageAugmenter {
       cv::warpAffine(res, temp, M, cv::Size(len, len),
                      cv::INTER_CUBIC,
                      cv::BORDER_CONSTANT,
-                     cv::Scalar(255, 255, 255));
+                     cv::Scalar(fill_value_, fill_value_, fill_value_));
       res = temp;
     }
     if (min_crop_size_ > 0 && max_crop_size_ > 0) {
@@ -143,7 +163,7 @@ class ImageAugmenter {
     }
     return tmpres;
   }
-  
+
  private:
   // whether skip processing
   inline bool NeedProcess(void) const {
@@ -155,7 +175,7 @@ class ImageAugmenter {
   // temp input space
   mshadow::TensorContainer<cpu, 3> tmpres;
   // temporal space
-  cv::Mat temp, temp2;
+  cv::Mat temp0, temp, temp2;
   // rotation param
   cv::Mat rotateM;
   // parameters
@@ -178,10 +198,16 @@ class ImageAugmenter {
   int max_crop_size_;
   /*! \brief min crop size */
   int min_crop_size_;
+  /*! \brief min scale ratio */
+  float min_scale_ratio_;
+  /*! \brief max_scale_ratio */
+  float max_scale_ratio_;
   /*! \brief whether to mirror the image */
   int mirror_;
   /*! \brief rotate angle */
   int rotate_;
+  /*! \brief filled color while padding */
+  int fill_value_;
   /*! \brief list of possible rotate angle */
   std::vector<int> rotate_list_;
 };
