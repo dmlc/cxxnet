@@ -25,8 +25,8 @@ class ImageAugmenter {
     min_crop_size_ = -1;
     max_crop_size_ = -1;
     rotate_ = -1.0f;
-    min_scale_ratio_ = -1.0f;
-    max_scale_ratio_ = -1.0f;
+    random_pad_prob_ = 0.0f;
+    random_pad_scale_ = 0.0f;
     fill_value_ = 255;
   }
   virtual ~ImageAugmenter() {
@@ -44,8 +44,8 @@ class ImageAugmenter {
     if (!strcmp(name, "max_aspect_ratio")) max_aspect_ratio_ = atof(val);
     if (!strcmp(name, "min_crop_size")) min_crop_size_ = atoi(val);
     if (!strcmp(name, "max_crop_size")) max_crop_size_ = atoi(val);
-    if (!strcmp(name, "min_scale_ratio")) min_scale_ratio_ = atof(val);
-    if (!strcmp(name, "max_scale_ratio")) max_scale_ratio_ = atof(val);
+    if (!strcmp(name, "random_pad_prob")) random_pad_prob_ = atof(val);
+    if (!strcmp(name, "random_pad_scale")) random_pad_scale_ = atof(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
     if (!strcmp(name, "rotate")) rotate_ = atoi(val);
     if (!strcmp(name, "rotate_list")) {
@@ -69,19 +69,16 @@ class ImageAugmenter {
   virtual cv::Mat Process(const cv::Mat &src,
                           utils::RandomSampler *prnd) {
     cv::Mat res = src;
-    if (min_scale_ratio_ > 0.0f && max_scale_ratio_ > 0.0f) {
-      utils::Check(min_scale_ratio_ < max_scale_ratio_, "Incorrect scale range");
-      float scale_ = static_cast<float>(prnd->NextDouble()) * (max_scale_ratio_ - min_scale_ratio_) + min_scale_ratio_;
-      int target_rows = res.rows * scale_;
-      int target_cols = res.cols * scale_;
-      if (target_rows < res.rows && target_cols < res.cols) {
+    if (random_pad_prob_ > 0.0f && random_pad_scale_ > 0.0f) {
+      if (prnd->NextDouble() < random_pad_prob_) {
+        float scale_ = static_cast<float>(prnd->NextDouble()) * random_pad_scale_;
+        int target_rows = res.rows * (1 - scale_);
+        int target_cols = res.cols * (1 - scale_);  
         int pad = (res.rows - target_rows) / 2;
         cv::resize(res, temp0, cv::Size(target_rows, target_cols));
         res.setTo(cv::Scalar::all(fill_value_));
-        temp0.copyTo(res(cv::Rect(pad, pad, temp0.rows, temp0.cols)));
-      } else {
-        cv::resize(res, temp0, cv::Size(target_rows, target_cols));
-        res = temp0;
+        cv::Mat res_roi = res(cv::Rect(pad, pad, temp0.rows, temp0.cols));
+        temp0.copyTo(res_roi);
       }
     }
     if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
@@ -199,9 +196,9 @@ class ImageAugmenter {
   /*! \brief min crop size */
   int min_crop_size_;
   /*! \brief min scale ratio */
-  float min_scale_ratio_;
+  float random_pad_prob_;
   /*! \brief max_scale_ratio */
-  float max_scale_ratio_;
+  float random_pad_scale_;
   /*! \brief whether to mirror the image */
   int mirror_;
   /*! \brief rotate angle */
