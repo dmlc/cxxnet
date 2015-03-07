@@ -70,26 +70,6 @@ class ImageAugmenter {
   virtual cv::Mat Process(const cv::Mat &src,
                           utils::RandomSampler *prnd) {
     cv::Mat res = src;
-    if (min_crop_size_ > 0 && max_crop_size_ > 0) {
-      int crop_size_x = prnd->NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
-          min_crop_size_;
-      int crop_size_y = crop_size_x * (1 + prnd->NextDouble() * \
-                                       max_aspect_ratio_ * 2 - max_aspect_ratio_);
-      crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
-      mshadow::index_t y = res.rows - crop_size_y;
-      mshadow::index_t x = res.cols - crop_size_x;
-      if (rand_crop_ != 0) {
-        y = prnd->NextUInt32(y + 1);
-        x = prnd->NextUInt32(x + 1);
-      } else {
-        y /= 2; x /= 2;
-      }
-      if (crop_y_start_ != -1) y = crop_y_start_;
-      if (crop_x_start_ != -1) x = crop_x_start_;
-      cv::Rect roi(x, y, crop_size_x, crop_size_y);
-      res = res(roi);
-      //cv::resize(res, temp2, cv::Size(shape_[1], shape_[2]));
-    }
 
     if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
         || rotate_ > 0 || rotate_list_.size() > 0) {
@@ -114,7 +94,28 @@ class ImageAugmenter {
                      cv::INTER_CUBIC,
                      cv::BORDER_CONSTANT,
                      cv::Scalar(fill_value_, fill_value_, fill_value_));
-      res = temp;
+      // res = temp;
+      cv::resize(res, temp, cv::Size(res.rows, res.cols));
+    }
+    if (min_crop_size_ > 0 && max_crop_size_ > 0) {
+      int crop_size_x = prnd->NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
+          min_crop_size_;
+      int crop_size_y = crop_size_x * (1 + prnd->NextDouble() * \
+                                       max_aspect_ratio_ * 2 - max_aspect_ratio_);
+      crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
+      mshadow::index_t y = res.rows - crop_size_y;
+      mshadow::index_t x = res.cols - crop_size_x;
+      if (rand_crop_ != 0) {
+        y = prnd->NextUInt32(y + 1);
+        x = prnd->NextUInt32(x + 1);
+      } else {
+        y /= 2; x /= 2;
+      }
+      if (crop_y_start_ != -1) y = crop_y_start_;
+      if (crop_x_start_ != -1) x = crop_x_start_;
+      cv::Rect roi(x, y, crop_size_x, crop_size_y);
+      res = res(roi);
+      //cv::resize(res, temp2, cv::Size(shape_[1], shape_[2]));
     }
 
     if (random_pad_prob_ > 0.0f && random_pad_scale_ > 0.0f && prnd->NextDouble() < random_pad_prob_) {
