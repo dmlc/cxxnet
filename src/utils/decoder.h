@@ -1,6 +1,5 @@
-#ifndef DECODER_H
-#define DECODER_H
-#pragma once
+#ifndef CXXNET_UTILS_DECODER_H_
+#define CXXNET_UTILS_DECODER_H_
 
 #include <vector>
 #include <jpeglib.h>
@@ -97,7 +96,6 @@ private:
   jpeg_decompress_struct cinfo;
   jpeg_source_mgr src;
   jerror_mgr jerr;
-  JSAMPARRAY buffer;
 };
 
 #if CXXNET_USE_OPENCV
