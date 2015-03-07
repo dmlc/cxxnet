@@ -46,6 +46,7 @@ class ImageAugmenter {
     if (!strcmp(name, "max_crop_size")) max_crop_size_ = atoi(val);
     if (!strcmp(name, "random_pad_prob")) random_pad_prob_ = atof(val);
     if (!strcmp(name, "random_pad_scale")) random_pad_scale_ = atof(val);
+    if (!strcmp(name, "fill_value")) fill_value_ = atoi(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
     if (!strcmp(name, "rotate")) rotate_ = atoi(val);
     if (!strcmp(name, "rotate_list")) {
@@ -69,18 +70,27 @@ class ImageAugmenter {
   virtual cv::Mat Process(const cv::Mat &src,
                           utils::RandomSampler *prnd) {
     cv::Mat res = src;
-    if (random_pad_prob_ > 0.0f && random_pad_scale_ > 0.0f) {
-      if (prnd->NextDouble() < random_pad_prob_) {
-        float scale_ = static_cast<float>(prnd->NextDouble()) * random_pad_scale_;
-        int target_rows = res.rows * (1 - scale_);
-        int target_cols = res.cols * (1 - scale_);  
-        int pad = (res.rows - target_rows) / 2;
-        cv::resize(res, temp0, cv::Size(target_rows, target_cols));
-        res.setTo(cv::Scalar::all(fill_value_));
-        cv::Mat res_roi = res(cv::Rect(pad, pad, temp0.rows, temp0.cols));
-        temp0.copyTo(res_roi);
+    if (min_crop_size_ > 0 && max_crop_size_ > 0) {
+      int crop_size_x = prnd->NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
+          min_crop_size_;
+      int crop_size_y = crop_size_x * (1 + prnd->NextDouble() * \
+                                       max_aspect_ratio_ * 2 - max_aspect_ratio_);
+      crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
+      mshadow::index_t y = res.rows - crop_size_y;
+      mshadow::index_t x = res.cols - crop_size_x;
+      if (rand_crop_ != 0) {
+        y = prnd->NextUInt32(y + 1);
+        x = prnd->NextUInt32(x + 1);
+      } else {
+        y /= 2; x /= 2;
       }
+      if (crop_y_start_ != -1) y = crop_y_start_;
+      if (crop_x_start_ != -1) x = crop_x_start_;
+      cv::Rect roi(x, y, crop_size_x, crop_size_y);
+      res = res(roi);
+      //cv::resize(res, temp2, cv::Size(shape_[1], shape_[2]));
     }
+
     if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
         || rotate_ > 0 || rotate_list_.size() > 0) {
       int angle = prnd->NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
@@ -106,24 +116,23 @@ class ImageAugmenter {
                      cv::Scalar(fill_value_, fill_value_, fill_value_));
       res = temp;
     }
-    if (min_crop_size_ > 0 && max_crop_size_ > 0) {
-      int crop_size_x = prnd->NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
-          min_crop_size_;
-      int crop_size_y = crop_size_x * (1 + prnd->NextDouble() * \
-                                       max_aspect_ratio_ * 2 - max_aspect_ratio_);
-      crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
-      mshadow::index_t y = res.rows - crop_size_y;
-      mshadow::index_t x = res.cols - crop_size_x;
-      if (rand_crop_ != 0) {
-        y = prnd->NextUInt32(y + 1);
-        x = prnd->NextUInt32(x + 1);
-      } else {
-        y /= 2; x /= 2;
-      }
-      if (crop_y_start_ != -1) y = crop_y_start_;
-      if (crop_x_start_ != -1) x = crop_x_start_;
-      cv::Rect roi(x, y, crop_size_x, crop_size_y);
-      res = res(roi);
+
+    if (random_pad_prob_ > 0.0f && random_pad_scale_ > 0.0f && prnd->NextDouble() < random_pad_prob_) {
+      float scale_ = static_cast<float>(prnd->NextDouble()) * random_pad_scale_;
+      const float min_scale_ = 1.0f - shape_[1] * 1.0f / std::max(res.rows, res.cols);
+      scale_ = std::max(scale_, min_scale_);
+      int target_rows = res.rows * (1 - scale_);
+      int target_cols = res.cols * (1 - scale_);
+      int max_loc = std::min(shape_[1] - target_rows, shape_[2] - target_cols);
+      int xx = prnd->NextUInt32(max_loc);
+      int yy = prnd->NextUInt32(max_loc);
+      cv::resize(res, temp0, cv::Size(target_rows, target_cols));
+      cv::resize(res, res, cv::Size(shape_[1], shape_[2]));
+      res.setTo(cv::Scalar::all(fill_value_));
+      // printf("%f\t%d-%d\t%d-%d\t%d-%d\n", scale_, res.rows, res.cols, xx, yy, temp0.rows, temp0.cols);
+      cv::Mat res_roi = res(cv::Rect(xx, yy, temp0.rows, temp0.cols));
+      temp0.copyTo(res_roi);
+    } else {
       cv::resize(res, temp2, cv::Size(shape_[1], shape_[2]));
       res = temp2;
     }
