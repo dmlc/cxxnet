@@ -50,6 +50,7 @@ class ImageAugmenter {
     if (!strcmp(name, "max_random_scale")) max_random_scale_ = atof(val);
     if (!strcmp(name, "min_img_size")) min_img_size_ = atof(val);
     if (!strcmp(name, "max_img_size")) max_img_size_ = atof(val);
+    if (!strcmp(name, "fill_value")) fill_value_ = atoi(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
     if (!strcmp(name, "rotate")) rotate_ = atoi(val);
     if (!strcmp(name, "rotate_list")) {
