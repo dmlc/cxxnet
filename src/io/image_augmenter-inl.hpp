@@ -25,8 +25,10 @@ class ImageAugmenter {
     min_crop_size_ = -1;
     max_crop_size_ = -1;
     rotate_ = -1.0f;
-    random_pad_prob_ = 0.0f;
-    random_pad_scale_ = 0.0f;
+    max_random_scale_ = 1.0f;
+    min_random_scale_ = 1.0f;
+    min_img_size_ = 0.0f;
+    max_img_size_ = 1e10f;
     fill_value_ = 255;
   }
   virtual ~ImageAugmenter() {
@@ -44,8 +46,10 @@ class ImageAugmenter {
     if (!strcmp(name, "max_aspect_ratio")) max_aspect_ratio_ = atof(val);
     if (!strcmp(name, "min_crop_size")) min_crop_size_ = atoi(val);
     if (!strcmp(name, "max_crop_size")) max_crop_size_ = atoi(val);
-    if (!strcmp(name, "random_pad_prob")) random_pad_prob_ = atof(val);
-    if (!strcmp(name, "random_pad_scale")) random_pad_scale_ = atof(val);
+    if (!strcmp(name, "min_random_scale")) min_random_scale_ = atof(val);
+    if (!strcmp(name, "max_random_scale")) max_random_scale_ = atof(val);
+    if (!strcmp(name, "min_img_size")) min_img_size_ = atof(val);
+    if (!strcmp(name, "max_img_size")) max_img_size_ = atof(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
     if (!strcmp(name, "rotate")) rotate_ = atoi(val);
     if (!strcmp(name, "rotate_list")) {
@@ -68,65 +72,50 @@ class ImageAugmenter {
    */
   virtual cv::Mat Process(const cv::Mat &src,
                           utils::RandomSampler *prnd) {
-    cv::Mat res = src;
-    if (random_pad_prob_ > 0.0f && random_pad_scale_ > 0.0f) {
-      if (prnd->NextDouble() < random_pad_prob_) {
-        float scale_ = static_cast<float>(prnd->NextDouble()) * random_pad_scale_;
-        int target_rows = res.rows * (1 - scale_);
-        int target_cols = res.cols * (1 - scale_);  
-        int pad = (res.rows - target_rows) / 2;
-        cv::resize(res, temp0, cv::Size(target_rows, target_cols));
-        res.setTo(cv::Scalar::all(fill_value_));
-        cv::Mat res_roi = res(cv::Rect(pad, pad, temp0.rows, temp0.cols));
-        temp0.copyTo(res_roi);
-      }
+    // shear
+    float s = prnd->NextDouble() * max_shear_ratio_ * 2 - max_shear_ratio_;
+    // rotate
+    int angle = prnd->NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
+    if (rotate_ > 0) angle = rotate_;
+    if (rotate_list_.size() > 0) {
+      angle = rotate_list_[prnd->NextUInt32(rotate_list_.size() - 1)];
     }
-    if (max_rotate_angle_ > 0 || max_shear_ratio_ > 0.0f
-        || rotate_ > 0 || rotate_list_.size() > 0) {
-      int angle = prnd->NextUInt32(max_rotate_angle_ * 2) - max_rotate_angle_;
-      if (rotate_ > 0) angle = rotate_;
-      if (rotate_list_.size() > 0) {
-        angle = rotate_list_[prnd->NextUInt32(rotate_list_.size() - 1)];
-      }
-      int len = std::max(res.cols, res.rows);
-      cv::Point2f pt(len / 2.0f, len / 2.0f);
-      cv::Mat M = rotateM;
-      float cs = cos(angle / 180.0 * M_PI);
-      float sn = sin(angle / 180.0 * M_PI);
-      float q = prnd->NextDouble() * max_shear_ratio_ * 2 - max_shear_ratio_;
-      M.at<float>(0, 0) = cs;
-      M.at<float>(0, 1) = sn;
-      M.at<float>(0, 2) = (1 - cs - sn) * len / 2.0;
-      M.at<float>(1, 0) = q * cs - sn;
-      M.at<float>(1, 1) = q * sn + cs;
-      M.at<float>(1, 2) = (1 - cs + sn) * len / 2.0;
-      cv::warpAffine(res, temp, M, cv::Size(len, len),
+    float a = cos(angle / 180.0 * M_PI);
+    float b = sin(angle / 180.0 * M_PI);
+    // scale
+    float scale = prnd->NextDouble() * (max_random_scale_ - min_random_scale_) + min_random_scale_;
+    // aspect ratio
+    float ratio = prnd->NextDouble() * max_aspect_ratio_ * 2 - max_aspect_ratio_ + 1;
+    float hs = 2 * scale / (1 + ratio);
+    float ws = ratio * hs;
+    // new width and height
+    float new_width = std::max(min_img_size_, std::min(max_img_size_, scale * src.cols));
+    float new_height = std::max(min_img_size_, std::min(max_img_size_, scale * src.rows));
+    //printf("%f %f %f %f %f %f %f %f %f\n", s, a, b, scale, ratio, hs, ws, new_width, new_height);
+    cv::Mat M(2, 3, CV_32F);
+    M.at<float>(0, 0) = hs * a - s * b * ws;
+    M.at<float>(1, 0) = -b * ws;
+    M.at<float>(0, 1) = hs * b + s * a * ws;
+    M.at<float>(1, 1) = a * ws;
+    float ori_center_width = M.at<float>(0, 0) * src.cols + M.at<float>(0, 1) * src.rows;
+    float ori_center_height = M.at<float>(1, 0) * src.cols + M.at<float>(1, 1) * src.rows;
+    M.at<float>(0, 2) = (new_width - ori_center_width) / 2;
+    M.at<float>(1, 2) = (new_height - ori_center_height) / 2;
+    cv::warpAffine(src, temp, M, cv::Size(new_width, new_height),
                      cv::INTER_CUBIC,
                      cv::BORDER_CONSTANT,
                      cv::Scalar(fill_value_, fill_value_, fill_value_));
-      res = temp;
+    cv::Mat res = temp;
+    mshadow::index_t y = res.rows - shape_[2];
+    mshadow::index_t x = res.cols - shape_[1];
+    if (rand_crop_ != 0) {
+      y = prnd->NextUInt32(y + 1);
+      x = prnd->NextUInt32(x + 1);
+    } else {
+      y /= 2; x /= 2;
     }
-    if (min_crop_size_ > 0 && max_crop_size_ > 0) {
-      int crop_size_x = prnd->NextUInt32(max_crop_size_ - min_crop_size_ + 1) + \
-          min_crop_size_;
-      int crop_size_y = crop_size_x * (1 + prnd->NextDouble() * \
-                                       max_aspect_ratio_ * 2 - max_aspect_ratio_);
-      crop_size_y = std::max(min_crop_size_, std::min(crop_size_y, max_crop_size_));
-      mshadow::index_t y = res.rows - crop_size_y;
-      mshadow::index_t x = res.cols - crop_size_x;
-      if (rand_crop_ != 0) {
-        y = prnd->NextUInt32(y + 1);
-        x = prnd->NextUInt32(x + 1);
-      } else {
-        y /= 2; x /= 2;
-      }
-      if (crop_y_start_ != -1) y = crop_y_start_;
-      if (crop_x_start_ != -1) x = crop_x_start_;
-      cv::Rect roi(x, y, crop_size_x, crop_size_y);
-      res = res(roi);
-      cv::resize(res, temp2, cv::Size(shape_[1], shape_[2]));
-      res = temp2;
-    }
+    cv::Rect roi(x, y, shape_[1], shape_[2]);
+    res = res(roi);
     return res;
   }
   /*!
@@ -195,10 +184,14 @@ class ImageAugmenter {
   int max_crop_size_;
   /*! \brief min crop size */
   int min_crop_size_;
-  /*! \brief min scale ratio */
-  float random_pad_prob_;
-  /*! \brief max_scale_ratio */
-  float random_pad_scale_;
+  /*! \brief max scale ratio */
+  float max_random_scale_;
+  /*! \brief min scale_ratio */
+  float min_random_scale_;
+  /*! \brief min image size */
+  float min_img_size_;
+  /*! \brief max image size */
+  float max_img_size_;
   /*! \brief whether to mirror the image */
   int mirror_;
   /*! \brief rotate angle */
