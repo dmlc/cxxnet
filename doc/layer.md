@@ -65,7 +65,7 @@ By using this configuration, the `fc1` layer will use Xavier method to initializ
 * [Rectified Linear Layer](#rectified-linear)
 * [Tanh Layer](#tanh)
 * [Sigmoid Layer](#sigmoid)
-* [Parametric ReLU layer] (#parametric-rectified-linear)
+* [Parametric ReLU layer](#parametric-rectified-linear)
 
 =
 **Loss Layer**
@@ -88,7 +88,7 @@ By using this configuration, the `fc1` layer will use Xavier method to initializ
 **Other Layers**
 * [Dropout Layer](#dropout)
 * [Local Response Normalization Layer](#local-response-normalization)
-
+* [Batch Normalization Layer](#batch-normalization-layer)
 =
 
 #### Connection Layer
@@ -254,9 +254,15 @@ layer[3->4] = lrn
 * **alpha, beta and knorm** is normalization param.
 
 =
+###### Batch Normalization Layer
+BN layer is an implementation of [4]. The difference is that in testing, we only use the mini-batch statistics instead of global statistics in training data as in original paper. _It is an experimental layer that may not stable._
+
+=
 #### References
 [1] Glorot Xavier, and Yoshua Bengio. "Understanding the difficulty of training deep feedforward neural networks." AISTATS. 2010.
 
 [2] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. "Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification." arXiv preprint arXiv:1502.01852. 2015.
 
 [3] Krizhevsky Alex, Ilya Sutskever, and Geoffrey E. Hinton. "Imagenet classification with deep convolutional neural networks." NIPS. 2012.
+
+[4] Ioffe Sergey, and Christian Szegedy. "Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift." arXiv preprint arXiv:1502.03167. 2015.

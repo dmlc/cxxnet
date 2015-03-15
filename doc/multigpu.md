@@ -15,6 +15,10 @@ This page contains
 ```bash
 dev = gpu:0,1,2,3
 ```
+or
+```bash
+dev = gpu:0-3
+```
 which indicate cxxnet will use the first four GPU to do the training task
 
 ### Make cxxnet work in distributed system

@@ -12,7 +12,7 @@ Reference configuration example [MNIST.conf]
 cxxnet use iterator to provide data batch to the network trainer. First we need to set the data type (_eval_ or _data_). Then we need to specify iterator type (_mnist_, _cifar_, _image_, _imgbin_, etc). Then set some attribute to the iterator including shuffle, file path and so on. 
 Here is an example for MNIST
 #### Setup training iterator
-This part is about [**Data Iterator**](https://github.com/antinucleon/cxxnet/wiki/Data-Input) setting
+This part is about [**Data Iterator**](../../doc/io.md) setting
 
 * Change _**path_image**_ to the path of training image file, change _**path_label**_  to the path of training label file you download just now
 ```bash
@@ -33,7 +33,7 @@ iter = mnist
 iter = end
 ```
 #### Setup network structure
-* This part is about [**Layer Setting**](https://github.com/antinucleon/cxxnet/wiki/Layers)
+* This part is about [**Layer Setting**](../../doc/layer.md)
 
 * Network structure start with declaration _"netconfig=start"_ and end with _"netconfig=end"_. Note that there are two types of entities in cxxnet: node and layer. **Node** stores the intermediate results in the network, while **layer** denotes different kinds of transformations. Though the names of node and layer can be same, but they refer to different entities. They layer is declared in the format _"**layer[** from_node_name **->** to_node_name **]** = **layer_type**:name"_ Then comes the parameters of the layer. 
 Here is an example for MNIST
@@ -57,7 +57,7 @@ input_shape = 1,1,784
 batch_size = 100
 ```
 #### Setup global parameters
-This part is about [**Global Setting**](https://github.com/antinucleon/cxxnet/wiki/Global-Setting)
+This part is about [**Global Setting**](../../doc/other.md)
 
 Global parameters are used for setting the trainer behavior. In this example, we use the following configuration. 
 ```bash
@@ -72,7 +72,7 @@ init_sigma = 0.01
 First set working device **dev** ( _cpu_ or _gpu_ ); frequent to save mode **save_model** ; training round **num_round** and **max_round** and whether to print training set evaluation **train_eval**. The **random_type** defines weight initialization method. We provides ( _gaussian_ method and _xavier_ method)
 
 #### Setup learning parameters
-This part is about [**Updater Setting**](https://github.com/antinucleon/cxxnet/wiki/Updater)
+This part is about [**Updater Setting**](../../doc/updater.md)
 
 learning parameter change the updater behavior. _eta_ is known as learning rate, and _wd_ is known as weight decay. And _momentum_ will help train faster.
 ```bash

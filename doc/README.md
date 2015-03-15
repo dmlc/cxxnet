@@ -17,5 +17,7 @@ In general, cxxnet configuration file contains four kinds of configurations in a
   - Configure network, and setup each layers.
 * [Updater Setting](updater.md)
   - Set parameters(learning rate, momentum) for learning procedure
+* [Tasks](tasks.md)
+  - This page includes all the four tasks you could try by cxxnet.
 * [Other Setting](other.md)
   - Set other parameters for neural network, related to device selection, running control.

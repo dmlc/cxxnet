@@ -4,10 +4,6 @@ This page will introduce other setting in cxxnet, including:
 * [Printing Control](#print-information)
 * [Training Round](#set-round-of-training)
 * [Saving Model and Continue Training](#saving-model-and-continue-training)
-* [Prediction](#prediction)
-* [Extract Feature](#extract-feature)
-* [Fine-tune](#fine-tune)
-
 
 
 #### Set working hardware
@@ -26,6 +22,10 @@ dev = gpu:1
 * To use multi-GPU, set the field with the corresponding device id
 ```bash
 dev = gpu:0,1,2,3
+```
+or
+```bash
+dev = gpu:0-3
 ```
 In default, it is `dev=gpu`
 
@@ -82,40 +82,3 @@ model_in = path of model file
 continue = 1
 ```
 In default, if neither of the two values is set, cxxnet will start training from start.
-
-
-#### Prediction
-* In default, cxxnet treats the configuration file as a training configuration. To make it predict, you need to add extra data iterator and specify the task to be `pred` and model you want to use to do prediction. For example
-```bash
-# Data Iterator Setting
-pred = pred.txt
-iter = mnist
-iterator_optition_1 = ..
-iterator_optition_1 = ...
-iter = end
-# Global Setting
-task = pred
-model_in = ./models/0014.model
-```
-* In which the _*mode_in*_ is the path to the model which we need to use for prediction. The _*pred*_ field is the file we will save the result. The iterator configuration is same to traditional iterator.
-* To get the softmax prediction directly, set the task to
-```bash
-task = extract
-extract_node_name = top[-1]
-```
-#### Extract Feature
-* To extract feature, you need to set task to ```extract_feature```with node name or distance to top
-```bash
-task = extract_feature
-extract_node_name = 45
-```
-```bash
-task = extract_feature
-extract_node_name = top[-2]
-# this will extract top feature layer
-```
-
-If you didn't set name for layer, just use the number as name; If you set special name, use the name. For convenient, a special name ```top``` is used for extract topest layer behind loss layer.
-
-#### Fine-tune
-TODO
