@@ -48,7 +48,12 @@ struct UpdaterParam {
   float final_momentum_;
   /*! \brief saturation momentum epoch */
   long saturation_epoch_;
-
+  /*!
+   * \brief clip gradient to this value if it is too large,
+   *  do nothing if it is set to 0
+   */
+  float clip_gradient;
+  
   /*! \brief constructor that sets default parameters */
   UpdaterParam(void) {
     base_lr_ = 0.01f;
@@ -65,6 +70,7 @@ struct UpdaterParam {
     wd = 0.0f;
     momentum = 0.9f;
     silent = 0;
+    clip_gradient = 0.0f;
   }
   /*! \brief do learning rate or other parameter schedule at round epoch */
   inline void ScheduleEpoch(long epoch) {
@@ -103,6 +109,7 @@ struct UpdaterParam {
     if (!strcmp(name, "momentum")) momentum = (float)atof(val);
     if (!strcmp(name, "silent")) silent = atoi(val);
     if (!strcmp(name, "momentum_schedule")) momentum_schedule = atoi(val);
+    if (!strcmp(name, "clip_gradient")) clip_gradient = (float)atof(val);
     if (!strcmp(name, "final_momentum")) final_momentum_ = atof(val);
     if (!strcmp(name, "base_momentum")) base_momentum_ = atof(val);
     if (!strcmp(name, "saturation_epoch")) saturation_epoch_ = atol(val);
