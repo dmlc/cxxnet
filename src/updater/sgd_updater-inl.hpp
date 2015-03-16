@@ -11,6 +11,16 @@
 
 namespace cxxnet {
 namespace updater {
+/*! \brief used for gradient clipping and nan detection */
+struct clip {
+  MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
+    if (isnan(a)) return 0.0f;
+    if (a < -b) return -b;
+    if (a > b) return b;
+    return a;
+  }
+};
+
 // SGD updater with momentum
 template<typename xpu, int dim>
 class SGDUpdater : public IUpdater<xpu> {
@@ -62,9 +72,14 @@ class SGDUpdater : public IUpdater<xpu> {
   // update function
   virtual void ApplyUpdate(long epoch,
                            mshadow::Tensor<xpu, dim> grad) {
+    using namespace mshadow::expr;
     param.ScheduleEpoch(epoch);
     m_w *= param.momentum;
-    m_w += (-param.learning_rate) * (grad + param.wd * w);
+    if (param.clip_gradient != 0.0f) {
+      m_w += (-param.learning_rate) * (F<clip>(grad, param.clip_gradient) + param.wd * w);
+    } else {
+      m_w += (-param.learning_rate) * (grad + param.wd * w);
+    }
     w += m_w;
   }
 };  // class SGDUpdater
