@@ -36,6 +36,8 @@ public:
     mean_g_ = 0.0f;
     mean_b_ = 0.0f;
     mirror_ = 0;
+    max_random_illumination_ = 0.0f;
+    max_random_contrast_ = 0.0f;
     rnd.Seed(kRandMagic);
   }
   virtual ~AugmentIterator(void) {
@@ -57,6 +59,8 @@ public:
     if (!strcmp(name, "crop_x_start")) crop_x_start_ = atoi(val);
     if (!strcmp(name, "rand_mirror")) rand_mirror_ = atoi(val);
     if (!strcmp(name, "mirror")) mirror_ = atoi(val);
+    if (!strcmp(name, "max_random_contrast")) max_random_contrast_ = atof(val);
+    if (!strcmp(name, "max_random_illumination")) max_random_illumination_ = atof(val);
     if (!strcmp(name, "mean_value")) {
       utils::Check(sscanf(val, "%f,%f,%f", &mean_b_, &mean_g_, &mean_r_) == 3,
                    "mean value must be three consecutive float without space example: 128,127.5,128.2 ");
@@ -67,7 +71,7 @@ public:
   }
   virtual void Init(void) {
     base_->Init();
-    printf("In augment init.\n");
+    meanfile_ready_ = false;
     if (name_meanimg_.length() != 0) {
       FILE *fi = fopen64(name_meanimg_.c_str(), "rb");
       if (fi == NULL) {
@@ -79,18 +83,12 @@ public:
         utils::FileStream fs(fi) ;
         meanimg_.LoadBinary(fs);
         fclose(fi);
+        meanfile_ready_ = true;
       }
     }
   }
   virtual void BeforeFirst(void) {
     base_->BeforeFirst();
-  }
-  virtual bool Next(void) {
-    if (!this->Next_()) return false;
-    if (name_meanimg_.length() != 0) {
-      img_ -= meanimg_;
-    }    
-    return true;
   }
   virtual const DataInst &Value(void) const {
     return out_;
@@ -126,24 +124,43 @@ private:
       if (data.size(2) != shape_[2] && crop_x_start_ != -1) {
         xx = crop_x_start_;
       }
+      float contrast = rnd.NextDouble() * max_random_contrast_ * 2 - max_random_contrast_ + 1;
+      float illumination = rnd.NextDouble() * max_random_illumination_ * 2 - max_random_illumination_;
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
-        data[0] -= mean_b_; data[1] -= mean_g_; data[2] -= mean_r_;
+        // substract mean value
+        d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
         if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
-          img_ = mirror(crop(data, img_[0].shape_, yy, xx)) * scale_;
+          img_ = mirror(crop(d.data * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
         } else {
-          img_ = crop(data, img_[0].shape_, yy, xx) * scale_ ;
+          img_ = crop(d.data * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
+        }
+      } else if (!meanfile_ready_ || name_meanimg_.length() == 0) {
+        // do not substract anything
+        if (rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) {
+          img_ = mirror(crop(d.data, img_[0].shape_, yy, xx)) * scale_;
+        } else {
+          img_ = crop(d.data, img_[0].shape_, yy, xx) * scale_ ;
         }
       } else {
-        if (rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) {
-          img_ = mirror(crop(data, img_[0].shape_, yy, xx)) * scale_;
+        // substract mean image
+        if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
+          if (d.data.shape_ == meanimg_.shape_){
+            img_ = mirror(crop((d.data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
+          } else {
+            img_ = (mirror(crop(d.data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+          }
         } else {
-          img_ = crop(data, img_[0].shape_, yy, xx) * scale_ ;
+          if (d.data.shape_ == meanimg_.shape_){
+            img_ = crop((d.data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
+          } else {
+            img_ = ((crop(d.data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+          }
         }
       }
     }
     out_.data = img_;
   }
-  inline bool Next_(void) {
+  inline bool Next(void) {
     if (!base_->Next()){
       return false;
     }
@@ -159,10 +176,10 @@ private:
     unsigned long elapsed = 0;
     size_t imcnt = 1;
 
-    utils::Assert(this->Next_(), "input iterator failed.");
+    utils::Assert(this->Next(), "input iterator failed.");
     meanimg_.Resize(mshadow::Shape3(shape_[0], shape_[1], shape_[2]));
     mshadow::Copy(meanimg_, img_);
-    while (this->Next_()) {
+    while (this->Next()) {
       meanimg_ += img_; imcnt += 1;
       elapsed = (long)(time(NULL) - start);
       if (imcnt % 1000 == 0 && silent_ == 0) {
@@ -210,8 +227,14 @@ private:
   float mean_g_;
   /*! \brief mean value for b channel */
   float mean_b_;
+  /*! \brief maximum ratio of contrast variation */
+  float max_random_contrast_;
+  /*! \brief maximum value of illumination variation */
+  float max_random_illumination_;
   /*! \brief whether to mirror the image */
   int mirror_;
+  /*! \brief whether mean file is ready */
+  bool meanfile_ready_;
   // augmenter
 #if CXXNET_USE_OPENCV
   ImageAugmenter aug;

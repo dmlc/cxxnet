@@ -89,8 +89,8 @@ By using this configuration, the `fc1` layer will use Xavier method to initializ
 * [Dropout Layer](#dropout)
 * [Local Response Normalization Layer](#local-response-normalization)
 * [Batch Normalization Layer](#batch-normalization-layer)
-=
 
+=
 #### Connection Layer
 
 ###### Flatten Layer

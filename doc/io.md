@@ -101,11 +101,14 @@ max_aspect_ratio = 0.5
 max_shear_ratio=0.3
 max_rotate_angle=180
 ```
+
+=
 ##### Common Parameters
 * **divideby** normalize the data by dividing a value
 * **image_mean** minus the image by the mean of all image. The value is the path of the mean image file. If the file doesn't exist, cxxnet will generate one.
 * **mean_value** minus the image by the value specified in this field. Note that only one of **image_mean** and **mean_value** should be specified.
 
+=
 ##### Random Augmenations
 * **rand_crop** set 1 for randomly cropping image of size specified in **input_shape**. If set to 0, the iterator will only output the center crop.
 * **rand_mirror** set 1 for random mirroring the **training data**
@@ -114,7 +117,10 @@ max_rotate_angle=180
 * **max_shear_ratio** denotes the max random shearing ratio. In training, the image will be sheared randomly in [0, max_shear_ratio].
 * **max_rotate_angle** denotes the random rotation angle. In training, the image will be rotated randomly in [-max_rotate_angle, max_rotate_angle].
 * **rotate_list** specifies a list that input will rotate. e.g. `rotate_list=0,90,180,270` The input will only rotate randomly in the set.
+* **max_random_contrast** denotes the range of random contrast variation. The output will be `y = (x - mean) * (1 + contrast)`, where `x` is the original image, and `contrast` is randomly picked in [-max_random_contrast, max_random_contrast]. **It will not take effect unless mean_value or mean_file specified.**
+* **max_random_illumination** denotes the range of random illumination variation. The output will be `y = (x - mean) * contrast`, where `x` is the original image, and `illumination` is randomly picked in [-max_random_illumination, max_random_illumination]. **It will not take effect unless mean_value or mean_file specified.**
 
+=
 ##### Deterministic Transformations
 Deterministic transformations are usually used in test to generate diverse prediction results. Ensembling diverse prediction results could improve the performance.
 * **crop_x_start** and **crop_y_start**  denotes the left corner of the crop.

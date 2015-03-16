@@ -43,14 +43,16 @@ model_in = ./models/0014.model
 * In which the _*mode_in*_ is the path to the model which we need to use for prediction. The _*pred*_ field is the file we will save the result. The iterator configuration is same to traditional iterator.
 
 #### Extract Features
-* To extract feature, you need to set task to ```extract```with node name or distance to top
+* To extract feature, you need to set task to ```extract```with node name or distance to top. ```model_in``` is also required to specify the model to use.
 ```bash
 task = extract
 extract_node_name = 45
+model_in = ./models/0014.model
 ```
 ```bash
 task = extract_feature
 extract_node_name = top[-1]
+model_in = ./models/0014.model
 # this will extract last node, namely the softmax prediction.
 ```
 
@@ -58,6 +60,6 @@ For convenient, a special name ```top``` is used for extract topest layer behind
 
 
 #### Finetune
-To use finetune, you need to set ```task=finetune``` in your global setting. Other parts are the same as task train. Note that finetune task will copy the parameters in the old network to the new one in the case that their layer names are exactly same. All other parts are initialized randomly. Note that ***You cannot copy a layer without a name.*** So it is a best practice that you add name for each layer, though it is not a must.
+To use finetune, you need to set ```task=finetune``` and ```model_in``` parameters in your global setting. Other parts are the same as task train. Note that finetune task will copy the parameters in the old network to the new one in the case that their layer names are exactly same. All other parts are initialized randomly. Note that ***You cannot copy a layer without a name.*** So it is a best practice that you add name for each layer, though it is not a must.
 
 
