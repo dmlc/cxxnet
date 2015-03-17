@@ -4,6 +4,7 @@ export CXX = g++
 export NVCC =nvcc
 
 export CFLAGS = -Wall -O3 -msse3 -Wno-unknown-pragmas -funroll-loops -I../mshadow/ -I.. -DMSHADOW_USE_MKL=0
+
 export LDFLAGS=
 export NVCCFLAGS = -g -O3 -ccbin $(CXX)
 
@@ -17,7 +18,7 @@ CUBIN =
 all: $(BIN) $(OBJ) $(CUBIN) $(CUOBJ)
 
 im2bin: im2bin.cpp
-cxxcombine_buffer: cxxcombine_buffer.cpp
+
 $(BIN) :
 	$(CXX) $(CFLAGS) -o $@ $(filter %.cpp %.o %.c, $^)  $(LDFLAGS)
 
@@ -26,6 +27,7 @@ $(OBJ) :
 
 $(CUOBJ) :
 	$(NVCC) -c -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" $(filter %.cu, $^)
+
 $(CUBIN) :
 	$(NVCC) -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" -Xlinker "$(LDFLAGS)" $(filter %.cu %.cpp %.o, $^)
 

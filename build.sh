@@ -1,4 +1,4 @@
 #! /bin/bash
 echo "Fetch mshadow..."
-git clone https://github.com/tqchen/mshadow.git -b master
+git clone https://github.com/tqchen/mshadow.git -b refactor
 make $1
