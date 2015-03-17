@@ -1,3 +1,4 @@
-Makefiles that tries use different settings
+Make configuration for CXXNET
+====
 
-* Cblas.cpu.mk: only use CPU code, and Cblas(ATLAS, or other blas) to build
+cxxnet is designed to require less third party library. The minimal requirement is MKL/CBLAS/OpenBLAS and MShadow(which can be downloaded automatically).  Other dependence can be set by editing  [make/config.mk](make/config.mk) before make.

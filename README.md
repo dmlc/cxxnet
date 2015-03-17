@@ -1,22 +1,41 @@
 cxxnet
 ======
 
-### We are going to update to V2 soon. New version supports multi-GPU/distributed training and CuDNN. Stay tuned!
+CXXNET is a fast, concise, distributed deep learning framework.
 
-CXXNET (spelled as: C plus plus net) is a neural network toolkit build on mshadow(https://github.com/tqchen/mshadow). It is yet another implementation of (convolutional) neural network. It is in C++, with about 1000 lines of [network layer implementations](https://github.com/antinucleon/cxxnet/blob/master/cxxnet/core/cxxnet_layer-inl.hpp), easily configuration via config file, and can get the state of art performance.
+Contributors: https://github.com/antinucleon/cxxnet/graphs/contributors
 
+* [Documentation](doc)
+* [Learning to use cxxnet by examples](example)
+* User Group(TODO)
 
-Creater: [Tianqi Chen](http://homes.cs.washington.edu/~tqchen/) and [Bing Xu](http://ca.linkedin.com/in/binghsu)
+Feature Highlights
+=====
+* Lightweight: small but sharp knife
+  - cxxnet contains concise implementation of state-of-art deep learning models
+  - The project maintains a minimum dependency that makes it portable and easy to build
+* Scale beyond single GPU and single machine
+  - The library works on multiple GPUs, with nearly linear speedup
+  - THe library works distributedly backed by disrtibuted parameter server
+* Easy extensibility with no requirement on GPU programming
+  - cxxnet is build on [mshadow](#backbone-library)
+  - developer can write numpy-style template expressions to extend the library only once
+  - mshadow will generate high performance CUDA and CPU code for users
+  - It brings concise and readable code, with performance matching hand crafted kernels
+* Convenient interface for other languages
+  - Python interface for training from numpy array, and prediction/extraction to numpy array
+  - Matlab interface (TODO)
 
-Documentation and Tutorial: https://github.com/antinucleon/cxxnet/wiki
+### Backbone Library
+CXXNET is built on [MShadow: Lightweight CPU/GPU Tensor Template Library](https://github.com/tqchen/mshadow)
+* MShadow is an efficient, device invariant and simple tensor library
+  - MShadow allows user to write expressions for machine learning while still provides
+  - This means developer do not need to have knowledge on CUDA kernels to extend cxxnet.
+* MShadow also provides a parameter interface for Multi-GPU and distributed deep learning
+  - Improvements to cxxnet can naturally run on Multiple GPUs and being distributed
 
-## Features
-* Small but sharp knife: the core part of the implementation is less than 2000 lines, and easily extendible.
-  - cxxnet is build with [mshadow](https://github.com/tqchen/mshadow), a tensor template library for unified CPU/GPU computation. All the functions are only implemented once, as a result.
-* Speed:  On Bing Xu’s EVGA GeForce 780 GTX with 2304 CUDA cores, cxxnet archived 211 images per second in training on ImageNet data with Alex Krizhevsky’s deep network structure. The prediction speed is 400 pic / second on the same card.
-
-## Build Guide
-* Common Requirement:  NVIDIA CUDA with cuBLAS, cuRAND and cudaRT; OpenCV; mshadow (will be downloaded by using build.sh)
-* MKL version: Intel MKL directly run `build.sh`
-* If you don’t have MKL, using `build.sh blas=1` to build with CBLAS
-    - Depending your version of CBLAS(ATLAS, etc.), you may need to change -lblas to -lcblas in Makefile 
+Build
+=====
+* Copy ```make/config.mk``` to root foler of the project
+* Modify the config to adjust your enviroment settings
+* Type ```./build.sh``` to build cxxnet

@@ -37,4 +37,13 @@ It will write softmax result in test.txt
 python make_submission.py /home/data/bowl/sampleSubmission.csv test.lst test.txt out.csv
 ```
 
-* Submit out.csv, you will get a result of 1.382285
+* Submit out.csv, you will get a result
+
+* Validation
+
+Run
+```
+sh gen_tr_va.sh train.lst
+```
+Then you will have ```tr.lst``` and ```va.lst``` as validation set list.
+

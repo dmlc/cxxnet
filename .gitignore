@@ -2,5 +2,13 @@
 test*
 *.o
 *.conf
-cxxnet_learner
 Local*
+bin
+mshadow
+config.mk
+layer.h
+layer_impl-inl.hpp
+.gitignore
+*.so
+im2bin
+*.pyc

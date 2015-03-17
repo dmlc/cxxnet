@@ -40,5 +40,3 @@ random.shuffle(img_lst)
 #wirte
 for item in img_lst:
     fo.writerow(item)
-    
-    
