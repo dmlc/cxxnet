@@ -81,7 +81,7 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
       dtype_ = CUDNN_DATA_FLOAT;
       switch(mode) {
        case kMaxPooling: mode_ = CUDNN_POOLING_MAX; break;
-       case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE; break;
+       case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING; break;
        default: utils::Error("This should not happen -,-"); break;
       }
       CUDA_CHECK(cudnnCreate(&handle_));

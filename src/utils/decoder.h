@@ -102,8 +102,10 @@ private:
 struct OpenCVDecoder {
   void Decode(unsigned char *ptr, size_t sz, mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
     // can be improved without memcpy buf
-    buf.resize(sz);
-    memcpy(&buf[0], ptr, sz);
+    cv::Mat buf(0, 0, CV_8U);
+    buf.data = ptr;
+    buf.rows = 1;
+    buf.cols = sz;
     cv::Mat res = cv::imdecode(buf, 1);
     utils::Assert(res.data != NULL, "decoding fail");
     p_data->Resize(mshadow::Shape3(res.rows, res.cols, 3));
@@ -118,8 +120,6 @@ struct OpenCVDecoder {
     }
     res.release();
   }
-private:
-  std::vector<unsigned char> buf;
 };
 #endif
 } // namespace utils

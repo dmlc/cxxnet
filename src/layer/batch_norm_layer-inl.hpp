@@ -25,7 +25,7 @@ class BatchNormLayer : public ILayer<xpu> {
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("wmat", slope_, gslope_);
-    pvisitor->Visit("wmat", bias_, gbias_);
+    pvisitor->Visit("bias", bias_, gbias_);
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,
@@ -93,7 +93,7 @@ class BatchNormLayer : public ILayer<xpu> {
   virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
                                   const std::vector<Node<xpu>*> &nodes_out,
                                   ConnectState<xpu> *p_cstate) {
-    p_cstate->states[0].Resize(nodes_in[0]->data.shape_);  
+    p_cstate->states[0].Resize(nodes_in[0]->data.shape_);
   }
   virtual void Forward(bool is_train,
                        const std::vector<Node<xpu>*> &nodes_in,
