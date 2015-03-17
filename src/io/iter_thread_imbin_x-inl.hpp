@@ -368,7 +368,7 @@ private:
     // seq of inst index
     std::vector<int> inst_order;
     // jpeg decoder
-    #if CXXNET_USE_OPENCV == 1
+    #if CXXNET_USE_OPENCV_DECODER == 1
     utils::OpenCVDecoder decoder;
     #else
     utils::JpegDecoder decoder;

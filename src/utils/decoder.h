@@ -101,11 +101,7 @@ private:
 #if CXXNET_USE_OPENCV
 struct OpenCVDecoder {
   void Decode(unsigned char *ptr, size_t sz, mshadow::TensorContainer<cpu, 3, unsigned char> *p_data) {
-    // can be improved without memcpy buf
-    cv::Mat buf(0, 0, CV_8U);
-    buf.data = ptr;
-    buf.rows = 1;
-    buf.cols = sz;
+    cv::Mat buf(1, sz, CV_8U, ptr);
     cv::Mat res = cv::imdecode(buf, 1);
     utils::Assert(res.data != NULL, "decoding fail");
     p_data->Resize(mshadow::Shape3(res.rows, res.cols, 3));

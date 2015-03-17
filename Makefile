@@ -27,6 +27,12 @@ else
 	CFLAGS+= -DCXXNET_USE_OPENCV=0
 endif
 
+ifeq ($(USE_OPENCV_DECODER),1)
+	CFLAGS+= -DCXXNET_USE_OPENCV_DECODER=1
+else
+	CFLAGS+= -DCXXNET_USE_OPENCV_DECODER=0
+endif
+
 # customize cudnn path
 ifneq ($(USE_CUDNN_PATH), NONE)
 	CFLAGS += -I$(USE_CUDNN_PATH)
