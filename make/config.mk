@@ -25,8 +25,8 @@ USE_CUDA_PATH = NONE
 # you can disable it, however, you will not able to use
 # imbin iterator
 USE_OPENCV = 1
-
-# whether use CUDNN R2 library
+USE_OPENCV_DECODER = 1
+# whether use CUDNN R3 library
 USE_CUDNN = 0
 # add the path to CUDNN libary to link and compile flag
 # if you do not need that, or do not have that, leave it as NONE
