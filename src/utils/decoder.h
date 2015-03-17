@@ -2,9 +2,12 @@
 #define CXXNET_UTILS_DECODER_H_
 
 #include <vector>
-#include <jpeglib.h>
-#include <setjmp.h>
-#include <jerror.h>
+#if CXXNET_USE_OPENCV_DECODER == 0
+  #include <jpeglib.h>
+  #include <setjmp.h>
+  #include <jerror.h>
+#endif
+
 #include <mshadow/tensor.h>
 #include "./utils.h"
 #if CXXNET_USE_OPENCV
@@ -14,6 +17,7 @@
 namespace cxxnet {
 namespace utils {
 
+#if CXXNET_USE_OPENCV_DECODER == 0
 struct JpegDecoder {
 public:
   JpegDecoder(void) {
@@ -97,6 +101,7 @@ private:
   jpeg_source_mgr src;
   jerror_mgr jerr;
 };
+#endif
 
 #if CXXNET_USE_OPENCV
 struct OpenCVDecoder {
