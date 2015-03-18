@@ -6,7 +6,10 @@
  * \brief a C style wrapper of cxxnet
  *  can be used to create wrapper of other languages
  */
+#ifdef NOT_IN_MATLAB
 #include "../src/global.h"
+#endif
+
 #ifdef _MSC_VER
 #define CXXNET_DLL __declspec(dllexport)
 #else
@@ -15,7 +18,11 @@
 // manually define unsign long
 typedef unsigned long cxx_ulong;
 typedef unsigned int cxx_uint;
+#ifdef NOT_IN_MATLAB
 typedef cxxnet::real_t cxx_real_t;
+#else
+typedef float cxx_real_t;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -132,7 +139,7 @@ extern "C" {
                   const char *wtag,
                   cxx_uint wshape[4],
                   cxx_uint *out_dim);
-                                  
+
   /*!
    * \brief update the model, using current position on iterator
    * \param handle net handle
@@ -175,7 +182,7 @@ extern "C" {
    *
    * \return the pointer to the result field, the caller must copy the result out
    *         before calling any other cxxnet functions
-   */  
+   */
   CXXNET_DLL const cxx_real_t *CXNNetPredictIter(void *handle,
                                                  void *data_handle,
                                                  cxx_uint *out_size);
@@ -200,13 +207,13 @@ extern "C" {
   /*!
    * \brief make a prediction based on iterator input
    * \param handle net handle
-   * \param data_handle 
+   * \param data_handle
    * \param node_name name of the node to be get feature from
    * \param oshape the shape out extracted data
 
    * \return the pointer to the result field, the caller must copy the result out
    *         before calling any other cxxnet functions
-   */  
+   */
   CXXNET_DLL const cxx_real_t *CXNNetExtractIter(void *handle,
                                                  void *data_handle,
                                                  const char *node_name,
