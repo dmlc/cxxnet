@@ -285,30 +285,25 @@ def train(cfg, data, num_round, param, eval_data = None):
     for k, v in param:
         net.set_param(k, v)
     net.init_model()
-    for r in range(num_round):
-        net.start_round(r)
-        data.before_first()
-        scounter = 0
-        while data.next():
-            net.update(data)
-            scounter += 1
-            if scounter % 100  == 0:
-                print '[%d] %d batch passed' % (r, scounter)
-        if eval_data is not None:
-            seval = net.evaluate(eval_data, 'eval')
-        sys.stderr.write(seval + '\n')
-    return net
-def train(cfg, data, label, num_round, param):
-    net = Net(cfg = cfg)
-    if isinstance(param, dict):
-        param = param.items()
-    for k, v in param:
-        net.set_param(k, v)
-    net.init_model()
-    for r in range(num_round):
-        print "Training in round %d" % r
-        net.start_round(r)
-        net.update(data=data, label=label)
-    return net
+    if isinstance(data, DataIter):
+        for r in range(num_round):
+            net.start_round(r)
+            data.before_first()
+            scounter = 0
+            while data.next():
+                net.update(data)
+                scounter += 1
+                if scounter % 100  == 0:
+                    print '[%d] %d batch passed' % (r, scounter)
+            if eval_data is not None:
+                seval = net.evaluate(eval_data, 'eval')
+            sys.stderr.write(seval + '\n')
+        return net
+    else:
+        for r in range(num_round):
+            print "Training in round %d" % r
+            net.start_round(r)
+            net.update(data=data, label=label)
+        return net
 
 
