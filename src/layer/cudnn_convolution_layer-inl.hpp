@@ -1,6 +1,5 @@
 #ifndef CXXNET_LAYER_CUDNN_CONVOLUTION_LAYER_INL_HPP_
 #define CXXNET_LAYER_CUDNN_CONVOLUTION_LAYER_INL_HPP_
-#pragma once
 
 #include <mshadow/tensor.h>
 #include "./layer.h"
@@ -13,10 +12,17 @@ namespace layer {
 template<typename xpu>
 class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
  public:
-  CuDNNConvolutionLayer(mshadow::Random<xpu> *p_rnd) : ConvolutionLayer<xpu>(p_rnd) {
+  CuDNNConvolutionLayer(mshadow::Random<xpu> *p_rnd)
+      : ConvolutionLayer<xpu>(p_rnd) {
+  }
+};
+#ifdef __CUDACC__
+template<>
+class CuDNNConvolutionLayer<gpu> : public ConvolutionLayer<gpu> {
+ public:
+  CuDNNConvolutionLayer(mshadow::Random<gpu> *p_rnd) : ConvolutionLayer<gpu>(p_rnd) {
     use_fast_algo_ = false;
   };
-#ifdef __CUDACC__
 #if CXXNET_USE_CUDNN == 1
   virtual ~CuDNNConvolutionLayer() {
     CUDA_CHECK(cudnnDestroyTensorDescriptor(in_desc_));
@@ -26,10 +32,10 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
     CUDA_CHECK(cudnnDestroyConvolutionDescriptor(conv_desc_));
     CUDA_CHECK(cudnnDestroy(handle_));
   };
-  virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
-                              const std::vector<Node<xpu>*> &nodes_out,
-                              ConnectState<xpu> *p_cstate) {
-    ConvolutionLayer<xpu>::InitNode(nodes_in, nodes_out);
+  virtual void InitConnection(const std::vector<Node<gpu>*> &nodes_in,
+                              const std::vector<Node<gpu>*> &nodes_out,
+                              ConnectState<gpu> *p_cstate) {
+    ConvolutionLayer<gpu>::InitNode(nodes_in, nodes_out);
     nodes_in[0]->must_contiguous = true;
     nodes_out[0]->must_contiguous = true;
     this->InitCuDNN();
@@ -43,9 +49,9 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
     }
   }
   virtual void Forward(bool is_train,
-                       const std::vector<Node<xpu>*> &nodes_in,
-                       const std::vector<Node<xpu>*> &nodes_out,
-                       ConnectState<xpu> *p_cstate) {
+                       const std::vector<Node<gpu>*> &nodes_in,
+                       const std::vector<Node<gpu>*> &nodes_out,
+                       ConnectState<gpu> *p_cstate) {
     float alpha = 1.0f;
     float beta = 0.0f;
     if (!init_cudnn_) {
@@ -101,9 +107,9 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
 
   }
   virtual void Backward(bool prop_grad,
-                        const std::vector<Node<xpu>*> &nodes_in,
-                        const std::vector<Node<xpu>*> &nodes_out,
-                        ConnectState<xpu> *p_cstate) {
+                        const std::vector<Node<gpu>*> &nodes_in,
+                        const std::vector<Node<gpu>*> &nodes_out,
+                        ConnectState<gpu> *p_cstate) {
     float alpha = 1.0f;
     float beta = 0.0f;
     if (Parent::param_.no_bias == 0) {
@@ -156,16 +162,16 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
   /*! \brief cuDNN workspace size */
   size_t workspace_size_;
   /*! \brief cuDNN workspace */
-  mshadow::TensorContainer<xpu, 1> temp_;
+  mshadow::TensorContainer<gpu, 1> temp_;
   /*! \brief parent */
-  typedef ConvolutionLayer<xpu> Parent;
+  typedef ConvolutionLayer<gpu> Parent;
   /*! \brief whether use fast algorithm */
 #endif // CXXNET_USE_CUDNN
-#endif // __CUDACC__
   bool use_fast_algo_;
 }; // class CuDNNConvolutionLayer
+#endif // __CUDACC__
 } // namespace layer
 } // namespace cxxnet
 
+#endif // CXXNET_LAYER_CUDNN_CONVOLUTION_LAYER_INL_HPP_
 
-#endif // CXXNET_LAYER_CUDNN_CONVOLUTION_LAYER_INL_HPP

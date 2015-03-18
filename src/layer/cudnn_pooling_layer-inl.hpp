@@ -10,16 +10,22 @@ namespace layer {
 
 template<typename Reducer, int mode, typename xpu>
 class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
+ public:
+   CuDNNPoolingLayer(){}
+};
+
+#ifdef __CUDACC__
+template<typename Reducer, int mode>
+class CuDNNPoolingLayer<Reducer, mode, gpu> : public PoolingLayer<Reducer, mode, gpu> {
   private:
-    typedef PoolingLayer<Reducer, mode, xpu> Parent;
+    typedef PoolingLayer<Reducer, mode, gpu> Parent;
   public:
     CuDNNPoolingLayer(){}
-#ifdef __CUDACC__
-#if CXXNET_USE_CUDNN == 1
+#if CXXNET_USE_CUDNN == 2
   public:
-    virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
-                                const std::vector<Node<xpu>*> &nodes_out,
-                                ConnectState<xpu> *p_cstate) {
+    virtual void InitConnection(const std::vector<Node<gpu>*> &nodes_in,
+                                const std::vector<Node<gpu>*> &nodes_out,
+                                ConnectState<gpu> *p_cstate) {
       Parent::InitNode(nodes_in, nodes_out, p_cstate);
       this->InitCuDNN();
       nodes_in[0]->must_contiguous = true;
@@ -33,10 +39,10 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
     }
 
     virtual void Forward(bool is_train,
-                         const std::vector<Node<xpu>*> &nodes_in,
-                         const std::vector<Node<xpu>*> &nodes_out,
-                         ConnectState<xpu> *p_cstate) {
-      mshadow::Tensor<xpu,4> &tmp = p_cstate->states[0];
+                         const std::vector<Node<gpu>*> &nodes_in,
+                         const std::vector<Node<gpu>*> &nodes_out,
+                         ConnectState<gpu> *p_cstate) {
+      mshadow::Tensor<gpu,4> &tmp = p_cstate->states[0];
       if (!init_cudnn_) {
         init_cudnn_ = true;
         CUDA_CHECK(cudnnSetStream(handle_, nodes_out[0]->data.stream_->stream_));
@@ -61,10 +67,10 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
     }
 
     virtual void Backprop(bool prop_grad,
-                          const std::vector<Node<xpu>*> &nodes_in,
-                          const std::vector<Node<xpu>*> &nodes_out,
-                          ConnectState<xpu> *p_cstate) {
-      mshadow::Tensor<xpu,4> &tmp = p_cstate->states[0];
+                          const std::vector<Node<gpu>*> &nodes_in,
+                          const std::vector<Node<gpu>*> &nodes_out,
+                          ConnectState<gpu> *p_cstate) {
+      mshadow::Tensor<gpu,4> &tmp = p_cstate->states[0];
       float alpha = 1.0f;
       float beta = 0.0f;
       if (prop_grad) {
@@ -81,7 +87,7 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
       dtype_ = CUDNN_DATA_FLOAT;
       switch(mode) {
        case kMaxPooling: mode_ = CUDNN_POOLING_MAX; break;
-       case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING; break;
+       // case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING; break;
        default: utils::Error("This should not happen -,-"); break;
       }
       CUDA_CHECK(cudnnCreate(&handle_));
@@ -111,9 +117,8 @@ class CuDNNPoolingLayer : public PoolingLayer<Reducer, mode, xpu> {
     /*! \brief pooling descriptor */
     cudnnPoolingDescriptor_t pooling_desc_;
 #endif // CXXNET_USE_CUDNN
-#endif // __CUDACC__
 }; // class CuDNNPoolingLayer
-
+#endif // __CUDACC__
 }  // namespace layer
 }  // namespace cxxnet
 #endif  // LAYER_CUDNN_POOLING_LAYER_INL_HPP_
