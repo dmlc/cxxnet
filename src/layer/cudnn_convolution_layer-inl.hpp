@@ -16,7 +16,7 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<xpu> {
       : ConvolutionLayer<xpu>(p_rnd) {
   }
 };
-#ifdef __CUDACC__
+#if defined(__CUDACC__) && !defined(CXXNET_COMPILE_CPU_)
 template<>
 class CuDNNConvolutionLayer<gpu> : public ConvolutionLayer<gpu> {
  public:
@@ -169,9 +169,8 @@ class CuDNNConvolutionLayer<gpu> : public ConvolutionLayer<gpu> {
 #endif // CXXNET_USE_CUDNN
   bool use_fast_algo_;
 }; // class CuDNNConvolutionLayer
-#endif // __CUDACC__
+#endif // __CUDACC__ && ! CXXNET_COMPILE_CPU_
 } // namespace layer
 } // namespace cxxnet
 
 #endif // CXXNET_LAYER_CUDNN_CONVOLUTION_LAYER_INL_HPP_
-

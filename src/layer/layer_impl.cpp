@@ -1,5 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_DEPRECATE
+// macro to hint it is CPU compilation
+#define CXXNET_COMPILE_CPU_
 // include the layer, this is where the actual implementations are
 
 #include "layer_impl-inl.hpp"
