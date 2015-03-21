@@ -7,7 +7,6 @@
  */
 #include "data.h"
 #include <cstdlib>
-#include <omp.h>
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
 #include "../utils/decoder.h"

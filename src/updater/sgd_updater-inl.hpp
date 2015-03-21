@@ -6,7 +6,7 @@
  * \author Tianqi Chen
  */
 #include <mshadow/tensor.h>
- #include "./updater.h"
+#include "./updater.h"
 #include "./param.h"
 
 namespace cxxnet {
