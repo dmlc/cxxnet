@@ -48,12 +48,7 @@ public:
   virtual void Init(void) {
     base_->Init();
     mshadow::Shape<4> tshape = shape_;
-    if (tshape[2] == 1 && tshape[1] == 1) {
-      // what is this for?
-      tshape[0] = batch_size_; tshape[3] = 1;
-    } else {
-      tshape[0] = batch_size_;
-    }
+    tshape[0] = batch_size_;
     out_.AllocSpaceDense(tshape, batch_size_, label_width_, false);
   }
 

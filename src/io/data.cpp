@@ -13,6 +13,7 @@
 #include "iter_batch_proc-inl.hpp"
 #include "iter_mem_buffer-inl.hpp"
 #include "iter_attach_txt-inl.hpp"
+#include "iter_csv-inl.hpp"
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
 #include "iter_thread_imbin_x-inl.hpp"
@@ -61,6 +62,11 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       if (!strcmp(val, "attachtxt")) {
         utils::Assert(it != NULL, "must specify input of attach txt buffer");
         it = new AttachTxtIterator(it);
+        continue;
+      }
+      if (!strcmp(val, "csv")) {
+        utils::Assert(it == NULL, "csv iter cannot chain over other iterator.");
+        it = new BatchAdaptIterator(new CSVIterator());
         continue;
       }
       utils::Error("unknown iterator type %s", val);
