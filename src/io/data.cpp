@@ -32,12 +32,13 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
         it = new MNISTIterator(); continue;
       }
       #if CXXNET_USE_OPENCV
-      if (!strcmp(val, "imgbin")) {
+      if (!strcmp(val, "imgbinold")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIterator()));
         continue;
       }
-      if (!strcmp(val, "imgbinx")) {
+      // redirect all io to new iterator
+      if (!strcmp(val, "imgbinx") || !strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIteratorX()));
         continue;
