@@ -12,7 +12,7 @@
 
 namespace cxxnet{
   /*! \brief simple csv iterator that only loads data instance */
-class CSVIterator : public IIterator< DataInst > {
+class CSVIterator : public IIterator<DataInst> {
 public:
   CSVIterator(void) {
     data_.set_pad(false);
@@ -43,7 +43,12 @@ public:
     }
     // Skip the header
     if (has_header_) {
-      while (fgetc(fplst_) != '\n') ;
+      char ch;
+      while ((ch = fgetc(fplst_)) != EOF) {
+        if (ch == '\r' || ch == '\n') {
+          break;
+        }
+      }
     }
     labels_.resize(label_width_);
     data_.Resize(shape_);
@@ -54,7 +59,7 @@ public:
     fseek(fplst_, 0, SEEK_SET);
   }
   virtual bool Next(void) {
-    if (fscanf(fplst_, "%f", &labels_[0]) != EOF) {
+    if (fscanf(fplst_, "%f", BeginPtr(labels_)) != EOF) {
       for (int i = 1; i < label_width_; ++i){
         utils::Check(fscanf(fplst_, ",%f", &labels_[i]) == 1,
           "CSVIterator: Error when reading label. Possible incorrect file or label_width.");

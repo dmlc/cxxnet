@@ -1,7 +1,7 @@
 #### Introduction
 This page will introduce data input method in cxxnet. cxxnet use data iterator to provide data to the neural network.  Iterators do some preprocessing and generate batch for the neural network.
 
-* We provide basic iterators for MNIST, CIFAR-10, Image, Binary Image.
+* We provide basic iterators for MNIST, Image, Binary Image and CSV.
 * To boost performance, we provide thread buffer for loading.
   - Putting threadbuffer iterator after input iterator will open an independent thread to fetch from the input, this allows parallelism of learning process and data fetching.
   - We recommend you use thread buffer in all cases to avoid IO bottle neck.
@@ -14,7 +14,7 @@ options 2 =
 ...
 iter = end
 ```
-* The basic iterator type is **mnist** , **image** , **imgbin**
+* The basic iterator type is **mnist** , **image** , **imgbin**, **csv**
 * To use thread buffer, declare in this form
 ```bash
 iter = iterator_type
@@ -26,18 +26,20 @@ iter = end
 ```
 =
 **Iterators**
-* [MNSIT](#mnist-iterator)
+* [MNIST](#mnist-iterator)
 * [Image and Image Binary](#image-and-image-binary-iterator)
+* [CSV Iterator](#csv-iterator)
+
 
 =
 ##### Preprocessing Options
 ```bash
 shuffle = 1
 ```
-* **shuffle** set 1 to shuffle the **training data**. Note that this option **does not** apply to  **imgbin**.
+* **shuffle** set 1 to shuffle the **training data**. Note that this option **does not** apply to  **imgbin** and **csv**.
 
 =
-##### MNIST Iterator
+### MNIST Iterator
 * Required fields
 ```bash
 path_img = path to gz file of image
@@ -52,7 +54,7 @@ input_flat = 1
 There are two ways to load images, image iterator that takes list of images in the disk, and image binary iterator that reads images from a packed binary file. Usually, I/O is a bottle neck, and image binary iterator makes training faster. However, we also provide image iterator for convenience
 
 
-##### Image Iterator
+### Image Iterator
 * Required fields
 ```bash
 image_list = path to the image list file
@@ -126,3 +128,14 @@ Deterministic transformations are usually used in test to generate diverse predi
 * **crop_x_start** and **crop_y_start**  denotes the left corner of the crop.
 * **mirror** denotes whether mirror the input.
 * **rotate** denotes the angle will rotate.
+
+=
+### CSV Iterator
+This iterator can be used to read data files that stores in a raw csv file. In each line, the first **label_width** fields (default = 1, which means the label of the sample is a scalar.) are the labels for the data samples, the rest are the features for each dimension. e.g.
+```bash
+iter = csv
+filename = "train.csv"
+has_header=0
+```
+* **filename** denotes the file name of the csv file.
+* **has_header** denotes whether this csv has header line, if this parameter is set to 1, the iterator will automatically skip the first line.

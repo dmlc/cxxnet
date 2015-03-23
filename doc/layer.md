@@ -255,7 +255,11 @@ layer[3->4] = lrn
 
 =
 ###### Batch Normalization Layer
-BN layer is an implementation of [4]. The difference is that in testing, we only use the mini-batch statistics instead of global statistics in training data as in original paper. _It is an experimental layer that may not stable._
+BN layer is an implementation of [4]. The difference is that in testing, we only use the mini-batch statistics instead of global statistics in training data as in original paper. _It is an experimental layer that may not stable._ To use the layer, you need to set
+```bash
+layer[3->4] = batch_norm
+``` 
+There is no parameter for this layer.
 
 =
 #### References
