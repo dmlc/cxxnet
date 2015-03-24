@@ -92,7 +92,6 @@ class ImageAugmenter {
     // new width and height
     float new_width = std::max(min_img_size_, std::min(max_img_size_, scale * src.cols));
     float new_height = std::max(min_img_size_, std::min(max_img_size_, scale * src.rows));
-    //printf("%f %f %f %f %f %f %f %f %f\n", s, a, b, scale, ratio, hs, ws, new_width, new_height);
     cv::Mat M(2, 3, CV_32F);
     M.at<float>(0, 0) = hs * a - s * b * ws;
     M.at<float>(1, 0) = -b * ws;
