@@ -20,7 +20,8 @@ namespace utils {
 /*! \brief simple thread dependent random sampler */
 class RandomSampler {
  public:
-  RandomSampler(void) : rseed_(0) {
+  RandomSampler(void) {
+    this->Seed(0);
   }
   /*!
    * \brief seed random number
@@ -28,6 +29,9 @@ class RandomSampler {
    */
   inline void Seed(unsigned seed) {
     this->rseed_ = seed;
+#if _MSC_VER
+    srand(seed);
+#endif    
   }
   /*! \brief return a real number uniform in [0,1) */
   inline double NextDouble() {
