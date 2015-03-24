@@ -118,7 +118,7 @@ struct NeuralNet {
     // setup updater notification
     for (size_t i = connections.size(); i != 0; --i) {
       for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
-        updaters[i - 1][j]->BeforeForward();
+        updaters[i - 1][j]->BeforeAllForward();
       }
     }
     // start forward prop
