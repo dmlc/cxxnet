@@ -6,7 +6,6 @@
  * \author Bing Xu Tianqi Chen
  */
 #include "./utils.h"
-#include <zlib.h>
 #include <string>
 #include <algorithm>
 #include <cstring>
@@ -37,7 +36,7 @@ class IStream {
  public:
   // helper functions to write various of data structures
   /*!
-   * \brief binary serialize a vector 
+   * \brief binary serialize a vector
    * \param vec vector to be serialized
    */
   template<typename T>
@@ -49,7 +48,7 @@ class IStream {
     }
   }
   /*!
-   * \brief binary load a vector 
+   * \brief binary load a vector
    * \param out_vec vector to be loaded
    * \return whether load is successfull
    */
@@ -66,7 +65,7 @@ class IStream {
   /*!
    * \brief binary serialize a string
    * \param str the string to be serialized
-   */ 
+   */
   inline void Write(const std::string &str) {
     uint64_t sz = static_cast<uint64_t>(str.length());
     this->Write(&sz, sizeof(sz));
@@ -92,7 +91,7 @@ class IStream {
    * \brief read a simple type and return it
    *        for example fs.ReadType<int>() will read int from the stream
    * \return the data readed
-   * \tparam TRet the type of data to be readed 
+   * \tparam TRet the type of data to be readed
    */
   template<typename TRet>
   inline TRet ReadType(void) {
@@ -114,7 +113,7 @@ class ISeekStream: public IStream {
 /*! \brief a in memory buffer that can be read and write as stream interface */
 struct MemoryBufferStream : public ISeekStream {
  public:
-  MemoryBufferStream(std::string *p_buffer) 
+  MemoryBufferStream(std::string *p_buffer)
       : p_buffer_(p_buffer) {
     curr_ptr_ = 0;
   }
@@ -132,7 +131,7 @@ struct MemoryBufferStream : public ISeekStream {
     if (curr_ptr_ + size > p_buffer_->length()) {
       p_buffer_->resize(curr_ptr_+size);
     }
-    memcpy(&(*p_buffer_)[0] + curr_ptr_, ptr, size); 
+    memcpy(&(*p_buffer_)[0] + curr_ptr_, ptr, size);
     curr_ptr_ += size;
   }
   virtual void Seek(size_t pos) {
@@ -148,36 +147,6 @@ struct MemoryBufferStream : public ISeekStream {
   /*! \brief current pointer */
   size_t curr_ptr_;
 }; // class MemoryBufferStream
-
-struct GzFile : public ISeekStream {
- public:
-  GzFile(const char *path, const char *mode) {
-    fp_ = gzopen(path, mode);
-    utils::Check(fp_ != NULL, "Failed to open file %s\n", path);
-  }
-  virtual ~GzFile(void) {
-    this->Close();
-  }
-  virtual void Close(void) {
-    if (fp_ != NULL){
-      gzclose(fp_); fp_ = NULL;
-    }
-  }
-  virtual size_t Read(void *ptr, size_t size) {
-    return gzread(fp_, ptr, size);
-  }
-  virtual void Write(const void *ptr, size_t size) {
-    gzwrite(fp_, ptr, size);
-  }
-  virtual void Seek(size_t pos) {
-    gzseek(fp_, pos, SEEK_SET);
-  }
-  virtual size_t Tell(void) {
-    return static_cast<size_t>(gztell(fp_));
-  }
- private:
-  gzFile fp_;
-};
 
 /*! \brief implementation of file i/o stream */
 class FileStream : public ISeekStream {

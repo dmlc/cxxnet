@@ -5,8 +5,8 @@ import numpy as np
 
 data = cxxnet.DataIter("""
 iter = mnist
-    path_img = "./data/train-images-idx3-ubyte.gz"
-    path_label = "./data/train-labels-idx1-ubyte.gz"
+    path_img = "./data/train-images-idx3-ubyte"
+    path_label = "./data/train-labels-idx1-ubyte"
     shuffle = 1
 iter = end
 input_shape = 1,1,784
@@ -16,8 +16,8 @@ print 'init data iter'
 
 deval = cxxnet.DataIter("""
 iter = mnist
-    path_img = "./data/t10k-images-idx3-ubyte.gz"
-    path_label = "./data/t10k-labels-idx1-ubyte.gz"
+    path_img = "./data/t10k-images-idx3-ubyte"
+    path_label = "./data/t10k-labels-idx1-ubyte"
 iter = end
 input_shape = 1,1,784
 batch_size = 100
@@ -56,7 +56,7 @@ for layer in ['fc1', 'fc2']:
 
 data.before_first()
 data.next()
-# extract 
+# extract
 print 'predict'
 pred = net.predict(data)
 print 'predict finish'
@@ -82,7 +82,7 @@ print 'eval-error=%f' % (float(werr) / wcnt)
 # training
 data.before_first()
 while data.next():
-    label = data.get_label()    
+    label = data.get_label()
     batch = data.get_data()
     net.update(batch, label)
 

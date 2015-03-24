@@ -10,6 +10,11 @@
 #include <cmath>
 #include "./utils.h"
 
+#if _MSC_VER
+#define rand_r(x) rand()
+#endif
+
+
 namespace cxxnet {
 namespace utils {
 /*! \brief simple thread dependent random sampler */
@@ -18,7 +23,7 @@ class RandomSampler {
   RandomSampler(void) : rseed_(0) {
   }
   /*!
-   * \brief seed random number 
+   * \brief seed random number
    * \param seed the random number seed
    */
   inline void Seed(unsigned seed) {
@@ -39,7 +44,7 @@ class RandomSampler {
     if(sz == 0) return;
     for(uint32_t i = (uint32_t)sz - 1; i > 0; i--) {
       std::swap(data[i], data[NextUInt32(i+1)]);
-    } 
+    }
   }
   /*!\brief random shuffle data in */
   template<typename T>

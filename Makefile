@@ -14,9 +14,9 @@ include mshadow/make/mshadow.mk
 
 # all tge possible warning tread
 WARNFLAGS= -Wall
-CFLAGS = -DNOT_IN_MATLAB -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
-CFLAGS += -g -O3 -I./mshadow/ -fPIC $(MSHADOW_CFLAGS)
-LDFLAGS = -lz -pthread $(MSHADOW_LDFLAGS)
+CFLAGS = -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
+CFLAGS += -g -O3 -I./mshadow/  -fPIC $(MSHADOW_CFLAGS)
+LDFLAGS = -pthread $(MSHADOW_LDFLAGS)
 NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
 
 # setup opencv

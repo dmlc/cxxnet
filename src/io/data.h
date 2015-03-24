@@ -7,6 +7,7 @@
  */
 #include <vector>
 #include <string>
+#include <time.h>
 #include <mshadow/tensor.h>
 #include "../utils/utils.h"
 

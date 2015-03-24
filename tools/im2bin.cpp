@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <time.h>
 
 int main(int argc, char **argv) {
     using namespace cxxnet::utils;

@@ -20,7 +20,7 @@ class MNISTIterator: public IIterator<DataBatch> {
     silent_ = 0;
     shuffle_ = 0;
     rnd.Seed(kRandMagic);
-  }  
+  }
   virtual ~MNISTIterator(void) {
     if (img_.dptr_ != NULL) delete []img_.dptr_;
   }
@@ -75,11 +75,11 @@ class MNISTIterator: public IIterator<DataBatch> {
   }
  private:
   inline void LoadImage(void) {
-    utils::GzFile gzimg(path_img.c_str(), "rb");
-    ReadInt(gzimg);
-    int image_count = ReadInt(gzimg);
-    int image_rows  = ReadInt(gzimg);
-    int image_cols  = ReadInt(gzimg);
+    utils::StdFile stdimg(path_img.c_str(), "rb");
+    ReadInt(stdimg);
+    int image_count = ReadInt(stdimg);
+    int image_rows  = ReadInt(stdimg);
+    int image_cols  = ReadInt(stdimg);
 
     img_.shape_ = mshadow::Shape3(image_count, image_rows, image_cols);
     img_.stride_ = img_.size(2);
@@ -89,7 +89,7 @@ class MNISTIterator: public IIterator<DataBatch> {
     for (int i = 0; i < image_count; ++i) {
       for (int j = 0; j < image_rows; ++j) {
         for (int k = 0; k < image_cols; ++k) {
-          img_[i][j][k] = gzimg.ReadType<unsigned char>();
+          img_[i][j][k] = stdimg.ReadType<unsigned char>();
         }
       }
     }
@@ -97,13 +97,13 @@ class MNISTIterator: public IIterator<DataBatch> {
     img_ *= 1.0f / 256.0f;
   }
   inline void LoadLabel(void) {
-    utils::GzFile gzlabel(path_label.c_str(), "rb");
-    ReadInt(gzlabel);
-    int labels_count =ReadInt(gzlabel);
+    utils::StdFile stdlabel(path_label.c_str(), "rb");
+    ReadInt(stdlabel);
+    int labels_count =ReadInt(stdlabel);
 
     labels_.resize(labels_count);
     for (int i = 0; i < labels_count; ++i) {
-      labels_[i] = gzlabel.ReadType<unsigned char>();
+      labels_[i] = stdlabel.ReadType<unsigned char>();
       inst_.push_back((unsigned)i + inst_offset_);
     }
   }
@@ -123,7 +123,7 @@ class MNISTIterator: public IIterator<DataBatch> {
  private:
   inline static int ReadInt(utils::IStream &fi) {
     unsigned char buf[4];
-    utils::Assert(fi.Read(buf, sizeof(buf)) == sizeof(buf), "Failed to read an int\n");
+    utils::Assert(fi.Read(buf, sizeof(buf)) == 1, "Failed to read an int\n");
     return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
   }
  private:
