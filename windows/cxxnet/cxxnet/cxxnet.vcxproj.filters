@@ -1,0 +1,352 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\cxxnet_main.cpp" />
+    <ClCompile Include="..\..\..\src\local_main.cpp" />
+    <ClCompile Include="..\..\..\src\nnet\nnet_impl.cpp">
+      <Filter>nnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\nnet\nnet_ps_server.cpp">
+      <Filter>nnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\layer\layer_impl.cpp">
+      <Filter>layer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\io\data.cpp">
+      <Filter>io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\updater\updater_impl.cpp">
+      <Filter>updater</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\global.h" />
+    <ClInclude Include="..\..\..\src\nnet\neural_net-inl.hpp">
+      <Filter>nnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\nnet\nnet.h">
+      <Filter>nnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\nnet\nnet_config.h">
+      <Filter>nnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\nnet\nnet_impl-inl.hpp">
+      <Filter>nnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\activation_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\batch_norm_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\bias_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\concat_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\convolution_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\cudnn_convolution_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\cudnn_pooling_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\dropout_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\fixconn_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\flatten_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\fullc_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\insanity_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\insanity_pooling_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\layer.h">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\layer_impl-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\lrn_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\op.h">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\pairtest_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\param.h">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\pooling_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\prelu_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\split_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\visitor.h">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\xelu_layer-inl.hpp">
+      <Filter>layer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\loss\l2_loss_layer-inl.hpp">
+      <Filter>layer\loss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\loss\loss_layer_base-inl.hpp">
+      <Filter>layer\loss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\loss\multi_logistic_layer-inl.hpp">
+      <Filter>layer\loss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\layer\loss\softmax_layer-inl.hpp">
+      <Filter>layer\loss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\data.h">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\image_augmenter-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_attach_txt-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_augment_proc-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_batch_proc-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_img-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_mem_buffer-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_mnist-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_thread_imbin_x-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\io\iter_thread_imbin-inl.hpp">
+      <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\adam_updater-inl.hpp">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\async_updater-inl.hpp">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\nag_updater-inl.hpp">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\param.h">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\sgd_updater-inl.hpp">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\updater.h">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\updater\updater_impl-inl.hpp">
+      <Filter>updater</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\config.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\decoder.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\io.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\metric.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\random.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\thread.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\thread_buffer.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\timer.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\utils.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\base.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\dot_engine-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\expr_engine-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\expr_scalar-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\expression.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\io.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\random.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\sse-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\stream_gpu-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\tensor.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\tensor_container.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\tensor_cpu-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\tensor_gpu-inl.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\utils.h">
+      <Filter>mshadow</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\broadcast.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\channel_pool.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\channel_unpool.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\concat.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\crop.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\mirror.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\pack_col2patch.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\pad.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\reduceto1d.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\reshape.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\spatial_pool.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\spatial_unpool.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\swapaxis.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow\extension\unpack_patch2col.h">
+      <Filter>mshadow\extension</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow-ps\kv_array.h">
+      <Filter>mshadow-ps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow-ps\ps.h">
+      <Filter>mshadow-ps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow-ps\ps_dist-inl.h">
+      <Filter>mshadow-ps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow-ps\ps_local-inl.h">
+      <Filter>mshadow-ps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow-ps\thread.h">
+      <Filter>mshadow-ps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mshadow\mshadow-ps\thread_util.h">
+      <Filter>mshadow-ps</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="nnet">
+      <UniqueIdentifier>{6ff83030-6a9d-4c7c-b7cd-89143617d9cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="layer">
+      <UniqueIdentifier>{f104d635-d0cd-44a0-bed0-b570ae986ff7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="layer\loss">
+      <UniqueIdentifier>{476c7435-71ab-48d6-b7c1-39a376b05d20}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="io">
+      <UniqueIdentifier>{0dac5630-ff36-43ce-847b-5e6ba4f1184f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="updater">
+      <UniqueIdentifier>{9c53301a-7c52-4971-844b-b4041250eaee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{912c6669-99a2-4a96-ac66-b36fa39f55e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mshadow">
+      <UniqueIdentifier>{4e78056a-f1a8-40dd-9f1d-5d06a08b14e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mshadow\cuda">
+      <UniqueIdentifier>{7880fab5-bb49-4930-afaa-bcb3cbc4dc5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mshadow\extension">
+      <UniqueIdentifier>{470ad66f-088d-4dda-a196-36e622bd603a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mshadow-ps">
+      <UniqueIdentifier>{940b0137-1cfe-4715-81f7-9e97d27e3d04}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\mshadow\mshadow\README.md">
+      <Filter>mshadow</Filter>
+    </None>
+    <None Include="..\..\..\mshadow\mshadow\cuda\reduce.cuh">
+      <Filter>mshadow\cuda</Filter>
+    </None>
+    <None Include="..\..\..\mshadow\mshadow\cuda\tensor_gpu-inl.cuh">
+      <Filter>mshadow\cuda</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\..\..\src\layer\layer_impl.cu" />
+    <CudaCompile Include="..\..\..\src\nnet\nnet_impl.cu" />
+    <CudaCompile Include="..\..\..\src\updater\updater_impl.cu" />
+  </ItemGroup>
+</Project>

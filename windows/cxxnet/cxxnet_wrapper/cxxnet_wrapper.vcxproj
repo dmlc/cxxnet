@@ -1,0 +1,233 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C0589109-60ED-482D-BE59-F338EB941EA5}</ProjectGuid>
+    <RootNamespace>cxxnet_wrapper</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 6.5.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>$(SolutionDir)\..\thirdparty\OpenCV\include;$(SolutionDir)\..\thirdparty\OpenBLAS\include;$(SolutionDir)\..\..\mshadow;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CUDA_PATH)lib\x64\;$(SolutionDir)\..\thirdparty\OpenBLAS\bin\;$(SolutionDir)\..\thirdparty\OpenBLAS\lib\;$(SolutionDir)\..\thirdparty\OpenCV\x64\vc12\lib\;$(LibraryPath)</LibraryPath>
+    <OutDir>..\..\..\wrapper</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>$(SolutionDir)\..\thirdparty\OpenCV\include;$(SolutionDir)\..\thirdparty\OpenBLAS\include;$(SolutionDir)\..\..\mshadow;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CUDA_PATH)lib\x64\;$(SolutionDir)\..\thirdparty\OpenBLAS\bin\;$(SolutionDir)\..\thirdparty\OpenBLAS\lib\;$(SolutionDir)\..\thirdparty\OpenCV\x64\vc12\lib\;$(LibraryPath)</LibraryPath>
+    <OutDir>..\..\..\wrapper</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level1</WarningLevel>
+      <Optimization>Full</Optimization>
+      <SDLCheck>false</SDLCheck>
+      <AdditionalOptions>/DMSHADOW_USE_CBLAS=1 /DMSHADOW_USE_MKL=0 /DCXXNET_USE_OPENCV=1 /DCXXNET_USE_CUDNN=0 /DCXXNET_USE_OPENCV_DECODER=1 /DMSHADOW_DIST_PS=0 /D__WIN__=1 /D_USE_MATH_DEFINES %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <OpenMPSupport>true</OpenMPSupport>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opencv_core2410.lib;opencv_imgproc2410.lib;opencv_highgui2410.lib;libopenblas.dll.a;cublas.lib;curand.lib;cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CudaCompile>
+      <AdditionalOptions>-DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0 -DCXXNET_USE_OPENCV=1 -DCXXNET_USE_CUDNN=0 -DCXXNET_USE_OPENCV_DECODER=1 -DMSHADOW_DIST_PS=0 %(AdditionalOptions)</AdditionalOptions>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level1</WarningLevel>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <AdditionalOptions>/DMSHADOW_USE_CBLAS=1 /DMSHADOW_USE_MKL=0 /DCXXNET_USE_OPENCV=1 /DCXXNET_USE_CUDNN=0 /DCXXNET_USE_OPENCV_DECODER=1 /DMSHADOW_DIST_PS=0 /D__WIN__=1 /D_USE_MATH_DEFINES %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <OpenMPSupport>true</OpenMPSupport>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opencv_core2410.lib;opencv_imgproc2410.lib;opencv_highgui2410.lib;libopenblas.dll.a;cublas.lib;curand.lib;cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CudaCompile>
+      <AdditionalOptions>-DMSHADOW_USE_CBLAS=1 -DMSHADOW_USE_MKL=0 -DCXXNET_USE_OPENCV=1 -DCXXNET_USE_CUDNN=0 -DCXXNET_USE_OPENCV_DECODER=1 -DMSHADOW_DIST_PS=0 %(AdditionalOptions)</AdditionalOptions>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\io\data.cpp" />
+    <ClCompile Include="..\..\..\src\layer\layer_impl.cpp" />
+    <ClCompile Include="..\..\..\src\nnet\nnet_impl.cpp" />
+    <ClCompile Include="..\..\..\src\nnet\nnet_ps_server.cpp" />
+    <ClCompile Include="..\..\..\src\updater\updater_impl.cpp" />
+    <ClCompile Include="..\..\..\wrapper\cxxnet_wrapper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\io\data.h" />
+    <ClInclude Include="..\..\..\src\io\image_augmenter-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_attach_txt-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_augment_proc-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_batch_proc-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_csv-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_img-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_mem_buffer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_mnist-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_thread_imbin-inl.hpp" />
+    <ClInclude Include="..\..\..\src\io\iter_thread_imbin_x-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\activation_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\batch_norm_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\bias_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\concat_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\convolution_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\cudnn_convolution_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\cudnn_pooling_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\dropout_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\fixconn_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\flatten_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\fullc_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\insanity_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\insanity_pooling_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\layer.h" />
+    <ClInclude Include="..\..\..\src\layer\layer_impl-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\loss\l2_loss_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\loss\loss_layer_base-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\loss\multi_logistic_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\loss\softmax_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\lrn_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\op.h" />
+    <ClInclude Include="..\..\..\src\layer\pairtest_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\param.h" />
+    <ClInclude Include="..\..\..\src\layer\pooling_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\prelu_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\split_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\layer\visitor.h" />
+    <ClInclude Include="..\..\..\src\layer\xelu_layer-inl.hpp" />
+    <ClInclude Include="..\..\..\src\nnet\neural_net-inl.hpp" />
+    <ClInclude Include="..\..\..\src\nnet\nnet.h" />
+    <ClInclude Include="..\..\..\src\nnet\nnet_config.h" />
+    <ClInclude Include="..\..\..\src\nnet\nnet_impl-inl.hpp" />
+    <ClInclude Include="..\..\..\src\updater\adam_updater-inl.hpp" />
+    <ClInclude Include="..\..\..\src\updater\async_updater-inl.hpp" />
+    <ClInclude Include="..\..\..\src\updater\nag_updater-inl.hpp" />
+    <ClInclude Include="..\..\..\src\updater\param.h" />
+    <ClInclude Include="..\..\..\src\updater\sgd_updater-inl.hpp" />
+    <ClInclude Include="..\..\..\src\updater\updater.h" />
+    <ClInclude Include="..\..\..\src\updater\updater_impl-inl.hpp" />
+    <ClInclude Include="..\..\..\wrapper\cxxnet_wrapper.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\..\..\src\layer\layer_impl.cu">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </CudaCompile>
+    <CudaCompile Include="..\..\..\src\nnet\nnet_impl.cu">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </CudaCompile>
+    <CudaCompile Include="..\..\..\src\updater\updater_impl.cu">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </CudaCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 6.5.targets" />
+  </ImportGroup>
+</Project>
