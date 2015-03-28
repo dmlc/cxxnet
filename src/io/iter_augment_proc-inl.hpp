@@ -20,7 +20,7 @@ namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
 class AugmentIterator: public IIterator<DataInst> {
 public:
-  AugmentIterator(IIterator<DataInst> *base) 
+  AugmentIterator(IIterator<DataInst> *base)
       : base_(base) {
     rand_crop_ = 0;
     rand_mirror_ = 0;
@@ -104,7 +104,7 @@ private:
     data = aug.Process(data, &rnd);
 #endif
 
-    img_.Resize(mshadow::Shape3(data.shape_[0], shape_[1], shape_[2]));    
+    img_.Resize(mshadow::Shape3(data.shape_[0], shape_[1], shape_[2]));
     if (shape_[1] == 1) {
       img_ = data * scale_;
     } else {
@@ -128,32 +128,32 @@ private:
       float illumination = rnd.NextDouble() * max_random_illumination_ * 2 - max_random_illumination_;
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
         // substract mean value
-        d.data[0] -= mean_b_; d.data[1] -= mean_g_; d.data[2] -= mean_r_;
+        data[0] -= mean_b_; data[1] -= mean_g_; data[2] -= mean_r_;
         if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
-          img_ = mirror(crop(d.data * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
+          img_ = mirror(crop(data * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
         } else {
-          img_ = crop(d.data * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
+          img_ = crop(data * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
         }
       } else if (!meanfile_ready_ || name_meanimg_.length() == 0) {
         // do not substract anything
         if (rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) {
-          img_ = mirror(crop(d.data, img_[0].shape_, yy, xx)) * scale_;
+          img_ = mirror(crop(data, img_[0].shape_, yy, xx)) * scale_;
         } else {
-          img_ = crop(d.data, img_[0].shape_, yy, xx) * scale_ ;
+          img_ = crop(data, img_[0].shape_, yy, xx) * scale_ ;
         }
       } else {
         // substract mean image
         if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
-          if (d.data.shape_ == meanimg_.shape_){
-            img_ = mirror(crop((d.data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
+          if (data.shape_ == meanimg_.shape_){
+            img_ = mirror(crop((data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
           } else {
-            img_ = (mirror(crop(d.data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+            img_ = (mirror(crop(data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
           }
         } else {
-          if (d.data.shape_ == meanimg_.shape_){
-            img_ = crop((d.data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
+          if (data.shape_ == meanimg_.shape_){
+            img_ = crop((data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
           } else {
-            img_ = ((crop(d.data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+            img_ = ((crop(data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
           }
         }
       }
