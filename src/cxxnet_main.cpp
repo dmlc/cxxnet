@@ -291,7 +291,7 @@ class CXXNetLearnTask {
     mshadow::TensorContainer<mshadow::cpu, 2> weight;
     std::vector<index_t> shape;
     net_trainer->GetWeight(&weight, &shape, extract_layer_name.c_str(), weight_name.c_str());
-    for (index_t i = 0; i < weight[i].size(0); ++i) {
+    for (index_t i = 0; i < weight.size(0); ++i) {
       mshadow::Tensor<mshadow::cpu, 2> d = weight[i].FlatTo2D();
       for (index_t j = 0; j < d.size(0); ++j) {
         if (output_format) {
