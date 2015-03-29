@@ -90,7 +90,7 @@ class IAsyncUpdater : public IUpdater<xpu> {
    * \brief this function will be called before
    * the forwardprop of all layers being calls
    */
-  virtual void BeforeForward(void) = 0;
+  virtual void BeforeAllForward(void) = 0;
   /*!
    * \brief block until update is finished
    * if there were no update or update was already finished

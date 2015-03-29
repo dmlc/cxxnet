@@ -22,7 +22,7 @@ inline double GetTime(void) {
   utils::Check(clock_get_time(cclock, &mts) == 0, "failed to get time");
   mach_port_deallocate(mach_task_self(), cclock);
   return static_cast<double>(mts.tv_sec) + static_cast<double>(mts.tv_nsec) * 1e-9;
-  #endif
+  #else
   #ifdef _MSC_VER
   time_t t = time(NULL);
   tm s;
@@ -32,6 +32,7 @@ inline double GetTime(void) {
   timespec ts;
   utils::Check(clock_gettime(CLOCK_REALTIME, &ts) == 0, "failed to get time");
   return static_cast<double>(ts.tv_sec) + static_cast<double>(ts.tv_nsec) * 1e-9;
+  #endif
   #endif
 }
 }

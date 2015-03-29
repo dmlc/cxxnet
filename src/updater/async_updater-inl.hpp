@@ -125,7 +125,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
                        ApplyGatherUpdate_, this);
     }
   }
-  virtual void BeforeForward(void) {
+  virtual void BeforeAllForward(void) {
     if (pull_not_issued) {
       if (update_on_server == 0) { 
         pserver->PullReq(dw, data_key, devid, priority,

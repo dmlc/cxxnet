@@ -20,7 +20,7 @@ namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
 class AugmentIterator: public IIterator<DataInst> {
 public:
-  AugmentIterator(IIterator<DataInst> *base) 
+  AugmentIterator(IIterator<DataInst> *base)
       : base_(base) {
     rand_crop_ = 0;
     rand_mirror_ = 0;
@@ -133,7 +133,12 @@ private:
 #if CXXNET_USE_OPENCV
     data = augs_[tid].Process(data, &rnds_[tid]);
 #endif
+<<<<<<< HEAD
     img_[id].Resize(mshadow::Shape3(data.shape_[0], shape_[1], shape_[2]));    
+=======
+
+    img_.Resize(mshadow::Shape3(data.shape_[0], shape_[1], shape_[2]));
+>>>>>>> upstream/master
     if (shape_[1] == 1) {
       img_[id] = data * scale_;
     } else {
@@ -158,6 +163,7 @@ private:
       if (mean_r_ > 0.0f || mean_g_ > 0.0f || mean_b_ > 0.0f) {
         // substract mean value
         data[0] -= mean_b_; data[1] -= mean_g_; data[2] -= mean_r_;
+<<<<<<< HEAD
         if ((rand_mirror_ != 0 && rnds_[tid].NextDouble() < 0.5f) || mirror_ == 1) {
           img_[id] = mirror(crop(data * contrast + illumination, img_[id][0].shape_, yy, xx)) * scale_;
         } else {
@@ -183,6 +189,33 @@ private:
             img_[id] = crop((data - meanimg_) * contrast + illumination, img_[id][0].shape_, yy, xx) * scale_ ;
           } else {
             img_[id] = ((crop(data, img_[id][0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+=======
+        if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
+          img_ = mirror(crop(data * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
+        } else {
+          img_ = crop(data * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
+        }
+      } else if (!meanfile_ready_ || name_meanimg_.length() == 0) {
+        // do not substract anything
+        if (rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) {
+          img_ = mirror(crop(data, img_[0].shape_, yy, xx)) * scale_;
+        } else {
+          img_ = crop(data, img_[0].shape_, yy, xx) * scale_ ;
+        }
+      } else {
+        // substract mean image
+        if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
+          if (data.shape_ == meanimg_.shape_){
+            img_ = mirror(crop((data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
+          } else {
+            img_ = (mirror(crop(data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+          }
+        } else {
+          if (data.shape_ == meanimg_.shape_){
+            img_ = crop((data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx) * scale_ ;
+          } else {
+            img_ = ((crop(data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;
+>>>>>>> upstream/master
           }
         }
       }

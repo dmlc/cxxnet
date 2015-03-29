@@ -7,6 +7,7 @@ Contributors: https://github.com/antinucleon/cxxnet/graphs/contributors
 
 * [Documentation](doc)
 * [Learning to use cxxnet by examples](example)
+* [Note on Code](src)
 * User Group(TODO)
 
 Feature Highlights
