@@ -563,10 +563,11 @@ class NeuralNetThread {
           oparam_weight->Resize(mshadow::Shape2(0, 0));
         } else {
           oparam_weight->Resize(vs.data[0].shape_);
-          mshadow::Copy(*oparam_weight, vs.data[0]);
+          mshadow::Copy(*oparam_weight, vs.data[0], stream);
           *oparam_shape = vs.shapes[0];
           utils::Assert(vs.fields[0] == iparam_tag,
                         "GetWeight:shape mismatch");
+          stream->Wait();
         }
         return;
       }

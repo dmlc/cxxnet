@@ -15,7 +15,7 @@ include mshadow/make/mshadow.mk
 # all tge possible warning tread
 WARNFLAGS= -Wall
 CFLAGS = -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
-CFLAGS += -g -O3 -I./mshadow/  -fPIC $(MSHADOW_CFLAGS)
+CFLAGS += -g -O3 -I./mshadow/ -fPIC $(MSHADOW_CFLAGS)
 LDFLAGS = -pthread $(MSHADOW_LDFLAGS)
 NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
 
