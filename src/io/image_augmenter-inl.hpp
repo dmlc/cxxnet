@@ -92,6 +92,7 @@ class ImageAugmenter {
     // new width and height
     float new_width = std::max(min_img_size_, std::min(max_img_size_, scale * src.cols));
     float new_height = std::max(min_img_size_, std::min(max_img_size_, scale * src.rows));
+    //printf("%f %f %f %f %f %f %f %f %f\n", s, a, b, scale, ratio, hs, ws, new_width, new_height);
     cv::Mat M(2, 3, CV_32F);
     M.at<float>(0, 0) = hs * a - s * b * ws;
     M.at<float>(1, 0) = -b * ws;
@@ -102,7 +103,7 @@ class ImageAugmenter {
     M.at<float>(0, 2) = (new_width - ori_center_width) / 2;
     M.at<float>(1, 2) = (new_height - ori_center_height) / 2;
     cv::warpAffine(src, temp, M, cv::Size(new_width, new_height),
-                     cv::INTER_CUBIC,
+                     cv::INTER_LINEAR,
                      cv::BORDER_CONSTANT,
                      cv::Scalar(fill_value_, fill_value_, fill_value_));
     cv::Mat res = temp;
@@ -148,6 +149,23 @@ class ImageAugmenter {
       }
     }
     return tmpres;
+  }
+
+  virtual void Process(unsigned char *dptr, size_t sz, mshadow::TensorContainer<cpu, 3> *p_data,
+                       utils::RandomSampler *prnd) {
+    cv::Mat buf(1, sz, CV_8U, dptr);
+    cv::Mat res = cv::imdecode(buf, 1);
+    res = this->Process(res, prnd);
+    p_data->Resize(mshadow::Shape3(3, res.rows, res.cols));
+    for (index_t i = 0; i < p_data->size(1); ++i) {
+      for (index_t j = 0; j < p_data->size(2); ++j) {
+        cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
+        (*p_data)[0][i][j] = bgr[2];
+        (*p_data)[1][i][j] = bgr[1];
+        (*p_data)[2][i][j] = bgr[0];
+      }
+    }
+    res.release();
   }
 
  private:

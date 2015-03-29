@@ -20,8 +20,8 @@ namespace cxxnet {
 /*! \brief create a batch iterator from single instance iterator */
 class AugmentIterator: public IIterator<DataInst> {
 public:
-  AugmentIterator(IIterator<DataInst> *base)
-      : base_(base) {
+  AugmentIterator(IIterator<DataInst> *base, int no_aug=0)
+      : base_(base), no_aug_(no_aug) {
     rand_crop_ = 0;
     rand_mirror_ = 0;
     crop_y_start_ = -1;
@@ -101,7 +101,7 @@ private:
     out_.index = d.index;
     mshadow::Tensor<cpu, 3> data = d.data;
 #if CXXNET_USE_OPENCV
-    data = aug.Process(data, &rnd);
+    if (!no_aug_) data = aug.Process(data, &rnd);
 #endif
 
     img_.Resize(mshadow::Shape3(data.shape_[0], shape_[1], shape_[2]));
@@ -235,6 +235,7 @@ private:
   int mirror_;
   /*! \brief whether mean file is ready */
   bool meanfile_ready_;
+  int no_aug_;
   // augmenter
 #if CXXNET_USE_OPENCV
   ImageAugmenter aug;
