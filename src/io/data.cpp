@@ -17,6 +17,7 @@
 #if CXXNET_USE_OPENCV
 #include "iter_thread_imbin-inl.hpp"
 #include "iter_thread_imbin_x-inl.hpp"
+#include "iter_thread_iminst-inl.hpp"
 #include "iter_img-inl.hpp"
 #endif
 
@@ -42,6 +43,11 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       if (!strcmp(val, "imgbinx") || !strcmp(val, "imgbin")) {
         utils::Assert(it == NULL, "image binary can not chain over other iterator");
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIteratorX()));
+        continue;
+      }
+      if (!strcmp(val, "imginst")) {
+        utils::Assert(it == NULL, "image binary can not chain over other iterator");
+        it = new BatchAdaptIterator(new AugmentIterator(new ThreadImageInstIterator(), 1));
         continue;
       }
       if (!strcmp(val, "img")) {

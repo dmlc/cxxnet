@@ -15,7 +15,7 @@ include mshadow/make/mshadow.mk
 # all tge possible warning tread
 WARNFLAGS= -Wall
 CFLAGS = -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
-CFLAGS += -g -O3 -I./mshadow/ -fPIC $(MSHADOW_CFLAGS)
+CFLAGS += -g -O3 -I./mshadow/  -fPIC $(MSHADOW_CFLAGS)
 LDFLAGS = -pthread $(MSHADOW_LDFLAGS)
 NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
 
@@ -33,6 +33,9 @@ else
 	CFLAGS+= -DCXXNET_USE_OPENCV_DECODER=0
 endif
 
+ifeq ($(USE_OPENMP_ITER), 1)
+	CFLAGS += -fopenmp
+endif
 # customize cudnn path
 ifneq ($(USE_CUDNN_PATH), NONE)
 	CFLAGS += -I$(USE_CUDNN_PATH)

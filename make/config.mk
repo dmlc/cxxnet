@@ -48,6 +48,8 @@ USE_DIST_PS = 0
 PS_PATH = NONE
 PS_THIRD_PATH = NONE
 
+# use openmp iterator
+USE_OPENMP_ITER = 0
 # the additional link flags you want to add
 ADD_LDFLAGS = -ljpeg
 
