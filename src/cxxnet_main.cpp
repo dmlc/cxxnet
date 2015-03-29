@@ -34,6 +34,9 @@ class CXXNetLearnTask {
     reset_net_type = -1;
     extract_node_name = "";
     output_format = 1;
+    weight_name = "wmat";
+    extract_layer_name = "";
+    weight_filename = "";
 #if MSHADOW_USE_CUDA
     this->SetParam("dev", "gpu");
 #else
@@ -77,6 +80,7 @@ class CXXNetLearnTask {
     if (task == "train" || task == "finetune") this->TaskTrain();
     if (task == "pred")   this->TaskPredict();
     if (task == "extract") this->TaskExtractFeature();
+    if (task == "get_weight") this->TaskGetWeight();
     return 0;
   }
 
@@ -97,6 +101,8 @@ class CXXNetLearnTask {
     if (!strcmp(name, "dev"))               device = val;
     if (!strcmp(name, "test_io"))           test_io = atoi(val);
     if (!strcmp(name, "extract_node_name"))         extract_node_name = val;
+    if (!strcmp(name, "extract_layer_name"))         extract_layer_name = val;
+    if (!strcmp(name, "weight_filename"))         weight_filename = val;
     if (!strcmp(name, "output_format")) {
       if  (!strcmp(val, "txt")) output_format = 1;
       else output_format = 0;
@@ -239,8 +245,7 @@ class CXXNetLearnTask {
           itr_evals.push_back(cxxnet::CreateIterator(itcfg));
           eval_names.push_back(evname);
         }
-        if (flag == 3 && (task == "pred" || task == "pred_raw" ||
-                          task == "extract")) {
+        if (flag == 3 && (task == "pred" || task == "extract")) {
           utils::Assert(itr_pred == NULL, "can only have one data:test");
           itr_pred = cxxnet::CreateIterator(itcfg);
         }
@@ -280,6 +285,33 @@ class CXXNetLearnTask {
     }
     fclose(fo);
     printf("finished prediction, write into %s\n", name_pred.c_str());
+  }
+  inline void TaskGetWeight(void) {
+    FILE *fo = utils::FopenCheck(weight_filename.c_str(), "wb");
+    mshadow::TensorContainer<mshadow::cpu, 2> weight;
+    std::vector<index_t> shape;
+    net_trainer->GetWeight(&weight, &shape, extract_layer_name.c_str(), weight_name.c_str());
+    for (index_t i = 0; i < weight[i].size(0); ++i) {
+      mshadow::Tensor<mshadow::cpu, 2> d = weight[i].FlatTo2D();
+      for (index_t j = 0; j < d.size(0); ++j) {
+        if (output_format) {
+          for (index_t k = 0; k < d.size(1); ++k) {
+            fprintf(fo, "%g ", d[j].dptr_[k]);
+          }
+          fprintf(fo, "\n");
+        } else {
+          fwrite(d[j].dptr_, sizeof(float), d.size(1), fo);
+        }  
+      }
+    }
+    fclose(fo);
+    std::string name_meta = weight_filename + ".meta";
+    FILE *fm = utils::FopenCheck(name_meta.c_str(), "w");
+    for (index_t i = 0; i < shape.size(); ++i) {
+      fprintf(fm, "%u ", shape[i]);
+    }
+    fclose(fm);
+    printf("finished getting weight, write into %s\n", weight_filename.c_str());
   }
   inline void TaskExtractFeature() {
     long nrow = 0;
@@ -468,6 +500,12 @@ class CXXNetLearnTask {
   std::string extract_node_name;
   /*! \brief output format of network */
   int output_format;
+  /*! \brief the layer name for weight extraction */
+  std::string extract_layer_name;
+  /*! \brief the output filename of the extracted weight */
+  std::string weight_filename;
+  /*! \brief wmat of bias */
+  std::string weight_name;
  };
 }  // namespace cxxnet
 
