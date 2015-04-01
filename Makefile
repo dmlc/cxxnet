@@ -34,7 +34,9 @@ else
 endif
 
 ifeq ($(USE_OPENMP_ITER), 1)
-	CFLAGS += -fopenmp
+	CFLAGS += -fopenmp -DCXXNET_USE_OPENMP=1
+else
+	CFLAGS += -DCXXNET_USE_OPENMP=0
 endif
 # customize cudnn path
 ifneq ($(USE_CUDNN_PATH), NONE)
