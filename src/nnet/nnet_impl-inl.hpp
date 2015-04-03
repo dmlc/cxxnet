@@ -344,7 +344,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     if (devices_.size() == 0) devices_.push_back(0);
     size_t ndevice = devices_.size();
     mshadow::index_t step = std::max(static_cast<mshadow::index_t>((batch_size + ndevice - 1) / ndevice), \
-                                     static_cast<mshadow::index_t>((1UL));
+                                     static_cast<mshadow::index_t>((1UL)));
     while (step * (devices_.size() - 1) >= batch_size) {
       devices_.pop_back();
     }
