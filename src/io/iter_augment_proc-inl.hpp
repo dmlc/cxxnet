@@ -32,6 +32,7 @@ public:
     silent_ = 0;
     // by default, not mean image file
     name_meanimg_ = "";
+    meanfile_ready_ = false;
     mean_r_ = 0.0f;
     mean_g_ = 0.0f;
     mean_b_ = 0.0f;
@@ -71,7 +72,6 @@ public:
   }
   virtual void Init(void) {
     base_->Init();
-    meanfile_ready_ = false;
     if (name_meanimg_.length() != 0) {
       FILE *fi = fopen64(name_meanimg_.c_str(), "rb");
       if (fi == NULL) {
@@ -92,6 +92,10 @@ public:
   }
   virtual const DataInst &Value(void) const {
     return out_;
+  }
+  virtual bool Next(void) {
+    if (!this->Next_()) return false;
+    return true;
   }
 
 private:
@@ -160,8 +164,8 @@ private:
     }
     out_.data = img_;
   }
-  inline bool Next(void) {
-    if (!base_->Next()){
+  inline bool Next_(void) {
+    if (!base_->Next()) {
       return false;
     }
     const DataInst &d = base_->Value();
@@ -176,7 +180,7 @@ private:
     unsigned long elapsed = 0;
     size_t imcnt = 1;
 
-    utils::Assert(this->Next(), "input iterator failed.");
+    utils::Assert(this->Next_(), "input iterator failed.");
     meanimg_.Resize(mshadow::Shape3(shape_[0], shape_[1], shape_[2]));
     mshadow::Copy(meanimg_, img_);
     while (this->Next()) {
@@ -194,6 +198,7 @@ private:
     if (silent_ == 0) {
       printf("save mean image to %s..\n", name_meanimg_.c_str());
     }
+    meanfile_ready_ = true;
     this->BeforeFirst();
   }
 private:
