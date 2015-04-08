@@ -144,7 +144,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     out_temp.Resize(oshape);
 
     const size_t ndevice = devices_.size();
-    mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
+    mshadow::index_t step = std::max(static_cast<mshadow::index_t>((batch_size + ndevice - 1) / ndevice), \
+                                     static_cast<mshadow::index_t>(1UL));
 
     bool need_sync = sample_counter % update_period == 0;
     bool need_update = (sample_counter + 1) % update_period == 0;
@@ -301,7 +302,8 @@ class CXXNetThreadTrainer : public INetTrainer {
                         const DataBatch &data) {
     this->InitEvalReq(req);
     const size_t ndevice = devices_.size();
-    mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
+    mshadow::index_t step = std::max(static_cast<mshadow::index_t>((batch_size + ndevice - 1) / ndevice), \
+                                     static_cast<mshadow::index_t>(1UL));
     for (mshadow::index_t i = nets_.size(); i != 0; --i) {
       mshadow::index_t begin = std::min((i - 1) * step, data.batch_size);
       mshadow::index_t end = std::min(i * step, data.batch_size);
@@ -341,7 +343,8 @@ class CXXNetThreadTrainer : public INetTrainer {
     net_cfg.Configure(cfg);
     if (devices_.size() == 0) devices_.push_back(0);
     size_t ndevice = devices_.size();
-    mshadow::index_t step = std::max((batch_size + ndevice - 1) / ndevice, 1UL);
+    mshadow::index_t step = std::max(static_cast<mshadow::index_t>((batch_size + ndevice - 1) / ndevice), \
+                                     static_cast<mshadow::index_t>((1UL)));
     while (step * (devices_.size() - 1) >= batch_size) {
       devices_.pop_back();
     }
