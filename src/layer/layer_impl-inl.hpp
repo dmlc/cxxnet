@@ -66,7 +66,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kInsanityPooling: return new InsanityPoolingLayer<mshadow::red::maximum, kMaxPooling, xpu>(p_rnd);
     case kPRelu: return new PReluLayer<xpu>(p_rnd);
     case kBatchNorm: return new BatchNormLayer<xpu>(p_rnd);
-    case kL2Loss: return new L2LossLayer<xpu>(label_info);
+    case kLpLoss: return new LpLossLayer<xpu>(label_info);
     case kMultiLogistic: return new MultiLogisticLayer<xpu>(label_info);
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();

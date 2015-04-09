@@ -305,7 +305,7 @@ const int kMaxout = 22;
 const int kSplit = 23;
 const int kInsanity = 24;
 const int kInsanityPooling = 25;
-const int kL2Loss = 26;
+const int kLpLoss = 26;
 const int kMultiLogistic = 27;
 const int kChConcat = 28;
 const int kPRelu = 29;
@@ -343,7 +343,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "split")) return kSplit;
   if (!strcmp(type, "insanity")) return kInsanity;
   if (!strcmp(type, "insanity_max_pooling")) return kInsanityPooling;
-  if (!strcmp(type, "l2_loss")) return kL2Loss;
+  if (!strcmp(type, "lp_loss") || !strcmp(type, "l2_loss")) return kLpLoss;
   if (!strcmp(type, "multi_logistic")) return kMultiLogistic;
   if (!strcmp(type, "ch_concat")) return kChConcat;
   if (!strcmp(type, "prelu")) return kPRelu;
