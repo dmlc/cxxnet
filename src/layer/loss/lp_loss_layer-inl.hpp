@@ -33,7 +33,8 @@ class LpLossLayer: public LossLayerBase<xpu> {
                   "LpLossLayer: label size mismatch");
     for (index_t i = 0; i < inout_data.size(0); ++i) {
       for (index_t j = 0; j < inout_data.size(1); ++j) {
-        inout_data[i][j] = p * std::pow(inout_data[i][j] - lb[i][j], p - 1);
+        inout_data[i][j] = p * std::pow(std::abs(inout_data[i][j] - lb[i][j]), p - 1)
+          * (inout_data[i][j] > lb[i][j] ? 1 : -1);
       }
     }
   }
