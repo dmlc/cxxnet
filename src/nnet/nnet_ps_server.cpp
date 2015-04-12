@@ -3,7 +3,7 @@
 
 #include <map>
 #include <sstream>
-#include <mshadow-ps/ps.h>
+#include <mshadow-ps/mshadow_ps.h>
 #include "./nnet_config.h"
 #include "../layer/param.h"
 #include "../utils/config.h"
