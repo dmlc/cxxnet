@@ -222,8 +222,8 @@ class StdFile: public ISeekStream {
 /*! \brief Basic page class */
 class BinaryPage {
  public:
-  /*! \brief page size 64 MB */
-  static const size_t kPageSize = 64 << 18;
+  /*! \brief page size 8 MB */
+  static const size_t kPageSize = 8 << 18;
  public:
   /*! \brief memory data object */
   struct Obj{
