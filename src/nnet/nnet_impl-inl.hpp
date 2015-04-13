@@ -8,6 +8,12 @@
 #include "../utils/metric.h"
 #include "./neural_net-inl.hpp"
 
+#if MSHADOW_DIST_PS
+#include "gflags/gflags.h"
+namespace ps {
+DECLARE_bool(local);
+} // namespace ps
+#endif
 
 namespace cxxnet {
 namespace nnet {
@@ -48,6 +54,15 @@ class CXXNetThreadTrainer : public INetTrainer {
           }
         }
       }
+#if MSHADOW_DIST_PS
+      if (::ps::FLAGS_local && ::ps::RankSize() > 1 && devices_.size()) {
+        // running multiple workers on the same machine
+        CHECK_GE(devices_.size(), ::ps::RankSize());
+        int dev = devices_[::ps::MyRank()];
+        devices_.clear();
+        devices_.push_back(dev);
+      }
+#endif
     }
     if (!strcmp(name, "batch_size")) batch_size = static_cast<mshadow::index_t>(atoi(val));
     if (!strcmp(name, "update_period")) update_period = atoi(val);

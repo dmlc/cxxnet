@@ -12,3 +12,5 @@ layer_impl-inl.hpp
 *.so
 im2bin
 *.pyc
+example
+parameter_server

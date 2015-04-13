@@ -3,7 +3,7 @@
 
 #include <map>
 #include <sstream>
-#include <mshadow-ps/ps.h>
+#include <mshadow-ps/mshadow_ps.h>
 #include "./nnet_config.h"
 #include "../layer/param.h"
 #include "../utils/config.h"
@@ -32,20 +32,23 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
     if (!strcmp(name, "seed")) seed = atoi(val);
     cfgvec.push_back(std::make_pair(std::string(name), std::string(val)));
   }
-  virtual void InitUpdater(int rank, const std::string &conf) {
-    // FIXME
-    // std::stringstream ss(conf);
-    // utils::ConfigStreamReader reader(ss);
 
-    // if (PS::Postoffice::instance().app()->isServer()) {
-#if MSHADOW_DIST_PS
-    if (PS::FLAGS_app_file.size()) {
-      utils::ConfigIterator reader(PS::FLAGS_app_file.c_str());
-      while (reader.Next()) {
-        this->SetParam(reader.name(), reader.val());
+  virtual void InitUpdater(int rank, int argc, char *argv[]) {
+    if (argc < 2) {
+      printf("Usage: <config>\n");
+      exit(0);
+    }
+
+    utils::ConfigIterator itr(argv[1]);
+    while (itr.Next()) {
+      this->SetParam(itr.name(), itr.val());
+    }
+    for (int i = 2; i < argc; i ++) {
+      char name[256], val[256];
+      if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
+        this->SetParam(name, val);
       }
     }
-#endif
 
     // start configure settings
     cfg.Configure(cfgvec);
@@ -160,11 +163,9 @@ IModelUpdater<cxxnet::real_t> *CreateModelUpdater<cxxnet::real_t>(void) {
 }  // namespace mshadow
 
 #if MSHADOW_DIST_PS
-namespace PS {
-
-App* CreateServerNode(const std::string& conf) {
-  return new mshadow::ps::MShadowServerNode<cxxnet::real_t>(conf);
+int CreateServerNode(int argc, char *argv[]) {
+  mshadow::ps::MShadowServerNode<float> server(argc, argv);
+  return 0;
 }
 
-} // namespace PS
 #endif

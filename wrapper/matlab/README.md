@@ -1,0 +1,1 @@
+To use the two examples directly, you need to put the MNIST data under current folder. Otherwise, you should change the data path in data iterator.

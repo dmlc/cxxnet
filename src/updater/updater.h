@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <mshadow/tensor.h>
-#include <mshadow-ps/ps.h>
+#include <mshadow-ps/mshadow_ps.h>
 #include "../global.h"
 #include "../layer/layer.h"
 
@@ -16,10 +16,10 @@ namespace updater {
  *        ILayer takes no charge of parameter update,
  *        IUpdater takes the gradient value accumulated by ILayer and the weight
  *        to perform update on the weight
- * \tparam xpu which device the data of the updater lies 
+ * \tparam xpu which device the data of the updater lies
  */
 template<typename xpu>
-class IUpdater { 
+class IUpdater {
  public:
   /*! \brief reuse layer's visitor type, can be used to access weight in updater */
   typedef typename layer::ILayer<xpu>::IVisitor IVisitor;
@@ -32,7 +32,7 @@ class IUpdater {
   virtual void SetStream(mshadow::Stream<xpu> *stream) = 0;
   /*! \brief intialize, print information about updater if not silent */
   virtual void Init(void) = 0;
-  /*! 
+  /*!
    * \brief apply visitor to the updater,
    *   this is used to visit tha content of the updater
    */
@@ -46,15 +46,15 @@ class IUpdater {
   /*!
    * \brief update parameter
    * \param epoch what current epoch is.
-   *        epoch is number of mini-batches passed, 
+   *        epoch is number of mini-batches passed,
    *        while round is one pass over training data
    */
   virtual void Update(long epoch) = 0;
   /*!
    * \brief update the parameter, provides the
-   *        gradient value from outside 
+   *        gradient value from outside
    * \param epoch what current epoch is
-   *        epoch is number of mini-batches passed, 
+   *        epoch is number of mini-batches passed,
    *        while round is one pass over training data
    * \param grad the pointer to pass in gradient value
    *        to minimize the interface, FlatTo2D should
@@ -84,7 +84,7 @@ class IAsyncUpdater : public IUpdater<xpu> {
    * \brief this function is called after calling backprop
    * \param do_update whether an update is performed in this iteration
    * \param epoch the update epoch if doing update
-   */  
+   */
   virtual void AfterBackprop(bool do_update, long epoch) = 0;
   /*!
    * \brief this function will be called before
@@ -129,7 +129,7 @@ IUpdater<xpu>* CreateUpdater(const char *type,
  * \param p_rnd pointer to random number generator
  * \param layer_type the type of the layer
  * \param p_layer pointer to the layer object, where the data is going to be pulled from
- * \param out_updaters vector to hold outputs, if there is already elements in out_updaters, 
+ * \param out_updaters vector to hold outputs, if there is already elements in out_updaters,
  *                     the function is going to push new updaters to the back of the vector
  */
 template<typename xpu>
@@ -149,12 +149,12 @@ void CreateAsyncUpdaters(int layer_index,
  */
 static const int kDataKeyStep = 4;
 /*!
- * \brief encode layer index and weight tag into the unique key 
+ * \brief encode layer index and weight tag into the unique key
  * \param layer_index index of layer
  * \param tag the tag of weight type
  */
 inline int EncodeDataKey(int layer_index, const char *tag) {
-  if (!strcmp(tag, "bias")) return layer_index * kDataKeyStep + 1; 
+  if (!strcmp(tag, "bias")) return layer_index * kDataKeyStep + 1;
   if (!strcmp(tag, "wmat")) return layer_index * kDataKeyStep + 0;
   utils::Error("EncodeDataKey: only support weight tag: wmat or bias");
   return 0;
