@@ -26,7 +26,7 @@
 #include "./prelu_layer-inl.hpp"
 #include "./batch_norm_layer-inl.hpp"
 #include "./loss/softmax_layer-inl.hpp"
-#include "./loss/l2_loss_layer-inl.hpp"
+#include "./loss/lp_loss_layer-inl.hpp"
 #include "./loss/multi_logistic_layer-inl.hpp"
 #if CXXNET_USE_CAFFE_ADAPTOR
 #include "../plugin/caffe_adapter-inl.hpp"
@@ -66,7 +66,7 @@ ILayer<xpu>* CreateLayer_(LayerType type,
     case kInsanityPooling: return new InsanityPoolingLayer<mshadow::red::maximum, kMaxPooling, xpu>(p_rnd);
     case kPRelu: return new PReluLayer<xpu>(p_rnd);
     case kBatchNorm: return new BatchNormLayer<xpu>(p_rnd);
-    case kL2Loss: return new L2LossLayer<xpu>(label_info);
+    case kLpLoss: return new LpLossLayer<xpu>(label_info);
     case kMultiLogistic: return new MultiLogisticLayer<xpu>(label_info);
     #if CXXNET_USE_CAFFE_ADAPTOR
     case kCaffe: return new CaffeLayer<xpu>();
