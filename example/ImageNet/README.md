@@ -44,10 +44,10 @@ A sample command:
 im2bin ./train.lst ./resized256_images/ TRAIN.BIN
 ```
 ### 3.Set correct configuration file
-Change the iterator path in the [ImageNet.conf](ImageNet.conf) to point to your _image list file_ and _image binary file_ correctly, then just run as MNIST example. After about 20 round, you can see some reasonable result.
+Change the iterator path in the [ImageNet.conf](ImageNet.conf) or [kaiming.conf](kaiming.conf) to point to your _image list file_ and _image binary file_ correctly, then just run as MNIST example. After about 20 round, you can see some reasonable result. We strongly recommend to use [kaiming.conf](kaiming.conf), since it could provide much better results than Alexnet, while keeping the time cost unchanged.
 By calling
 ```bash
-cxxnet ./ImageNet.conf 2>eval.log
+cxxnet ./kaiming.conf 2>eval.log
 ```
 You can save the evaluation result into the file `eval.log`
 
@@ -56,4 +56,5 @@ You can save the evaluation result into the file `eval.log`
 =
 ### Acknowledgment
 * Reference: Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hinton. "ImageNet Classification with Deep Convolutional Neural Networks." NIPS. Vol. 1. No. 2. 2012.
+* Reference: He, Kaiming, and Jian Sun. "Convolutional Neural Networks at Constrained Time Cost." CVPR2015
 * The network parameter scheduling is adapted from configuration provided by [Caffe](http://caffe.berkeleyvision.org/)
