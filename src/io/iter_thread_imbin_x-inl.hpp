@@ -141,7 +141,10 @@ public:
       tmp.resize(strlen(tmp.c_str()));
       path_imglst_.push_back(tmp + ".lst");
       path_imgbin_.push_back(tmp + ".bin");
+
+#if MSHADOW_DIST_PS
       std::cout << "rank " << dist_worker_rank_ << ": " << tmp << std::endl;
+#endif
     }
   }
 
