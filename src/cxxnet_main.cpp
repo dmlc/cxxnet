@@ -9,9 +9,11 @@
 #include "nnet/nnet.h"
 #include "io/data.h"
 #include "utils/config.h"
+#if MSHADOW_DIST_PS
+#include "ps.h"
+#endif
 
 namespace cxxnet{
-
 
 class CXXNetLearnTask {
  public:
@@ -134,7 +136,7 @@ class CXXNetLearnTask {
         this->LoadModel();
       }
     }
-  
+
     this->CreateIterators();
   }
   // load in latest model from model_folder
@@ -239,6 +241,7 @@ class CXXNetLearnTask {
         utils::Assert(flag != 0, "wrong configuration file");
         if (flag == 1 && task != "pred") {
           utils::Assert(itr_train == NULL, "can only have one data");
+
           itr_train = cxxnet::CreateIterator(itcfg);
         }
         if (flag == 2 && task != "pred") {
@@ -301,7 +304,7 @@ class CXXNetLearnTask {
           fprintf(fo, "\n");
         } else {
           fwrite(d[j].dptr_, sizeof(float), d.size(1), fo);
-        }  
+        }
       }
     }
     fclose(fo);
@@ -374,6 +377,12 @@ class CXXNetLearnTask {
     printf("finished prediction, write into %s\n", name_pred.c_str());
   }
   inline void TaskTrain(void) {
+    bool is_root = true;
+#if MSHADOW_DIST_PS
+    is_root = ::ps::MyRank() == 0;
+    silent = !is_root;
+#endif
+
     time_t start    = time(NULL);
     unsigned long elapsed = 0;
     if (continue_training == 0 && name_model_in == "NULL") {
@@ -390,7 +399,7 @@ class CXXNetLearnTask {
       fprintf(stderr, "\n");
       fflush(stderr);
     }
-    
+
     if (itr_train != NULL) {
       if (test_io != 0) {
         printf("start I/O test\n");
@@ -418,7 +427,7 @@ class CXXNetLearnTask {
           }
         }
 
-        if (test_io == 0) {
+        if (test_io == 0 && is_root) {
           // code handling evaluation
           fprintf(stderr, "[%d]", start_counter);
           // handle only with eval_train = 1, but not val data
@@ -436,7 +445,7 @@ class CXXNetLearnTask {
         elapsed = (unsigned long)(time(NULL) - start);
         this->SaveModel();
       }
-      
+
       if (!silent) {
         printf("\nupdating end, %lu sec in all\n", elapsed);
       }
