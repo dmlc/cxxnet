@@ -13,4 +13,5 @@ layer_impl-inl.hpp
 im2bin
 *.pyc
 example
-parameter_server
+*.log
+ps-lite
