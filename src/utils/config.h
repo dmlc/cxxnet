@@ -40,11 +40,9 @@ class ConfigReaderBase {
   inline bool Next(void) {
     while (!this->IsEnd()) {
       GetNextToken(&s_name);
-      utils::Check(s_name != "=", "Invalid '=' in config file.");
-      utils::Check((!GetNextToken(&s_buf) && s_buf == "="),
-                   "Invalid str:%s in config file.", s_buf.c_str());
-      utils::Check((!GetNextToken(&s_val) && s_val != "="),
-                   "Invalid str:%s in config file.", s_val.c_str());
+      if (s_name == "=") return false;
+      if (GetNextToken(&s_buf) || s_buf != "=")  return false;
+      if (GetNextToken(&s_val) || s_val == "=")  return false;
       return true;
     }
     return false;
