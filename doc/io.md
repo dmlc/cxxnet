@@ -131,7 +131,7 @@ Deterministic transformations are usually used in test to generate diverse predi
 
 =
 ### CSV Iterator
-This iterator can be used to read data files that stores in a raw CSV file. The CSV file should have the following data structure ```label(s) | other_columns```. The number of label columns can be controlled via ```label_width``` parameter, by default it is set to 1, i.e. first column of CSV file is treated as labels. Example:
+This iterator can be used to read data files that stores in a raw CSV file. The CSV file should have the following data structure ```label(s) , other_columns```. The number of label columns can be controlled via ```label_width``` parameter, by default it is set to 1, i.e. first column of CSV file is treated as labels. Example:
 ```bash
 iter = csv
 filename = "train.csv"
