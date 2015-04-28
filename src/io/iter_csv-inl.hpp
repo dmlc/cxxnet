@@ -8,7 +8,6 @@
  */
 #include "data.h"
 #include <mshadow/tensor.h>
-#include <opencv2/opencv.hpp>
 
 namespace cxxnet{
   /*! \brief simple csv iterator that only loads data instance */

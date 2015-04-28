@@ -324,7 +324,7 @@ class CXXNetLearnTask {
   }
   inline void TaskExtractFeature() {
     long nrow = 0;
-    mshadow::Shape<3> dshape;
+    mshadow::Shape<3> dshape = mshadow::Shape3(0, 0, 0);
     utils::Check(itr_pred != NULL,
                  "must specify a predict iterator to generate predictions");
     printf("start predicting...\n");
