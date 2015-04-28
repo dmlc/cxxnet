@@ -14,7 +14,6 @@
 #define rand_r(x) rand()
 #endif
 
-
 namespace cxxnet {
 namespace utils {
 /*! \brief simple thread dependent random sampler */

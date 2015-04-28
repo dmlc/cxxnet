@@ -7,6 +7,7 @@
  */
 #include <vector>
 #include <utility>
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "../layer/layer.h"
 #include "../layer/visitor.h"
@@ -199,8 +200,8 @@ struct NeuralNet {
       }
       updaters.push_back(out);
     }
-    utils::Assert(updaters.size() == connections.size(),
-                  "updater size do not match number of layers");
+    CHECK(updaters.size() == connections.size())
+        << "updater size do not match number of layers";
   }
   // intialize the space of nodes
   inline void InitNodes(void) {
@@ -236,7 +237,7 @@ struct NeuralNet {
         c.nodes_out.push_back(&nodes[info.nindex_out[j]]);
       }
       if (c.type == layer::kSharedLayer) {
-        utils::Assert(info.primary_layer_index >=0, "primary_layer_index problem");
+        CHECK(info.primary_layer_index >= 0) << "primary_layer_index problem";
         utils::Check(info.primary_layer_index < static_cast<int>(connections.size()),
                      "shared layer primary_layer_index exceed bound");
         c.layer = connections[info.primary_layer_index].layer;
@@ -264,7 +265,7 @@ struct NeuralNet {
   }
   // adjust batch size to a new value, the batch_size must be smaller than max_batch
   inline void AdjustBatchSize(mshadow::index_t batch_size) {
-    utils::Assert(max_batch >= batch_size, "cannot set batch size larger than max batch");
+    CHECK(max_batch >= batch_size);
     if (batch_size != nodes[0].data.size(0)) {
       for (size_t i = 0; i < nodes.size(); ++i) {
         nodes[i].data.shape_[0] = batch_size;
@@ -384,7 +385,7 @@ class NeuralNetThread {
                                    bool need_sync,
                                    bool need_update,
                                    size_t update_epoch) {
-    utils::Assert(net_ != NULL, "thread must be initialized before use");
+    CHECK(net_ != NULL);
     net_->label_info = label_info;
     iparam_batch = batch;
     iparam_flag = prop_to_input;
@@ -492,7 +493,7 @@ class NeuralNetThread {
     }
   }
   inline void TaskDispatch(void) {
-    utils::Assert(net_ != NULL, "thread must be initialized before use");
+    CHECK(net_ != NULL);
     switch (task) {
       case kInitModel: {
         net_->InitModel();
@@ -516,7 +517,7 @@ class NeuralNetThread {
         net_->Forward(true, iparam_batch, iparam_extra_data, iparam_need_sync);
         for (index_t i = 0; i < oparam_req.size(); ++i) {
           index_t id = oparam_req[i].first + (oparam_req[i].first < 0 ? net_->nodes.size() : 0);
-          utils::Assert(id < net_->nodes.size(), "nid out of range");
+          CHECK(id < net_->nodes.size());
           mshadow::Copy(oparam_req[i].second, net_->nodes[id].data, stream);
         }
         net_->Backprop(iparam_flag, iparam_need_update, iparam_epoch);
@@ -529,20 +530,18 @@ class NeuralNetThread {
       }
       case kCopyNode: {
         if (iparam_nid < 0) iparam_nid += static_cast<int>(net_->nodes.size());
-        utils::Assert(iparam_nid < static_cast<int>(net_->nodes.size()), "nid out of range");
+        CHECK(iparam_nid < static_cast<int>(net_->nodes.size()));
         mshadow::Copy(oparam_node, net_->nodes[iparam_nid].data, stream);
         stream->Wait();
         return;
       }
       case kCopyLayer: {
-        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()),
-                      "lid out of range");
+        CHECK(iparam_lid < static_cast<int>(net_->connections.size()));
         net_->connections[iparam_lid].layer->LoadModel(*iparam_fp);
         return;
       }
       case kSetWeight: {
-        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()),
-                      "lid out of range");
+        CHECK(iparam_lid < static_cast<int>(net_->connections.size()));
         mshadow::TensorContainer<xpu, 2> tmp;
         tmp.Resize(iparam_weight.shape_);
         mshadow::Copy(tmp, iparam_weight, stream);
@@ -554,8 +553,7 @@ class NeuralNetThread {
         return;
       }
       case kGetWeight: {
-        utils::Assert(iparam_lid < static_cast<int>(net_->connections.size()),
-                      "lid out of range");
+        CHECK(iparam_lid < static_cast<int>(net_->connections.size()));
         layer::GetWeightVisitor<xpu> vs("weight", iparam_tag.c_str());
         net_->connections[iparam_lid].layer->ApplyVisitor(&vs);
         if (vs.data.size() == 0) {
@@ -565,8 +563,8 @@ class NeuralNetThread {
           oparam_weight->Resize(vs.data[0].shape_);
           mshadow::Copy(*oparam_weight, vs.data[0], stream);
           *oparam_shape = vs.shapes[0];
-          utils::Assert(vs.fields[0] == iparam_tag,
-                        "GetWeight:shape mismatch");
+          CHECK(vs.fields[0] == iparam_tag)
+              << " GetWeight:shape mismatch";
           stream->Wait();
         }
         return;

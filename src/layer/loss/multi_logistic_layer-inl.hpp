@@ -1,6 +1,7 @@
 #ifndef CXXNET_LAYER_MULTISIGMOID_LAYER_INL_HPP_
 #define CXXNET_LAYER_MULTISIGMOID_LAYER_INL_HPP_
 
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "../layer.h"
 #include "./loss_layer_base-inl.hpp"
@@ -23,8 +24,8 @@ class MultiLogisticLayer: public LossLayerBase<xpu> {
   virtual void SetGradCPU(mshadow::Tensor<cpu, 2> inout_data,
                           const LabelRecord &label) {
     mshadow::Tensor<cpu, 2> lb = label.label;
-    utils::Assert(lb.size(0) == inout_data.size(0) && lb.size(1) == inout_data.size(1),
-                  "MultiLogisticLayer: label size mismatch");
+    CHECK(lb.size(0) == inout_data.size(0) && lb.size(1) == inout_data.size(1))
+        << " MultiLogisticLayer: label size mismatch";
     for (index_t i = 0; i < inout_data.size(0); ++i) {
       for (index_t j = 0; j < inout_data.size(1); ++j) {
         inout_data[i][j] -= lb[i][j];

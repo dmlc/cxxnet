@@ -7,6 +7,7 @@
  */
 #include "data.h"
 #include <cstdlib>
+#include <dmlc/logging.h>
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
 #include "../utils/decoder.h"
@@ -227,7 +228,7 @@ private:
                            label_width, j);
 
             }
-            utils::Assert(fscanf(fplist, "%*[^\n]\n") == 0, "ignore");
+            CHECK(fscanf(fplist, "%*[^\n]\n") == 0) << "ignore";
           }
           return true;
         } else {

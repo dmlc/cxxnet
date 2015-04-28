@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "./data.h"
 #include "../global.h"
@@ -30,49 +31,49 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
     const char *val  = cfg[i].second.c_str();
     if (!strcmp(name, "iter")) {
       if (!strcmp(val, "mnist")) {
-        utils::Check(it == NULL, "mnist can not chain over other iterator");
+        CHECK(it == NULL) <<  "mnist can not chain over other iterator";
         it = new MNISTIterator(); continue;
       }
       #if CXXNET_USE_OPENCV
       if (!strcmp(val, "imgbinold")) {
-        utils::Assert(it == NULL, "image binary can not chain over other iterator");
+        CHECK(it == NULL) << "image binary can not chain over other iterator";
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIterator()));
         continue;
       }
       // redirect all io to new iterator
       if (!strcmp(val, "imgbinx") || !strcmp(val, "imgbin")) {
-        utils::Assert(it == NULL, "image binary can not chain over other iterator");
+        CHECK(it == NULL) <<  "image binary can not chain over other iterator";
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImagePageIteratorX()));
         continue;
       }
       if (!strcmp(val, "imginst")) {
-        utils::Assert(it == NULL, "image binary can not chain over other iterator");
+        CHECK(it == NULL) <<  "image binary can not chain over other iterator";
         it = new BatchAdaptIterator(new AugmentIterator(new ThreadImageInstIterator(), 1));
         continue;
       }
       if (!strcmp(val, "img")) {
-        utils::Assert(it == NULL, "image list iterator can not chain over other iterator");
+        CHECK(it == NULL) <<  "image list iterator can not chain over other iterator";
         it = new BatchAdaptIterator(new AugmentIterator(new ImageIterator()));
         continue;
       }
       #endif
       if (!strcmp(val, "threadbuffer")) {
-        utils::Assert(it != NULL, "must specify input of threadbuffer");
+        CHECK(it != NULL) << "must specify input of threadbuffer";
         it = new ThreadBufferIterator(it);
         continue;
       }
       if (!strcmp(val, "membuffer")) {
-        utils::Assert(it != NULL, "must specify input of memory buffer");
+        CHECK(it != NULL) << "must specify input of memory buffer";
         it = new DenseBufferIterator(it);
         continue;
       }
       if (!strcmp(val, "attachtxt")) {
-        utils::Assert(it != NULL, "must specify input of attach txt buffer");
+        CHECK(it != NULL) << "must specify input of attach txt buffer";
         it = new AttachTxtIterator(it);
         continue;
       }
       if (!strcmp(val, "csv")) {
-        utils::Assert(it == NULL, "csv iter cannot chain over other iterator.");
+        CHECK(it == NULL) <<  "csv iter cannot chain over other iterator.";
         it = new BatchAdaptIterator(new CSVIterator());
         continue;
       }
@@ -82,7 +83,7 @@ IIterator<DataBatch> *CreateIterator(const std::vector< std::pair<std::string, s
       it->SetParam(name, val);
     }
   }
-  utils::Assert(it != NULL, "must specify iterator by iter=itername");
+  CHECK(it != NULL) << "must specify iterator by iter=itername";
   return it;
 }
 } // namespace cxxnet

@@ -5,9 +5,10 @@
  * \brief iterator that takes mnist dataset
  * \author Tianqi Chen
  */
+#include "./data.h"
 #include <mshadow/tensor.h>
-#include "data.h"
-#include "../utils/io.h"
+#include <dmlc/io.h>
+#include <dmlc/logging.h>
 #include "../utils/random.h"
 
 namespace cxxnet {
@@ -75,7 +76,8 @@ class MNISTIterator: public IIterator<DataBatch> {
   }
  private:
   inline void LoadImage(void) {
-    utils::StdFile stdimg(path_img.c_str(), "rb");
+    
+    dmlc::Stream *stdimg = dmlc::Stream::Create(path_img.c_str(), "r");
     ReadInt(stdimg);
     int image_count = ReadInt(stdimg);
     int image_rows  = ReadInt(stdimg);
@@ -89,23 +91,29 @@ class MNISTIterator: public IIterator<DataBatch> {
     for (int i = 0; i < image_count; ++i) {
       for (int j = 0; j < image_rows; ++j) {
         for (int k = 0; k < image_cols; ++k) {
-          img_[i][j][k] = stdimg.ReadType<unsigned char>();
+          unsigned char ch;
+          CHECK(stdimg->Read(&ch, sizeof(ch) != 0));
+          img_[i][j][k] = ch;
         }
       }
     }
     // normalize to 0-1
     img_ *= 1.0f / 256.0f;
+    delete stdimg;
   }
   inline void LoadLabel(void) {
-    utils::StdFile stdlabel(path_label.c_str(), "rb");
+    dmlc::Stream *stdlabel = dmlc::Stream::Create(path_label.c_str(), "r");
     ReadInt(stdlabel);
     int labels_count =ReadInt(stdlabel);
 
     labels_.resize(labels_count);
     for (int i = 0; i < labels_count; ++i) {
-      labels_[i] = stdlabel.ReadType<unsigned char>();
+      unsigned char ch;
+      CHECK(stdlabel->Read(&ch, sizeof(ch) != 0));
+      labels_[i] = ch;
       inst_.push_back((unsigned)i + inst_offset_);
     }
+    delete stdlabel;
   }
   inline void Shuffle(void) {
     rnd.Shuffle(inst_);
@@ -121,9 +129,10 @@ class MNISTIterator: public IIterator<DataBatch> {
     labels_ = tmplabel;
   }
  private:
-  inline static int ReadInt(utils::IStream &fi) {
+  inline static int ReadInt(dmlc::Stream *fi) {
     unsigned char buf[4];
-    utils::Assert(fi.Read(buf, sizeof(buf)) == 1, "Failed to read an int\n");
+    CHECK(fi->Read(buf, sizeof(buf)) == sizeof(buf))
+        << "invalid mnist format";
     return int(buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
   }
  private:

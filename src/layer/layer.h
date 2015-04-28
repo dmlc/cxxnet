@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "../global.h"
 #include "../utils/utils.h"
@@ -62,7 +63,7 @@ struct Node {
   inline void AllocSpace(void) {
     if (must_contiguous) {
       mshadow::AllocSpace(&data, false);
-      utils::Assert(data.CheckContiguous(), "contiguous");
+      CHECK(data.CheckContiguous());
     } else {
       mshadow::AllocSpace(&data);
     }

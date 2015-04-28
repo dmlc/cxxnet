@@ -5,6 +5,7 @@
  * \brief processing unit to do data augmention
  * \author Tianqi Chen, Bing Xu, Naiyan Wang
  */
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "data.h"
 #include "../utils/utils.h"
@@ -73,16 +74,15 @@ public:
   virtual void Init(void) {
     base_->Init();
     if (name_meanimg_.length() != 0) {
-      FILE *fi = fopen64(name_meanimg_.c_str(), "rb");
+      dmlc::Stream *fi = dmlc::Stream::Create(name_meanimg_.c_str(), "r", true);
       if (fi == NULL) {
         this->CreateMeanImg();
       } else {
         if (silent_ == 0) {
           printf("loading mean image from %s\n", name_meanimg_.c_str());
         }
-        utils::FileStream fs(fi) ;
-        meanimg_.LoadBinary(fs);
-        fclose(fi);
+        meanimg_.LoadBinary(*fi);
+        delete fi;
         meanfile_ready_ = true;
       }
     }
@@ -112,8 +112,8 @@ private:
     if (shape_[1] == 1) {
       img_ = data * scale_;
     } else {
-      utils::Assert(data.size(1) >= shape_[1] && data.size(2) >= shape_[2],
-                    "Data size must be bigger than the input size to net.");
+      CHECK(data.size(1) >= shape_[1] && data.size(2) >= shape_[2])
+          << "Data size must be bigger than the input size to net.";
       mshadow::index_t yy = data.size(1) - shape_[1];
       mshadow::index_t xx = data.size(2) - shape_[2];
       if (rand_crop_ != 0 && (yy != 0 || xx != 0)) {
@@ -180,7 +180,7 @@ private:
     unsigned long elapsed = 0;
     size_t imcnt = 1;
 
-    utils::Assert(this->Next_(), "input iterator failed.");
+    CHECK(this->Next_()) << "input iterator failed.";
     meanimg_.Resize(mshadow::Shape3(shape_[0], shape_[1], shape_[2]));
     mshadow::Copy(meanimg_, img_);
     while (this->Next()) {
@@ -193,8 +193,10 @@ private:
       }
     }
     meanimg_ *= (1.0f / imcnt);
-    utils::StdFile fo(name_meanimg_.c_str(), "wb");
-    meanimg_.SaveBinary(fo);
+
+    dmlc::Stream *fo = dmlc::Stream::Create(name_meanimg_.c_str(), "w");
+    meanimg_.SaveBinary(*fo);
+    delete fo;
     if (silent_ == 0) {
       printf("save mean image to %s..\n", name_meanimg_.c_str());
     }

@@ -1,6 +1,7 @@
 #ifndef CXXNET_LAYER_LOSS_LAYER_BASE_INL_HPP_
 #define CXXNET_LAYER_LOSS_LAYER_BASE_INL_HPP_
 
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "../layer.h"
 
@@ -34,8 +35,7 @@ class LossLayerBase: public ILayer<xpu> {
     utils::Check(nodes_in.size() == 1 && nodes_out.size() == 1,
                  "LossLayer: only support 1-1 connection");
     utils::Check(nodes_in[0] == nodes_out[0], "LossLayer is an self-loop Layer");
-    utils::Assert(plabelinfo->name2findex != NULL,
-                  "LossLayer: LabelInfo.name2findex == NULL");
+    CHECK(plabelinfo->name2findex != NULL);
     std::map<std::string, size_t>::const_iterator it =
         plabelinfo->name2findex->find(target);
     utils::Check(it != plabelinfo->name2findex->end() &&
@@ -53,8 +53,7 @@ class LossLayerBase: public ILayer<xpu> {
                         const std::vector<Node<xpu>*> &nodes_in,
                         const std::vector<Node<xpu>*> &nodes_out,
                         ConnectState<xpu> *p_cstate) {
-    utils::Assert(target_index < plabelinfo->fields.size(),
-                  "target index exceed bound");
+    CHECK(target_index < plabelinfo->fields.size());
     this->SetGrad(nodes_in[0]->mat(),
                   plabelinfo->fields[target_index],
                   stream_);                  

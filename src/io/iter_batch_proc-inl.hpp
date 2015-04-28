@@ -5,6 +5,7 @@
  * \brief definition of preprocessing iterators that takes an iterator and do some preprocessing
  * \author Tianqi Chen
  */
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "./data.h"
 #include "../utils/utils.h"
@@ -35,8 +36,8 @@ public:
     base_->SetParam(name, val);
     if (!strcmp(name, "batch_size"))  batch_size_ = (index_t)atoi(val);
     if (!strcmp(name, "input_shape")) {
-      utils::Assert(sscanf(val, "%u,%u,%u", &shape_[1], &shape_[2], &shape_[3]) == 3,
-                    "input_shape must be three consecutive integers without space example: 1,1,200 ");
+      CHECK(sscanf(val, "%u,%u,%u", &shape_[1], &shape_[2], &shape_[3]) == 3)
+          << "input_shape must be three consecutive integers without space example: 1,1,200 ";
     }
     if (!strcmp(name, "label_width")) {
       label_width_ = static_cast<index_t>(atoi(val));
@@ -86,7 +87,7 @@ public:
         num_overflow_ = 0;
         base_->BeforeFirst();
         for (; top < batch_size_; ++top, ++num_overflow_) {
-          utils::Assert(base_->Next(), "number of input must be bigger than batch size");
+          CHECK(base_->Next()) << "number of input must be bigger than batch size";
           const DataInst& d = base_->Value();
           mshadow::Copy(out_.label[top], d.label);
           out_.inst_index[top] = d.index;
@@ -101,7 +102,7 @@ public:
     return false;
   }
   virtual const DataBatch &Value(void) const {
-    utils::Assert(head_ == 0, "must call Next to get value");
+    CHECK(head_ == 0) << "must call Next to get value";
     return out_;
   }
 private:
@@ -143,7 +144,7 @@ public :
     itr.SetParam(name, val);
   }
   virtual void Init(void) {
-    utils::Assert(itr.Init(), "iterator init fail") ;
+    CHECK(itr.Init()) << "iterator init fail";
     printf("In batch init.\n");
     if (silent_ == 0) {
       printf("ThreadBufferIterator: buffer_size=%d\n", itr.buf_size);
@@ -175,7 +176,7 @@ private:
     }
     inline bool Init() {
       base_->Init();
-      utils::Assert(base_->Next(), "ThreadBufferIterator: input can not be empty");
+      CHECK(base_->Next()) << "ThreadBufferIterator: input can not be empty";
       oshape_ = base_->Value().data.shape_;
       batch_size_ = base_->Value().batch_size;
       label_width_ = base_->Value().label.size(1);

@@ -128,10 +128,8 @@ struct NetConfig {
     if (param.extra_data_num != 0) {
       fo.Write(extra_shape);
     }
-    utils::Assert(param.num_layers == static_cast<int>(layers.size()),
-                  "model inconsistent");
-    utils::Assert(param.num_nodes == static_cast<int>(node_names.size()),
-                  "num_nodes is inconsistent with node_names");
+    CHECK(param.num_layers == static_cast<int>(layers.size()));
+    CHECK(param.num_nodes == static_cast<int>(node_names.size()));
     for (int i = 0; i < param.num_nodes; ++i) {
       fo.Write(node_names[i]);
     }
@@ -259,8 +257,7 @@ struct NetConfig {
         LayerInfo info = this->GetLayerInfo(name, val, cfg_top_node, cfg_layer_index);
         netcfg_mode = 2;
         if (param.init_end == 0) {
-          utils::Assert(layers.size() == static_cast<size_t>(cfg_layer_index),
-                        "NetConfig inconsistent");
+          CHECK(layers.size() == static_cast<size_t>(cfg_layer_index));
           layers.push_back(info);
           layercfg.resize(layers.size());
         } else {
@@ -397,8 +394,7 @@ struct NetConfig {
         param.num_nodes = std::max(info.nindex_out[j] + 1, param.num_nodes);
       }
     }
-    utils::Assert(param.num_nodes == static_cast<int>(node_names.size()),
-                  "num_nodes is inconsistent with node_names");
+    CHECK(param.num_nodes == static_cast<int>(node_names.size()));
     param.init_end = 1;
   }
   /*! \brief clear the configurations */

@@ -1,9 +1,9 @@
-#ifndef ITER_THREAD_IMINST_INL_HPP
-#define ITER_THREAD_IMINST_INL_HPP
-#pragma once
+#ifndef ITER_THREAD_IMINST_INL_HPP_
+#define ITER_THREAD_IMINST_INL_HPP_
 #include "data.h"
 #include <cstdlib>
-#include "../utils/omp.h"
+#include <dmlc/omp.h>
+#include <dmlc/logging.h>
 #include "./image_augmenter-inl.hpp"
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
@@ -274,7 +274,7 @@ private:
                      label_width_, j);
           entry[i].label[j] = tmp;
         }
-        utils::Assert(fscanf(fplist, "%*[^\n]\n") == 0, "ignore");
+        CHECK(fscanf(fplist, "%*[^\n]\n") == 0) << "ignore";
       }
       data_ptr = 0;
       return true;

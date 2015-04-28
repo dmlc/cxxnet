@@ -8,16 +8,22 @@ else
 endif
 endif
 
+ifndef DMLC_CORE
+	DMLC_CORE = dmlc-core
+endif
+
 # use customized config file
 include $(config)
 include mshadow/make/mshadow.mk
+include $(DMLC_CORE)/make/dmlc.mk
 
 # all tge possible warning tread
 WARNFLAGS= -Wall
 CFLAGS = -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
-CFLAGS += -g -O3 -I./mshadow/  -fPIC $(MSHADOW_CFLAGS)
-LDFLAGS = -pthread $(MSHADOW_LDFLAGS)
+CFLAGS += -g -O3 -I./mshadow/ -I./dmlc-core/include -fPIC $(MSHADOW_CFLAGS)
+LDFLAGS = -pthread $(MSHADOW_LDFLAGS) $(DMLC_LDFLAGS)
 NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
+ROOTDIR = $(CURDIR)
 
 # setup opencv
 ifeq ($(USE_OPENCV),1)
@@ -36,11 +42,13 @@ endif
 ifeq ($(USE_OPENMP_ITER), 1)
 	CFLAGS += -fopenmp
 endif
+
 # customize cudnn path
 ifneq ($(USE_CUDNN_PATH), NONE)
 	CFLAGS += -I$(USE_CUDNN_PATH)
 	LDFLAGS += -L$(USE_CUDNN_PATH)
 endif
+
 ifeq ($(USE_CUDNN), 1)
 	CFLAGS += -DCXXNET_USE_CUDNN=1
 	LDFLAGS += -lcudnn
@@ -49,6 +57,7 @@ endif
 ifneq ($(ADD_CFLAGS), NONE)
 	CFLAGS += $(ADD_CFLAGS)
 endif
+
 ifneq ($(ADD_LDFLAGS), NONE)
 	LDFLAGS += $(ADD_LDFLAGS)
 endif
@@ -59,6 +68,7 @@ SLIB = wrapper/libcxxnetwrapper.so
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
+
 ifeq ($(USE_CUDA), 0)
 	CUDEP =
 else
@@ -68,10 +78,13 @@ endif
 .PHONY: clean all
 
 ifeq ($(USE_DIST_PS), 1)
-BIN=bin/cxxnet.ps
+	BIN=bin/cxxnet.ps
 endif
 
 all: $(BIN) $(SLIB)
+
+$(DMLC_CORE)/libdmlc.a:
+	+ cd $(DMLC_CORE); make libdmlc.a config=$(ROOTDIR)/$(config); cd $(ROOTDIR)
 
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu\
 	src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
@@ -89,8 +102,8 @@ data.o: src/io/data.cpp src/io/*.hpp
 main.o: src/cxxnet_main.cpp
 
 wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(CUDEP)
-bin/cxxnet: src/local_main.cpp $(OBJ) $(CUDEP)
-bin/cxxnet.ps: $(OBJ) $(CUDEP) $(PS_LIB)
+bin/cxxnet: src/local_main.cpp $(OBJ) $(DMLC_CORE)/libdmlc.a $(CUDEP) 
+bin/cxxnet.ps: $(OBJ) $(CUDEP) $(DMLC_CORE)/libdmlc.a $(PS_LIB)
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)
@@ -109,3 +122,4 @@ $(CUBIN) :
 
 clean:
 	$(RM) $(OBJ) $(BIN) $(CUBIN) $(CUOBJ) $(SLIB) *~ */*~ */*/*~
+	cd $(DMLC_CORE); make clean; cd -

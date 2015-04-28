@@ -5,6 +5,7 @@
  * \brief implementation of SGD with momentum
  * \author Tianqi Chen
  */
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include <cmath>
 #include "./updater.h"
@@ -49,8 +50,8 @@ class SGDUpdater : public IUpdater<xpu> {
     dw = 0.0f;
   }
   virtual void Update(long epoch, mshadow::Tensor<xpu, 2> grad) {
-    utils::Assert(grad.shape_ == w.shape_.FlatTo2D(),
-                  "SGDUpdater: grad must be generated from source of same shape");
+    CHECK(grad.shape_ == w.shape_.FlatTo2D())
+        << "SGDUpdater: grad must be generated from source of same shape";
     this->ApplyUpdate(epoch, mshadow::Tensor<xpu, dim>
                       (grad.dptr_, w.shape_, grad.stride_, w.stream_));
   }

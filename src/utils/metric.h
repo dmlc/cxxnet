@@ -135,7 +135,7 @@ struct MetricLogloss : public MetricBase{
 struct MetricRecall : public MetricBase{
  public:
   MetricRecall(const char *name): MetricBase(name) {
-    utils::Assert(sscanf(name, "rec@%d", &topn) == 1, "must specify n for rec@n");
+    CHECK(sscanf(name, "rec@%d", &topn) == 1) << "must specify n for rec@n";
   }
   virtual ~MetricRecall(void) {}
  protected:
@@ -202,8 +202,8 @@ struct MetricSet{
   }
   inline void AddEval(const std::vector<mshadow::Tensor<cpu, 2> >& predscores,
     const layer::LabelInfo& labels) {
-    utils::Assert(predscores.size() == evals_.size(),
-      "Metric: Number of predict scores and number of metrics should be equal.");
+    CHECK(predscores.size() == evals_.size())
+        << "Metric: Number of predict scores and number of metrics should be equal.";
     for (size_t i = 0; i < evals_.size(); ++ i) {
       std::map<std::string, size_t>::const_iterator it =
         labels.name2findex->find(label_fields_[i]);

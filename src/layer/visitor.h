@@ -41,8 +41,8 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
       : mode_(0), prefix_(prefix) {
     if (!strcmp(data_type, "weight")) mode_ = 0;
     if (!strcmp(data_type, "grad")) mode_ = 1;
-    utils::Assert(mode_ == 0 || mode_ == 1,
-      "GetWeightVisitor: do not support data_type %s", data_type);
+    CHECK(mode_ == 0 || mode_ == 1)
+        << " GetWeightVisitor: do not support data_type " << data_type;
   }
   // visit
   virtual void Visit(const char *field_name,
@@ -113,8 +113,8 @@ class SetWeightVisitor : public ILayer<xpu>::IVisitor {
       : data_(data), prefix_(prefix), counter_(0) {
     if (!strcmp(data_type, "weight")) mode_ = 0;
     if (!strcmp(data_type, "grad")) mode_ = 1;
-    utils::Assert(mode_ == 0 || mode_ == 1,
-      "SetWeightVisitor: do not support data_type %s", data_type);
+    CHECK(mode_ == 0 || mode_ == 1)
+        << " SetWeightVisitor: do not support data_type " << data_type;
   }
   // visit
   virtual void Visit(const char *field_name,
