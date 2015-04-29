@@ -102,12 +102,14 @@ class PoolingLayer : public ILayer<xpu> {
 
     mshadow::Shape<4> oshape = mshadow::
         Shape4(ishape[0], ishape[1],
-               std::min(ishape[2] - ksize_y + kstride-1, ishape[2] - 1) / kstride + 1,
-               std::min(ishape[3] - ksize_x + kstride-1, ishape[3] - 1) / kstride + 1);
+               std::min(ishape[2] + 2 * param_.pad_y - ksize_y + kstride-1, ishape[2] + 2 * param_.pad_y - 1) / kstride + 1,
+               std::min(ishape[3] + 2 * param_.pad_x - ksize_x + kstride-1, ishape[3] + 2 * param_.pad_x- 1) / kstride + 1);
     nodes_out[0]->data.shape_ = oshape;
-    // use 1 temp state to store pooled result
-    p_cstate->states.push_back(mshadow::TensorContainer<xpu,4>(false));
+    // use 2 temp state to store pooled result (state 2 for cudnn)
+    p_cstate->states.resize(2);
     p_cstate->states[0].Resize(oshape);
+    p_cstate->states[1].Resize(ishape);
+
   }
   /*! \brief parameters that potentially be useful */
   LayerParam param_;
