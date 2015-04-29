@@ -107,6 +107,8 @@ class PoolingLayer : public ILayer<xpu> {
     nodes_out[0]->data.shape_ = oshape;
     // use 2 temp state to store pooled result (state 2 for cudnn)
     p_cstate->states.resize(2);
+    p_cstate->states[0].set_pad(false);
+    p_cstate->states[1].set_pad(false);
     p_cstate->states[0].Resize(oshape);
     p_cstate->states[1].Resize(ishape);
 
