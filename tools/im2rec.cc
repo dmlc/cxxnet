@@ -17,15 +17,16 @@
 #include "../src/io/image_recordio.h"
 
 int main(int argc, char *argv[]) {
-  if (argc != 4) {
-    fprintf(stderr, "Usage: <image.lst> <image_root_dir> <output_file>\n");
+  if (argc < 4) {
+    fprintf(stderr, "Usage: <image.lst> <image_root_dir> <output_file> [label_width=1]\n");
     return 0;
   }
+  int label_width = 1;
+  if (argc > 4) label_width = atoi(argv[4]);
   using namespace dmlc;
   const static size_t kBufferSize = 1 << 20UL;
   std::string root = argv[2];
   cxxnet::ImageRecordIO rec;
-
   size_t imcnt = 0;
   double tstart = dmlc::GetTime();  
   dmlc::Stream *flist = dmlc::Stream::Create(argv[1], "r");
@@ -34,6 +35,11 @@ int main(int argc, char *argv[]) {
   dmlc::RecordIOWriter writer(fo);
   std::string fname, path, blob;
   while (is >> rec.header.image_id[0] >> rec.header.label) {
+    for (int k = 1; k < label_width; ++ k) {
+      float tmp;
+      CHECK(is >> tmp)
+          << "Invalid ImageList, did you provide the correct label_width?";
+    }
     CHECK(std::getline(is, fname));
     const char *p = fname.c_str();
     while (isspace(*p)) ++p;
