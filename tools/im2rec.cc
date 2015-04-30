@@ -8,6 +8,7 @@
  *  Image List Format: unique-image-index label path-to-image
  * \sa dmlc/recordio.h
  */
+#include <cctype>
 #include <dmlc/base.h>
 #include <dmlc/io.h>
 #include <dmlc/timer.h>
@@ -34,7 +35,9 @@ int main(int argc, char *argv[]) {
   std::string fname, path, blob;
   while (is >> rec.header.image_id[0] >> rec.header.label) {
     CHECK(std::getline(is, fname));
-    path = root + fname;
+    const char *p = fname.c_str();
+    while (isspace(*p)) ++p;
+    path = root + p;
     dmlc::Stream *fi = dmlc::Stream::Create(path.c_str(), "r");
     rec.SaveHeader(&blob);
     size_t size = blob.length();
