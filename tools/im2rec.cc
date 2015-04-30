@@ -4,6 +4,8 @@
  * \brief convert images into image recordio format
  *  Image Record Format: zeropad[64bit] imid[64bit] img-binary-content
  *  The 64bit zero pad was reserved for future purposes
+ *
+ *  Image List Format: unique-image-index label path-to-image
  * \sa dmlc/recordio.h
  */
 #include <dmlc/base.h>
