@@ -1,0 +1,57 @@
+/*!
+ *  Copyright (c) 2015 by Contributors
+ * \file im2rec.cc
+ * \brief convert images into image recordio format
+ *  Image Record Format: zeropad[64bit] imid[64bit] img-binary-content
+ *  The 64bit zero pad was reserved for future purposes
+ * \sa dmlc/recordio.h
+ */
+#include <dmlc/base.h>
+#include <dmlc/io.h>
+#include <dmlc/timer.h>
+#include <dmlc/logging.h>
+#include <dmlc/recordio.h>
+
+int main(int argc, char *argv[]) {
+  if (argc != 4) {
+    fprintf(stderr, "Usage: <image.lst> <image_root_dir> <output_file>\n");
+    return 0;
+  }
+  using namespace dmlc;
+  const static size_t kBufferSize = 1 << 20UL;
+  std::string root = argv[2];
+  float label;
+  uint64_t imid[2] = {0UL, 0UL};
+  size_t imcnt = 0;
+  double tstart = dmlc::GetTime();  
+  dmlc::Stream *flist = dmlc::Stream::Create(argv[1], "r");
+  dmlc::istream is(flist);
+  dmlc::Stream *fo = dmlc::Stream::Create(argv[3], "w");
+  dmlc::RecordIOWriter writer(fo);
+  std::string fname, path, blob;
+  while (is >> imid[1] >> label) {
+    CHECK(std::getline(is, fname));
+    path = root + fname;
+    dmlc::Stream *fi = dmlc::Stream::Create(path.c_str(), "r");
+    blob.clear();
+    blob.resize(sizeof(imid));
+    std::memcpy(BeginPtr(blob), imid, sizeof(imid));
+    size_t size = blob.length();
+    while (true) {
+      blob.resize(size + kBufferSize);
+      size_t nread = fi->Read(BeginPtr(blob) + size, kBufferSize);
+      size += nread;
+      if (nread != kBufferSize)  break;
+    }
+    delete fi;
+    writer.WriteRecord(BeginPtr(blob), size);
+    // write header
+    ++imcnt;
+    if (imcnt % 1000 == 0) {
+      LOG(INFO) << imcnt << " images processed, " << GetTime() - tstart << " sec elapsed"; 
+    }
+  }
+  delete fo;
+  delete flist;
+  return 0;
+}
