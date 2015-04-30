@@ -11,6 +11,7 @@
 #include <dmlc/timer.h>
 #include <dmlc/logging.h>
 #include <dmlc/recordio.h>
+#include "../src/io/image_recordio.h"
 
 int main(int argc, char *argv[]) {
   if (argc != 4) {
@@ -20,8 +21,8 @@ int main(int argc, char *argv[]) {
   using namespace dmlc;
   const static size_t kBufferSize = 1 << 20UL;
   std::string root = argv[2];
-  float label;
-  uint64_t imid[2] = {0UL, 0UL};
+  cxxnet::ImageRecordIO rec;
+
   size_t imcnt = 0;
   double tstart = dmlc::GetTime();  
   dmlc::Stream *flist = dmlc::Stream::Create(argv[1], "r");
@@ -29,13 +30,11 @@ int main(int argc, char *argv[]) {
   dmlc::Stream *fo = dmlc::Stream::Create(argv[3], "w");
   dmlc::RecordIOWriter writer(fo);
   std::string fname, path, blob;
-  while (is >> imid[1] >> label) {
+  while (is >> rec.header.image_id[0] >> rec.header.label) {
     CHECK(std::getline(is, fname));
     path = root + fname;
     dmlc::Stream *fi = dmlc::Stream::Create(path.c_str(), "r");
-    blob.clear();
-    blob.resize(sizeof(imid));
-    std::memcpy(BeginPtr(blob), imid, sizeof(imid));
+    rec.SaveHeader(&blob);
     size_t size = blob.length();
     while (true) {
       blob.resize(size + kBufferSize);

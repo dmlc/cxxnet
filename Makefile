@@ -63,9 +63,10 @@ ifneq ($(ADD_LDFLAGS), NONE)
 endif
 
 # specify tensor path
-BIN = bin/cxxnet
+BIN = bin/cxxnet bin/im2rec
 SLIB = wrapper/libcxxnetwrapper.so
-OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o data.o main.o nnet_ps_server.o
+OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o main.o nnet_ps_server.o
+OBJCXX11 = data.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 
@@ -101,15 +102,19 @@ data.o: src/io/data.cpp src/io/*.hpp
 
 main.o: src/cxxnet_main.cpp
 
-wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(CUDEP)
-bin/cxxnet: src/local_main.cpp $(OBJ) $(DMLC_CORE)/libdmlc.a $(CUDEP) 
-bin/cxxnet.ps: $(OBJ) $(CUDEP) $(DMLC_CORE)/libdmlc.a $(PS_LIB)
+wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(OBJCXX11) $(CUDEP)
+bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(DMLC_CORE)/libdmlc.a $(CUDEP) 
+bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(DMLC_CORE)/libdmlc.a $(PS_LIB)
+bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
 
 $(BIN) :
-	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a, $^) $(LDFLAGS)
+	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS)
 
 $(OBJ) :
-	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )
+	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c %.cc, $^) )
+
+$(OBJCXX11) :
+	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c %.cc, $^) )
 
 $(SLIB) :
 	$(CXX) $(CFLAGS) -shared -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS)
