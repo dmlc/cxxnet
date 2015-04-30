@@ -1,3 +1,8 @@
+/*!
+ * \file iter_image_recordio-inl.hpp
+ * \brief recordio data 
+iterator
+ */
 #ifndef ITER_IMAGE_RECORDIO_INL_HPP_
 #define ITER_IMAGE_RECORDIO_INL_HPP_
 #include <cstdlib>
@@ -5,12 +10,15 @@
 #include <dmlc/io.h>
 #include <dmlc/omp.h>
 #include <dmlc/logging.h>
-#include <dmlc/threaditer.h>
+#include <dmlc/recordio.h>
 // this code needs c++11
 #if DMLC_USE_CXX11
+#include <dmlc/threadediter.h>
 #include <unordered_map>
 #include <vector>
 #include "./data.h"
+#include "./inst_vector.h"
+#include "./image_recordio.h"
 #include "./image_augmenter-inl.hpp"
 #include "../utils/decoder.h"
 #include "../utils/random.h"
@@ -72,7 +80,7 @@ class ImageLabelMap {
   // label with_
   mshadow::index_t label_width_;
   // image index of each record
-  std::vector<size_t> image_index_
+  std::vector<size_t> image_index_;
   // real label content
   std::vector<real_t> label_;  
   // map index to label
@@ -163,15 +171,15 @@ inline void ImageRecordIOParser::Init(void) {
     prnds_.push_back(new utils::RandomSampler());
     prnds_[i]->Seed((i + 1) * kRandMagic);
   }
-  if (path_imglist.length() != 0) {
-    label_map_ = new ImageLabelMap(path_imglist.c_str(),
+  if (path_imglist_.length() != 0) {
+    label_map_ = new ImageLabelMap(path_imglist_.c_str(),
                                    label_width_, silent_ != 0);
   } else {
     label_width_ = 1;
   }
   source_ = dmlc::InputSplit::Create
-      (path_imgrec_.c_str(), dist_worker_rank,
-       dist_num_worker, "recordio");
+      (path_imgrec_.c_str(), dist_worker_rank_,
+       dist_num_worker_, "recordio");
   // use 64 MB chunk when possible
   source_->HintChunkSize(64 << 20UL);
 }
@@ -196,30 +204,30 @@ ParseNext(std::vector<InstVector> *out_vec) {
   CHECK(source_ != NULL);
   dmlc::InputSplit::Blob chunk;
   if (!source_->NextChunk(&chunk)) return false;
-  out->resize(nthread_);
-  #progma omp parallel num_threads(nthread_)
+  out_vec->resize(nthread_);
+  #pragma omp parallel num_threads(nthread_)
   {
     CHECK(omp_get_num_threads() == nthread_);
     int tid = omp_get_thread_num();
     dmlc::RecordIOChunkReader reader(chunk, tid, nthread_);
     cxxnet::ImageRecordIO rec;
     dmlc::InputSplit::Blob blob;
-    // result holder
-    cv::Mat res;
     // image data
     InstVector &out = (*out_vec)[tid];
     out.Clear();
     while (reader.NextRecord(&blob)) {
+      // result holder
+      cv::Mat res;
       rec.Load(blob.dptr, blob.size);
-      res = cv::imdecode(cv::Mat(1, rec.content_size, CV_8U, rec.content),
-                         1, &res);
-      res = augmenters[tid]->Process(res, prnds[tid]);      
-      out.Push(static_cast<unsigned>(blob.image_index()),
+      cv::Mat buf(1, rec.content_size, CV_8U, rec.content);
+      res = cv::imdecode(buf, 1);
+      res = augmenters_[tid]->Process(res, prnds_[tid]);      
+      out.Push(static_cast<unsigned>(rec.image_index()),
                mshadow::Shape3(3, res.rows, res.cols),
                mshadow::Shape1(label_width_));
       DataInst inst = out.Back();
-      for (index_t i = 0; i < p_data->size(1); ++i) {
-        for (index_t j = 0; j < p_data->size(2); ++j) {
+      for (index_t i = 0; i < res.rows; ++i) {
+        for (index_t j = 0; j < res.cols; ++j) {
           cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
           inst.data[0][i][j] = bgr[2];
           inst.data[1][i][j] = bgr[1];
@@ -227,13 +235,14 @@ ParseNext(std::vector<InstVector> *out_vec) {
         }
       }
       if (label_map_ != NULL) {
-        mshadow::Copy(inst.label, label_map_->Find(blob.image_index()));
+        mshadow::Copy(inst.label, label_map_->Find(rec.image_index()));
       } else {
         inst.label[0] = rec.header.label;
       }
+      res.release();
     }
-    res.release();
   }
+  return true;
 }
 
 // iterator on image recordio
@@ -255,7 +264,7 @@ class ImageRecordIOIterator : public IIterator<DataInst> {
       rnd_.Seed(atoi(val) + kRandMagic);
     }
     if (!strcmp(name, "shuffle")) {
-      shuffle = atoi(val);
+      shuffle_ = atoi(val);
     }
   }
   virtual void Init(void) {
@@ -266,12 +275,12 @@ class ImageRecordIOIterator : public IIterator<DataInst> {
         }
         return parser_.ParseNext(*dptr);
       },
-      [this]() { parser_.BeforeFirst() });
+      [this]() { parser_.BeforeFirst(); });
     inst_ptr_ = 0;
   }
   virtual void BeforeFirst(void) {
     iter_.BeforeFirst();
-    inst_order_.Clear();
+    inst_order_.clear();
     inst_ptr_ = 0;
   }
   virtual bool Next(void) {
@@ -282,7 +291,7 @@ class ImageRecordIOIterator : public IIterator<DataInst> {
         ++inst_ptr_;
         return true;
       } else {
-        if (data_ != NULL) iter_.Recycle(data_);
+        if (data_ != NULL) iter_.Recycle(&data_);
         if (!iter_.Next(&data_)) return false;
         inst_order_.clear();
         for (unsigned i = 0; i < data_->size(); ++i) {

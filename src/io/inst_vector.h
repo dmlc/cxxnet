@@ -24,9 +24,9 @@ class TensorVector {
   inline mshadow::Tensor<cpu, dim, DType>
   operator[](size_t i) const {
     CHECK(i + 1 < offset_.size());
-    CHECK(shape_.Size() == offset_[i + 1] - offset[i]);
+    CHECK(shape_[i].Size() == offset_[i + 1] - offset_[i]);
     return mshadow::Tensor<cpu, dim, DType>
-        (BeginPtr(content) + offset_[i], shape_[i]);
+        ((DType*)BeginPtr(content_) + offset_[i], shape_[i]);
   }
   inline mshadow::Tensor<cpu, dim, DType> Back() const {
     return (*this)[Size() - 1];
@@ -87,7 +87,7 @@ class InstVector {
                    mshadow::Shape<1> lshape) {
     index_.push_back(index);
     data_.Push(dshape);
-    lshape_.Push(lshape);
+    label_.Push(lshape);
   }
   
  private:  
