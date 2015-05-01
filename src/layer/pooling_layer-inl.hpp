@@ -38,14 +38,16 @@ class PoolingLayer : public ILayer<xpu> {
     mshadow::Tensor<xpu,4> &tmp = p_cstate->states[0];
     const int ksize_y = param_.kernel_height;
     const int ksize_x = param_.kernel_width;
+    const int pad_y = param_.pad_y;
+    const int pad_x = param_.pad_x;
     mshadow::Shape<2> pshape = nodes_out[0]->data[0][0].shape_;
     if (!is_identity) {
       nodes_in[0]->data = F<ForwardOp>(nodes_in[0]->data);
     }
     if (mode == kMaxPooling || mode == kSumPooling) {
-      tmp = pool<Reducer>(nodes_in[0]->data, pshape, ksize_y, ksize_x, param_.stride);
+      tmp = pool<Reducer>(pad(nodes_in[0]->data, pad_y, pad_x), pshape, ksize_y, ksize_x, param_.stride);
     }else if (mode == kAvgPooling) {
-      tmp = pool<Reducer>(nodes_in[0]->data, pshape, ksize_y, ksize_x, param_.stride)
+      tmp = pool<Reducer>(pad(nodes_in[0]->data, pad_y, pad_x), pshape, ksize_y, ksize_x, param_.stride)
           * (1.0f / (ksize_y*ksize_x));
     } else {
       utils::Error("Unknown pooling mode");
@@ -61,22 +63,35 @@ class PoolingLayer : public ILayer<xpu> {
     if (prop_grad) {
       const int ksize_y = param_.kernel_height;
       const int ksize_x = param_.kernel_width;
+      const int pad_y = param_.pad_y;
+      const int pad_x = param_.pad_x;
       if (is_identity) {
         if (mode == kMaxPooling || mode == kSumPooling) {
-          nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride);
+          nodes_in[0]->data = crop(unpool<Reducer>(pad(nodes_in[0]->data, pad_y, pad_x),
+                                              pad(tmp, 0, 0),
+                                              pad(nodes_out[0]->data, 0, 0), ksize_y, ksize_x, param_.stride),
+                                   in_shape_, pad_y, pad_x);
         }else if (mode == kAvgPooling) {
-          nodes_in[0]->data = unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
+          nodes_in[0]->data = crop(unpool<Reducer>(pad(nodes_in[0]->data, pad_y, pad_x),
+                                              pad(tmp, 0, 0),
+                                              pad(nodes_out[0]->data, 0, 0), ksize_y, ksize_x, param_.stride),
+                                   in_shape_, pad_y, pad_x)
               * (1.0f / (ksize_y * ksize_x));
         } else {
           utils::Error("Unknown pooling mode");
         }
       }  else {
+        utils::Error("deprecated pooling with activation interface!");
         if (mode == kMaxPooling || mode == kSumPooling) {
           nodes_in[0]->data = F<BackOp>(nodes_in[0]->data) *
-              unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride);
+              unpool<Reducer>(pad(nodes_in[0]->data, pad_y, pad_x),
+                              pad(tmp, 0, 0),
+                              pad(nodes_out[0]->data, 0, 0), ksize_y, ksize_x, param_.stride);
         } else if (mode == kAvgPooling) {
           nodes_in[0]->data = F<BackOp>(nodes_in[0]->data) *
-              unpool<Reducer>(nodes_in[0]->data, tmp, nodes_out[0]->data, ksize_y, ksize_x, param_.stride)
+              unpool<Reducer>(pad(nodes_in[0]->data, pad_y, pad_x),
+                              pad(tmp, 0, 0),
+                              pad(nodes_out[0]->data, 0, 0), ksize_y, ksize_x, param_.stride)
               * (1.0f / (ksize_y * ksize_x));
         } else {
           utils::Error("Unknown pooling mode");
@@ -95,6 +110,8 @@ class PoolingLayer : public ILayer<xpu> {
     const index_t ksize_x = static_cast<index_t>(param_.kernel_width);
     const index_t kstride = static_cast<index_t>(param_.stride);
     mshadow::Shape<4> ishape = nodes_in[0]->data.shape_;
+    in_shape_[0] = ishape[2];
+    in_shape_[1] = ishape[3];
     utils::Check(param_.kernel_height > 0 && param_.kernel_width > 0,
                  "must set kernel_size correctly");
     utils::Check(ksize_x <= ishape[3] && ksize_y <= ishape[2],
@@ -102,15 +119,19 @@ class PoolingLayer : public ILayer<xpu> {
 
     mshadow::Shape<4> oshape = mshadow::
         Shape4(ishape[0], ishape[1],
-               std::min(ishape[2] - ksize_y + kstride-1, ishape[2] - 1) / kstride + 1,
-               std::min(ishape[3] - ksize_x + kstride-1, ishape[3] - 1) / kstride + 1);
+               std::min(ishape[2] + 2 * param_.pad_y - ksize_y + kstride-1, ishape[2] + 2 * param_.pad_y - 1) / kstride + 1,
+               std::min(ishape[3] + 2 * param_.pad_x - ksize_x + kstride-1, ishape[3] + 2 * param_.pad_x- 1) / kstride + 1);
     nodes_out[0]->data.shape_ = oshape;
-    // use 1 temp state to store pooled result
-    p_cstate->states.push_back(mshadow::TensorContainer<xpu,4>(false));
+    // use 2 temp state to store pooled result (state 2 for cudnn)
+    p_cstate->states.resize(2);
+    p_cstate->states[0].set_pad(false);
+    p_cstate->states[1].set_pad(false);
     p_cstate->states[0].Resize(oshape);
+    p_cstate->states[1].Resize(ishape);
   }
   /*! \brief parameters that potentially be useful */
   LayerParam param_;
+  mshadow::Shape<2> in_shape_;
 };   // class PoolingLayer
 }  // namespace layer
 }  // namespace cxxnet
