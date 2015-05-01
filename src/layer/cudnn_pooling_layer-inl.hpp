@@ -57,9 +57,9 @@ class CuDNNPoolingLayer<Reducer, mode, gpu> : public PoolingLayer<Reducer, mode,
       }
       float alpha = 1.0f;
       float beta = 0.0f;
-      utils::Assert(nodes_in[0]->data.CheckContiguous(), "contiguous in conv");
-      utils::Assert(nodes_out[0]->data.CheckContiguous(), "contiguous in conv");
-      utils::Assert(tmp.CheckContiguous(), "contiguous in conv");
+      CHECK(nodes_in[0]->data.CheckContiguous());
+      CHECK(nodes_out[0]->data.CheckContiguous());
+      CHECK(tmp.CheckContiguous());
       CUDA_CHECK(cudnnPoolingForward(handle_, pooling_desc_, &alpha,
                                      in_desc_, nodes_in[0]->data.dptr_, &beta,
                                      out_desc_, tmp.dptr_));
