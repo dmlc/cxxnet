@@ -98,6 +98,23 @@ class ImageRecordIOParser {
     dist_num_worker_ = 1;
     dist_worker_rank_ = 0;
     label_width_ = 1;
+    int maxthread;
+    #pragma omp parallel
+    {
+      maxthread = std::max(omp_get_num_procs() / 2 - 2, 1);
+    }
+    nthread_ = std::min(maxthread, nthread_);
+    #pragma omp parallel num_threads(nthread_)
+    {
+      nthread = omp_get_num_threads();
+    }
+    nthread_ = nthread;
+    // setup decoders
+    for (int i = 0; i < nthread; ++i) {
+      augmenters_.push_back(new ImageAugmenter());
+      prnds_.push_back(new utils::RandomSampler());
+      prnds_[i]->Seed((i + 1) * kRandMagic);
+    }
   }
   ~ImageRecordIOParser(void) {
     // can be NULL
@@ -153,30 +170,15 @@ inline void ImageRecordIOParser::Init(void) {
   if (ps_rank != NULL) {
     this->SetParam("dist_worker_rank", ps_rank);
   }
-  int maxthread;
-  #pragma omp parallel
-  {
-    maxthread = std::max(omp_get_num_procs() / 2 - 2, 1);
-  }
-  nthread_ = std::min(maxthread, nthread_);
-  int nthread;
-  #pragma omp parallel num_threads(nthread_)
-  {
-    nthread = omp_get_num_threads();
-  }
-  nthread_ = nthread;
-  // setup decoders
-  for (int i = 0; i < nthread; ++i) {
-    augmenters_.push_back(new ImageAugmenter());
-    prnds_.push_back(new utils::RandomSampler());
-    prnds_[i]->Seed((i + 1) * kRandMagic);
-  }
+
   if (path_imglist_.length() != 0) {
     label_map_ = new ImageLabelMap(path_imglist_.c_str(),
                                    label_width_, silent_ != 0);
   } else {
     label_width_ = 1;
   }
+  CHECK(path_imgrec_.length() != 0)
+    << "ImageRecordIOIterator: must specify image_rec";
   source_ = dmlc::InputSplit::Create
       (path_imgrec_.c_str(), dist_worker_rank_,
        dist_num_worker_, "recordio");
@@ -186,6 +188,9 @@ inline void ImageRecordIOParser::Init(void) {
 inline void ImageRecordIOParser::
 SetParam(const char *name, const char *val) {
   using namespace std;
+  for (int i = 0; i < nthread_; ++i) {
+    augmenters_[i]->SetParam(name, val);
+  }
   if (!strcmp(name, "image_list")) path_imglist_ = val;
   if (!strcmp(name, "image_rec")) path_imgrec_ = val;
   if (!strcmp(name, "dist_num_worker")) {

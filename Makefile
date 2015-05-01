@@ -126,5 +126,5 @@ $(CUBIN) :
 	$(NVCC) -o $@ $(NVCCFLAGS) -Xcompiler "$(CFLAGS)" -Xlinker "$(LDFLAGS)" $(filter %.cu %.cpp %.o, $^)
 
 clean:
-	$(RM) $(OBJ) $(BIN) $(CUBIN) $(CUOBJ) $(SLIB) *~ */*~ */*/*~
+	$(RM) $(OBJ) $(OBJCXX11) $(BIN) $(CUBIN) $(CUOBJ) $(SLIB) *~ */*~ */*/*~
 	cd $(DMLC_CORE); make clean; cd -
