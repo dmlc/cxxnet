@@ -33,10 +33,10 @@ class AttachTxtIterator : public IIterator<DataBatch> {
   virtual void Init(void) {
     base_->Init();
     file_ = fopen(filename_.c_str(), "r");
-    utils::Assert(file_ != NULL,
-      "AttachTxt: Open file failed: %s", filename_.c_str());
-    utils::Assert(fscanf(file_, "%d", &dim_) == 1,
-      "AttachTxt: First line should indicate the data dim.");
+    CHECK(file_ != NULL)
+        << "AttachTxt: Open file failed: " << filename_;
+    CHECK(fscanf(file_, "%d", &dim_) == 1)
+        << "AttachTxt: First line should indicate the data dim.";
     extra_data_ = mshadow::NewTensor<cpu>(
             mshadow::Shape4(batch_size_, 1, 1, dim_), 0.0f, false);
     int cnt = 0;

@@ -71,7 +71,7 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
          updater::DecodeTag(key));
     e.is_bias = !strcmp(updater::DecodeTag(key), "bias");
     const int i = key / updater::kDataKeyStep;
-    utils::Assert(i < cfg.param.num_layers, "layer index exceed bound");
+    CHECK(i < cfg.param.num_layers) << "layer index exceed bound";
     e.layer_type = cfg.layers[i].type;
     for (size_t j = 0; j < cfg.defcfg.size(); ++j) {
       e.SetParam(cfg.defcfg[j].first.c_str(),
@@ -86,8 +86,8 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
   virtual void Update(int key, real_t *dptr, size_t size) {
     std::map<int, UpdaterEntry*>::iterator it
         = updaters.find(key);
-    utils::Assert(it != updaters.end() && it->first == key,
-                  "must call initkey first before calling update");
+    CHECK(it != updaters.end() && it->first == key)
+        << "must call initkey first before calling update";
     it->second->Update(dptr, size);
   }
 
@@ -132,8 +132,8 @@ class CXXNetUpdater : public mshadow::ps::IModelUpdater<real_t> {
     }
     // update given gradient
     inline void Update(real_t *grad, size_t size) {
-      utils::Assert(size == weight.MSize(),
-                    "PS: weight and gradient size inconsistent");
+      CHECK(size == weight.MSize())
+          << "PS: weight and gradient size inconsistent";
       updater->Update(epoch,
                       mshadow::Tensor<cpu, 2>(grad, weight.shape_));
       epoch += 1;

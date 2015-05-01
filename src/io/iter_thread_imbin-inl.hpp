@@ -7,6 +7,7 @@
  */
 #include "data.h"
 #include <cstdlib>
+#include <dmlc/logging.h>
 #include <opencv2/opencv.hpp>
 #include "../utils/thread_buffer.h"
 #include "../utils/utils.h"
@@ -103,7 +104,7 @@ public:
                      label_width_, i);
         label_[i] = tmp;
       }
-      utils::Assert(fscanf(fplst_, "%*[^\n]\n") == 0, "ignore");
+      CHECK(fscanf(fplst_, "%*[^\n]\n") == 0) << "ignore";
       this->NextBuffer(buf_);
       this->LoadImage(img_, out_, buf_);
       return true;
@@ -127,7 +128,7 @@ protected:
                                DataInst &out,
                                std::vector<unsigned char> &buf) {
     cv::Mat res = cv::imdecode(buf, 1);
-    utils::Assert(res.data != NULL, "decoding fail");
+    CHECK(res.data != NULL) << "decoding failed";
 
     img.Resize(mshadow::Shape3(3, res.rows, res.cols));
     for (index_t y = 0; y < img.size(1); ++y) {
@@ -153,7 +154,7 @@ protected:
     ++ ptop_;
   }
   inline void LoadNextPage(void) {
-    utils::Assert(itr.Next(page_), "can not get first page");
+    CHECK(itr.Next(page_)) << "can not get first page";
     ptop_ = 0;
   }
 

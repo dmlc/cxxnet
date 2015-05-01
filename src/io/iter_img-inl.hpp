@@ -8,6 +8,7 @@
  */
 // use opencv for image loading
 #include "data.h"
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include <opencv2/opencv.hpp>
 
@@ -51,7 +52,7 @@ public:
         labels_.push_back(tmp);
       }
       char name[256];
-      utils::Assert(fscanf(fplst_, "%s\n", name) == 1, "ImageList: no file name");
+      CHECK(fscanf(fplst_, "%s\n", name) == 1) << "ImageList: no file name";
       filenames_.push_back(name);
     }
     for (size_t i = 0; i < index_list_.size(); ++i) {
@@ -92,7 +93,7 @@ protected:
           DataInst &out,
           const char *fname) {
     cv::Mat res = cv::imread(fname);
-    utils::Assert(res.data != NULL, "LoadImage: Reading image %s failed.\n", fname);
+    CHECK(res.data != NULL) << "LoadImage: Reading image" << fname << "failed.";
     img.Resize(mshadow::Shape3(3, res.rows, res.cols));
     for(index_t y = 0; y < img.size(1); ++y) {
       for(index_t x = 0; x < img.size(2); ++x) {

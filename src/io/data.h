@@ -7,7 +7,7 @@
  */
 #include <vector>
 #include <string>
-#include <time.h>
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "../utils/utils.h"
 
@@ -145,19 +145,20 @@ public:
   }
   /*! \brief copy dense content from existing data, dense only */
   inline void CopyFromDense(const DataBatch &src) {
-    utils::Assert(batch_size == src.batch_size, "DataBatch: the batch size is not set correctly");
+    CHECK(batch_size == src.batch_size)
+        << "DataBatch: the batch size is not set correctly";
     num_batch_padd = src.num_batch_padd;
     utils::Check(src.inst_index != NULL, "CopyFromDense need to copy instance index");
     memcpy(inst_index, src.inst_index, batch_size * sizeof(unsigned));
-    utils::Assert(data.shape_ == src.data.shape_, "DataBatch: data shape mismatch");
-    utils::Assert(label.shape_ == src.label.shape_, "DataBatch: label shape mismatch");
+    CHECK(data.shape_ == src.data.shape_) << "DataBatch: data shape mismatch";
+    CHECK(label.shape_ == src.label.shape_) << "DataBatch: label shape mismatch";
     mshadow::Copy(label, src.label);
     mshadow::Copy(data, src.data);
-    utils::Assert(extra_data.size() == src.extra_data.size(),
-      "DataBatch: extra data number mismatch");
+    CHECK(extra_data.size() == src.extra_data.size())
+        << "DataBatch: extra data number mismatch";
     for (mshadow::index_t i = 0; i < extra_data.size(); ++i){
-      utils::Assert(label.shape_ == src.label.shape_,
-        "DataBatch: extra data %d shape mismatch", i);
+      CHECK(label.shape_ == src.label.shape_)
+          << "DataBatch: extra data " << i << " shape mismatch";
       mshadow::Copy(extra_data[i], src.extra_data[i]);
     }
   }

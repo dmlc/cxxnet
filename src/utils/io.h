@@ -6,109 +6,15 @@
  * \author Bing Xu Tianqi Chen
  */
 #include "./utils.h"
+#include <dmlc/io.h>
 #include <string>
 #include <algorithm>
 #include <cstring>
 
 namespace cxxnet {
 namespace utils {
-/*!
- * \brief interface of stream I/O, used to serialize model
- */
-class IStream {
- public:
-  /*!
-   * \brief read data from stream
-   * \param ptr pointer to memory buffer
-   * \param size size of block
-   * \return usually is the size of data readed
-   */
-  virtual size_t Read(void *ptr, size_t size) = 0;
-  /*!
-   * \brief write data to stream
-   * \param ptr pointer to memory buffer
-   * \param size size of block
-   */
-  virtual void Write(const void *ptr, size_t size) = 0;
-  /*! \brief virtual destructor */
-  virtual ~IStream(void) {}
-
- public:
-  // helper functions to write various of data structures
-  /*!
-   * \brief binary serialize a vector
-   * \param vec vector to be serialized
-   */
-  template<typename T>
-  inline void Write(const std::vector<T> &vec) {
-    uint64_t sz = static_cast<uint64_t>(vec.size());
-    this->Write(&sz, sizeof(sz));
-    if (sz != 0) {
-      this->Write(&vec[0], sizeof(T) * sz);
-    }
-  }
-  /*!
-   * \brief binary load a vector
-   * \param out_vec vector to be loaded
-   * \return whether load is successfull
-   */
-  template<typename T>
-  inline bool Read(std::vector<T> *out_vec) {
-    uint64_t sz;
-    if (this->Read(&sz, sizeof(sz)) == 0) return false;
-    out_vec->resize(sz);
-    if (sz != 0) {
-      if (this->Read(&(*out_vec)[0], sizeof(T) * sz) == 0) return false;
-    }
-    return true;
-  }
-  /*!
-   * \brief binary serialize a string
-   * \param str the string to be serialized
-   */
-  inline void Write(const std::string &str) {
-    uint64_t sz = static_cast<uint64_t>(str.length());
-    this->Write(&sz, sizeof(sz));
-    if (sz != 0) {
-      this->Write(&str[0], sizeof(char) * sz);
-    }
-  }
-  /*!
-   * \brief binary load a string
-   * \param out_str string to be loaded
-   * \return whether load is successful
-   */
-  inline bool Read(std::string *out_str) {
-    uint64_t sz;
-    if (this->Read(&sz, sizeof(sz)) == 0) return false;
-    out_str->resize(sz);
-    if (sz != 0) {
-      if (this->Read(&(*out_str)[0], sizeof(char) * sz) == 0) return false;
-    }
-    return true;
-  }
-  /*!
-   * \brief read a simple type and return it
-   *        for example fs.ReadType<int>() will read int from the stream
-   * \return the data readed
-   * \tparam TRet the type of data to be readed
-   */
-  template<typename TRet>
-  inline TRet ReadType(void) {
-    TRet ret;
-    this->Read(&ret, sizeof(ret));
-    return ret;
-  }
-}; // class IStream
-
-/*! \brief interface of i/o stream that support seek */
-class ISeekStream: public IStream {
- public:
-  /*! \brief seek to certain position of the file */
-  virtual void Seek(size_t pos) = 0;
-  /*! \brief tell the position of the stream */
-  virtual size_t Tell(void) = 0;
-};
+typedef dmlc::Stream IStream;
+typedef dmlc::SeekStream ISeekStream;
 
 /*! \brief a in memory buffer that can be read and write as stream interface */
 struct MemoryBufferStream : public ISeekStream {
@@ -119,8 +25,8 @@ struct MemoryBufferStream : public ISeekStream {
   }
   virtual ~MemoryBufferStream(void) {}
   virtual size_t Read(void *ptr, size_t size) {
-    utils::Assert(curr_ptr_ <= p_buffer_->length(),
-                  "read can not have position excceed buffer length");
+    CHECK(curr_ptr_ <= p_buffer_->length())
+          << " read can not have position excceed buffer length";
     size_t nread = std::min(p_buffer_->length() - curr_ptr_, size);
     if (nread != 0) memcpy(ptr, &(*p_buffer_)[0] + curr_ptr_, nread);
     curr_ptr_ += nread;
@@ -147,35 +53,6 @@ struct MemoryBufferStream : public ISeekStream {
   /*! \brief current pointer */
   size_t curr_ptr_;
 }; // class MemoryBufferStream
-
-/*! \brief implementation of file i/o stream */
-class FileStream : public ISeekStream {
- public:
-  explicit FileStream(FILE *fp) : fp(fp) {}
-  explicit FileStream(void) {
-    this->fp = NULL;
-  }
-  virtual size_t Read(void *ptr, size_t size) {
-    return std::fread(ptr, size, 1, fp);
-  }
-  virtual void Write(const void *ptr, size_t size) {
-    std::fwrite(ptr, size, 1, fp);
-  }
-  virtual void Seek(size_t pos) {
-    std::fseek(fp, pos, SEEK_SET);
-  }
-  virtual size_t Tell(void) {
-    return std::ftell(fp);
-  }
-  inline void Close(void) {
-    if (fp != NULL){
-      std::fclose(fp); fp = NULL;
-    }
-  }
-
- protected:
-  FILE *fp;
-};
 
 /*! \brief implementation of file i/o stream */
 class StdFile: public ISeekStream {
@@ -278,7 +155,7 @@ class BinaryPage {
    *  \param r r th obj in the page
    */
   inline Obj operator[](int r) {
-    utils::Assert(r < Size(), "index excceed bound");
+    CHECK(r < Size());
     return Obj(this->offset(data_[ r + 2 ]),  data_[ r + 2 ] - data_[ r + 1 ]);
   }
  private:

@@ -197,7 +197,7 @@ class ConvolutionLayer : public ILayer<xpu> {
     // make nstep more balanced,  nstep will use exactly same number of operations to finish,
     index_t nop = (ishape[0]+nstep_-1) / nstep_;
     nstep_ = (ishape[0] + nop - 1)/ nop;
-    utils::Assert(nstep_ > 0, "InitLayer_: nstep check");
+    CHECK(nstep_ > 0);
     // helper structure
     temp_col_.Resize(mshadow::Shape2(shape_colunit_[0], shape_colunit_[1] * nstep_));
     temp_dst_.Resize(mshadow::Shape3(shape_dstunit_[0], shape_dstunit_[1], shape_dstunit_[2] * nstep_));

@@ -354,7 +354,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     nets_[0]->WaitJob();
   }
   inline void InitNet(void) {
-    utils::Assert(nets_.size() == 0, "net must be empty before this");
+    CHECK(nets_.size() == 0) << "net must be empty before this";
     net_cfg.Configure(cfg);
     if (devices_.size() == 0) devices_.push_back(0);
     size_t ndevice = devices_.size();
@@ -392,7 +392,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     }
   }
   inline void InitParamServer(void) {
-    utils::Assert(pserver == NULL, "net must be empty before this");
+    CHECK(pserver == NULL) << "net must be empty before this";
     if (type_pserver == "UNSPECIFIED") {
       if (devices_.size() <=1) type_pserver = "NONE";
       else type_pserver = "local";

@@ -151,7 +151,8 @@ class ImageAugmenter {
     return tmpres;
   }
 
-  virtual void Process(unsigned char *dptr, size_t sz, mshadow::TensorContainer<cpu, 3> *p_data,
+  virtual void Process(unsigned char *dptr, size_t sz,
+                       mshadow::TensorContainer<cpu, 3> *p_data,
                        utils::RandomSampler *prnd) {
     cv::Mat buf(1, sz, CV_8U, dptr);
     cv::Mat res = cv::imdecode(buf, 1);

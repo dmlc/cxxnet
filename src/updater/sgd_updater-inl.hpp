@@ -5,6 +5,7 @@
  * \brief implementation of SGD with momentum
  * \author Tianqi Chen
  */
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include <cmath>
 #include "./updater.h"
@@ -15,7 +16,8 @@ namespace updater {
 /*! \brief used for gradient clipping and nan detection */
 struct clip {
   MSHADOW_XINLINE static real_t Map(real_t a, real_t b) {
-    if (std::isnan(a)) return 0.0f;
+    using namespace std;
+    if (isnan(a)) return 0.0f;
     if (a < -b) return -b;
     if (a > b) return b;
     return a;
@@ -49,8 +51,8 @@ class SGDUpdater : public IUpdater<xpu> {
     dw = 0.0f;
   }
   virtual void Update(long epoch, mshadow::Tensor<xpu, 2> grad) {
-    utils::Assert(grad.shape_ == w.shape_.FlatTo2D(),
-                  "SGDUpdater: grad must be generated from source of same shape");
+    CHECK(grad.shape_ == w.shape_.FlatTo2D())
+        << "SGDUpdater: grad must be generated from source of same shape";
     this->ApplyUpdate(epoch, mshadow::Tensor<xpu, dim>
                       (grad.dptr_, w.shape_, grad.stride_, w.stream_));
   }

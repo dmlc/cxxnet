@@ -4,8 +4,12 @@
 #include <ctime>
 #include <string>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include <vector>
 #include <climits>
+#include <dmlc/io.h>
+#include <dmlc/logging.h>
 #include "nnet/nnet.h"
 #include "io/data.h"
 #include "utils/config.h"
@@ -64,11 +68,16 @@ class CXXNetLearnTask {
       printf("Usage: <config>\n");
       return 0;
     }
-
-    utils::ConfigIterator itr(argv[1]);
-    while (itr.Next()) {
-      this->SetParam(itr.name(), itr.val());
+    dmlc::Stream *cfg = dmlc::Stream::Create(argv[1], "r");
+    {
+      dmlc::istream is(cfg);
+      utils::ConfigStreamReader itr(is);
+      itr.Init();
+      while (itr.Next()) {
+        this->SetParam(itr.name(), itr.val());
+      }
     }
+    delete cfg;
     for (int i = 2; i < argc; i ++) {
       char name[256], val[256];
       if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
@@ -126,7 +135,7 @@ class CXXNetLearnTask {
     }
     continue_training = 0;
     if (name_model_in == "NULL") {
-      utils::Assert(task == "train", "must specify model_in if not training");
+      CHECK(task == "train") << "must specify model_in if not training";
       net_trainer = this->CreateNet();
       net_trainer->InitModel();
     } else {
@@ -141,25 +150,25 @@ class CXXNetLearnTask {
   }
   // load in latest model from model_folder
   inline int SyncLastestModel(void) {
-    FILE *fi = NULL, *last = NULL;
-    char name[ 256 ];
+    dmlc::Stream *fi = NULL, *last = NULL;
     int s_counter = start_counter;
     do{
-      if (last != NULL) fclose(last);
+      if (last != NULL) delete last;
       last = fi;
-      sprintf(name,"%s/%04d.model", name_model_dir.c_str(), s_counter ++);
-      fi = fopen64(name, "rb");
-    }while (fi != NULL);
-
+      std::ostringstream os;
+      os << name_model_dir << '/' << std::setfill('0')
+         << std::setw(4) << s_counter++ << ".model";
+      fi = dmlc::Stream::Create(os.str().c_str(), "r", true);
+    } while (fi != NULL);
+    
     if (last != NULL) {
-      utils::Assert(fread(&net_type, sizeof(int), 1, last) > 0, "loading model");
-      net_trainer = this->CreateNet();
-      utils::FileStream fs(last);
-      net_trainer->LoadModel(fs);
+      CHECK(last->Read(&net_type, sizeof(int)) != 0) << "invalid model format";
+      net_trainer = this->CreateNet();      
+      net_trainer->LoadModel(*last);
       start_counter = s_counter - 1;
-      fclose(last);
+      delete last;
       return 1;
-    }else{
+    } else {
       return 0;
     }
   }
@@ -169,12 +178,11 @@ class CXXNetLearnTask {
     if (pos != NULL && sscanf(pos + 1, "%d", &start_counter) != 1){
       printf("WARNING: Cannot infer start_counter from model name. Specify it in config if needed\n");
     }
-    FILE *fi = utils::FopenCheck(name_model_in.c_str(), "rb");
-    utils::Assert(fread(&net_type, sizeof(int), 1, fi) > 0, "loading model");
+    dmlc::Stream *fi = dmlc::Stream::Create(name_model_in.c_str(), "r");
+    CHECK(fi->Read(&net_type, sizeof(int) != 0)) << "invalid model format";
     net_trainer = this->CreateNet();
-    utils::FileStream fs(fi);
-    net_trainer->LoadModel(fs);
-    fclose(fi);
+    net_trainer->LoadModel(*fi);
+    delete fi;
     ++start_counter;
   }
   // save model into file
@@ -182,11 +190,10 @@ class CXXNetLearnTask {
     char name[256];
     sprintf(name,"%s/%04d.model" , name_model_dir.c_str(), start_counter ++);
     if (save_period == 0 || start_counter % save_period != 0) return;
-    FILE *fo  = utils::FopenCheck(name, "wb");
-    fwrite(&net_type, sizeof(int), 1, fo);
-    utils::FileStream fs(fo);
-    net_trainer->SaveModel(fs);
-    fclose(fo);
+    dmlc::Stream *fo = dmlc::Stream::Create(name, "w");
+    fo->Write(&net_type, sizeof(int));
+    net_trainer->SaveModel(*fo);
+    delete fo;
   }
   // create a neural net
   inline nnet::INetTrainer* CreateNet(void) {
@@ -238,10 +245,9 @@ class CXXNetLearnTask {
         flag = 3; name_pred = val; continue;
       }
       if (!strcmp(name, "iter") && !strcmp(val, "end")) {
-        utils::Assert(flag != 0, "wrong configuration file");
+        CHECK(flag != 0) << "wrong configuration file";
         if (flag == 1 && task != "pred") {
-          utils::Assert(itr_train == NULL, "can only have one data");
-
+          CHECK(itr_train == NULL) << "can only have one data";
           itr_train = cxxnet::CreateIterator(itcfg);
         }
         if (flag == 2 && task != "pred") {
@@ -249,7 +255,7 @@ class CXXNetLearnTask {
           eval_names.push_back(evname);
         }
         if (flag == 3 && (task == "pred" || task == "extract")) {
-          utils::Assert(itr_pred == NULL, "can only have one data:test");
+          CHECK(itr_pred == NULL) << "can only have one data:test";
           itr_pred = cxxnet::CreateIterator(itcfg);
         }
         flag = 0; itcfg.clear();
@@ -272,7 +278,7 @@ class CXXNetLearnTask {
   }
  private:
   inline void TaskPredict(void) {
-    utils::Assert(itr_pred != NULL, "must specify a predict iterator to generate predictions");
+    CHECK(itr_pred != NULL) << "must specify a predict iterator to generate predictions";
     printf("start predicting...\n");
     FILE *fo = utils::FopenCheck(name_pred.c_str(), "w");
     itr_pred->BeforeFirst();
@@ -280,7 +286,7 @@ class CXXNetLearnTask {
     while (itr_pred->Next()) {
       const DataBatch& batch = itr_pred->Value();
       net_trainer->Predict(&pred, batch);
-      utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
+      CHECK(batch.num_batch_padd < batch.batch_size) << "num batch pad must be smaller";
       mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
       for (mshadow::index_t j = 0; j < sz; ++j) {
         fprintf(fo, "%g\n", pred[j]);
@@ -318,7 +324,7 @@ class CXXNetLearnTask {
   }
   inline void TaskExtractFeature() {
     long nrow = 0;
-    mshadow::Shape<3> dshape;
+    mshadow::Shape<3> dshape = mshadow::Shape3(0, 0, 0);
     utils::Check(itr_pred != NULL,
                  "must specify a predict iterator to generate predictions");
     printf("start predicting...\n");
@@ -337,7 +343,7 @@ class CXXNetLearnTask {
       } else {
         utils::Error("extract node name must be specified in task extract_feature.");
       }
-      utils::Assert(batch.num_batch_padd < batch.batch_size, "num batch pad must be smaller");
+      CHECK(batch.num_batch_padd < batch.batch_size) << "num batch pad must be smaller";
       mshadow::index_t sz = pred.size(0) - batch.num_batch_padd;
       nrow += sz;
       for (mshadow::index_t j = 0; j < sz; ++j) {
@@ -453,12 +459,11 @@ class CXXNetLearnTask {
   }
 
   inline void CopyModel(void){
-    FILE *fi = utils::FopenCheck(name_model_in.c_str(), "rb");
-    utils::Assert(fread(&net_type, sizeof(int), 1, fi) > 0, "loading model");
+    dmlc::Stream *fi = dmlc::Stream::Create(name_model_in.c_str(), "r");
+    CHECK(fi->Read(&net_type, sizeof(int)) != 0) << " invalid model file";
     net_trainer = this->CreateNet();
-    utils::FileStream fs(fi);
-    net_trainer->CopyModelFrom(fs);
-    fclose(fi);
+    net_trainer->CopyModelFrom(*fi);
+    delete fi;
   }
  private:
   /*! \brief type of net implementation */

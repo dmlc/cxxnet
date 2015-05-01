@@ -5,10 +5,11 @@
  * \brief implementation of asynchronize updater using SGD
  * \author Tianqi Chen
  */
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
-// #include <mshadow-ps/mshadow_ps.h>
+#include <dmlc/timer.h>
 #include "./updater.h"
-#include "../utils/timer.h"
+
 namespace cxxnet {
 namespace updater {
 template<typename xpu>
@@ -146,8 +147,8 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
       updater->StartRound(round);
     }
     if (test_on_server != 0) {
-      utils::Assert(update_on_server == 0,
-                    "test_on_server must set update_on_server = 0");
+      CHECK(update_on_server == 0)
+          << "test_on_server must set update_on_server = 0";
       pserver->PullWait(data_key, devid);
       pserver->CheckWeight_(w.FlatTo2D(), data_key, devid);
     }
@@ -199,7 +200,7 @@ class AsyncUpdater: public IAsyncUpdater<xpu> {
   }
   inline static void CleanGrad_(mshadow::Stream<xpu> *stream, void *arg) {
     AsyncUpdater<xpu> *up = static_cast<AsyncUpdater<xpu>*>(arg);
-    utils::Assert(up->update_on_server !=0, "update_on_server consistency");
+    CHECK(up->update_on_server != 0) << "update_on_server consistency";
     up->dw.set_stream(stream);
     up->dw = 0.0f;
   }

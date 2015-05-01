@@ -62,3 +62,16 @@ ifeq ($(USE_BLAS), mkl)
 	USE_STATIC_MKL = 1
 endif
 
+#------------------------
+# configuration for DMLC
+#------------------------
+# whether use HDFS support during compile
+# this will allow cxxnet to directly save/load model from hdfs
+USE_HDFS = 0
+
+# whether use AWS S3 support during compile
+# this will allow cxxnet to directly save/load model from s3
+USE_S3 = 0
+
+# path to libjvm.so
+LIBJVM=$(JAVA_HOME)/jre/lib/amd64/server

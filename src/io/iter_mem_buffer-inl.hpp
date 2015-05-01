@@ -6,6 +6,7 @@
  *        and only return these data
  * \author Tianqi Chen
  */
+#include <dmlc/logging.h>
 #include <mshadow/tensor.h>
 #include "./data.h"
 #include "../utils/utils.h"
@@ -32,7 +33,7 @@ class DenseBufferIterator : public IIterator<DataBatch> {
     base_->Init();
     while (base_->Next()) {
       const DataBatch &batch = base_->Value();
-      utils::Assert(batch.label.dptr_ != NULL, "need dense");
+      CHECK(batch.label.dptr_ != NULL) << "need dense";
       DataBatch v;
       v.AllocSpaceDense(batch.data.shape_, batch.batch_size, batch.label.size(1));
       v.CopyFromDense(batch);
@@ -56,8 +57,8 @@ class DenseBufferIterator : public IIterator<DataBatch> {
     }
   }
   virtual const DataBatch &Value(void) const {
-    utils::Assert(data_index_ > 0,
-                  "Iterator.Value: at beginning of iterator");
+    CHECK(data_index_ > 0)
+        << "Iterator.Value: at beginning of iterator";
     return buffer_[data_index_ - 1];
   }
 

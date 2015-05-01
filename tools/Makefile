@@ -9,7 +9,7 @@ export LDFLAGS=
 export NVCCFLAGS = -g -O3 -ccbin $(CXX)
 
 # specify tensor path
-BIN = im2bin
+BIN = im2rec
 OBJ =
 CUOBJ =
 CUBIN =
