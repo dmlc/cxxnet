@@ -14,3 +14,6 @@ List of examples
 * [ImageNet Example](ImageNet)
   - This is a step by step example to show how to use cxxnet train an AlexNet for ImageNet task.
   - We also provides better reference pre-trained model with all configurations.
+* [Distributed Example](multi-machine)
+  - A step by step example to show how to use cxxnet to train kaggle_bowl on
+    multi-machines
