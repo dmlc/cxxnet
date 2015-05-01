@@ -226,8 +226,8 @@ ParseNext(std::vector<InstVector> *out_vec) {
                mshadow::Shape3(3, res.rows, res.cols),
                mshadow::Shape1(label_width_));
       DataInst inst = out.Back();
-      for (index_t i = 0; i < res.rows; ++i) {
-        for (index_t j = 0; j < res.cols; ++j) {
+      for (int i = 0; i < res.rows; ++i) {
+        for (int j = 0; j < res.cols; ++j) {
           cv::Vec3b bgr = res.at<cv::Vec3b>(i, j);
           inst.data[0][i][j] = bgr[2];
           inst.data[1][i][j] = bgr[1];
