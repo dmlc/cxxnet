@@ -71,7 +71,8 @@ class ImageLabelMap {
   }
   /*! \brief find a label for corresponding index */
   inline mshadow::Tensor<cpu, 1> Find(size_t imid) const {
-    auto it = idx2label_.find(imid);
+    std::unordered_map<size_t, real_t*>::const_iterator it
+        = idx2label_.find(imid);
     CHECK(it != idx2label_.end()) << "fail to find imagelabel for id " << imid;
     return mshadow::Tensor<cpu, 1>(it->second, mshadow::Shape1(label_width_));
   }   
@@ -291,7 +292,7 @@ class ImageRecordIOIterator : public IIterator<DataInst> {
   virtual bool Next(void) {
     while (true) {
       if (inst_ptr_ < inst_order_.size()) {
-        auto p = inst_order_[inst_ptr_];
+        std::pair<unsigned, unsigned> p = inst_order_[inst_ptr_];
         out_ = (*data_)[p.first][p.second];
         ++inst_ptr_;
         return true;
