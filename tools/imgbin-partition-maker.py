@@ -9,20 +9,20 @@ random.seed(888)
 parser = argparse.ArgumentParser(description='Generate a Makfile to make partition imgbin file for cxxnet')
 parser.add_argument('--img_list', required=True, help="path to list of all images")
 parser.add_argument('--img_root', required=True, help="prefix path to the file path in img_list")
-parser.add_argument('--im2bin', default='./im2bin', help="path to im2bin tools")
+parser.add_argument('--im2rec', default='../bin/im2rec', help="path to im2rec tools")
 parser.add_argument('--partition_size', default="256", help="max size of single bin file")
 parser.add_argument('--shuffle', default='0', help="Shuffle the list or not")
 parser.add_argument('--prefix', required=True, help="Prefix of output image lists and bins")
 parser.add_argument('--out', required=True, help="Output folder for image bins and lists")
+parser.add_argument('--new_size', required=True, help="New size of image (-1 for do nothing)")
 parser.add_argument('--makefile', default="Gen.mk", help="name of generated Makefile")
 
-if len(sys.argv) < 5:
-    print parser.print_help()
-    exit(-1)
 
 args = parser.parse_args()
 # im2bin path
-IM2BIN = args.im2bin
+IM2BIN = args.im2rec
+
+new_size = args.new_size
 
 fi = file(args.img_list)
 lst = [line for line in fi]
@@ -54,8 +54,8 @@ for item in lst:
         if fw != None:
             fw.close()
         fw = open(lst_name, "w")
-        cmd = "%s: %s\n\t%s %s %s %s" % (bin_name, lst_name,
-                IM2BIN, lst_name, img_root, bin_name)
+        cmd = "%s: %s\n\t%s %s %s %s %s" % (bin_name, lst_name,
+                IM2BIN, lst_name, img_root, bin_name, new_size)
         cmds.append(cmd)
         sz = 0
         cnt += 1
