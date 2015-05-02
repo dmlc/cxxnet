@@ -58,29 +58,34 @@ int main(int argc, char *argv[]) {
     const char *p = fname.c_str();
     while (isspace(*p)) ++p;
     path = root + p;
-    dmlc::Stream *fi = dmlc::Stream::Create(path.c_str(), "rb");
+    // use "r" is equal to rb in dmlc::Stream
+    dmlc::Stream *fi = dmlc::Stream::Create(path.c_str(), "r");
     rec.SaveHeader(&blob);
-    size_t size = blob.length();
+    decode_buf.clear();
+    size_t imsize = 0;
     while (true) {
-      decode_buf.clear();
-      decode_buf.resize(kBufferSize);
-      size_t nread = fi->Read(BeginPtr(decode_buf), kBufferSize);
-      decode_buf.resize(nread);
-      cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
-      CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
-      cv::Mat res;
-      if (new_size > 0) {
-        cv::resize(img, res, cv::Size(new_size, new_size), 0, 0, CV_INTER_CUBIC);
-      } else {
-        res = img;
-      }
-      encode_buf.clear();
-      CHECK(cv::imencode(".jpg", res, encode_buf, encode_params));
-      blob.resize(size + encode_buf.size());
-      memcpy(BeginPtr(blob) + size, BeginPtr(encode_buf), encode_buf.size());
-      if (nread != kBufferSize)  break;
-    }
+      decode_buf.resize(imsize + kBufferSize);
+      size_t nread = fi->Read(BeginPtr(decode_buf) + imsize, kBufferSize);      
+      decode_buf.resize(imsize + nread);
+      if (nread != kBufferSize) break;
+    }    
     delete fi;
+
+    cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
+    CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
+    cv::Mat res;
+    if (new_size > 0) {
+      cv::resize(img, res, cv::Size(new_size, new_size),
+                 0, 0, CV_INTER_CUBIC);
+    } else {
+      res = img;
+    }
+    encode_buf.clear();
+    CHECK(cv::imencode(".jpg", res, encode_buf, encode_params));
+    size_t bsize = blob.size();
+    blob.resize(bsize + encode_buf.size());
+    memcpy(BeginPtr(blob) + bsize,
+           BeginPtr(encode_buf), encode_buf.size());
     writer.WriteRecord(BeginPtr(blob), blob.size());
     // write header
     ++imcnt;
