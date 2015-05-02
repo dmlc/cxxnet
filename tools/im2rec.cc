@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
       if (new_size > 0) {
         cv::resize(img, res, cv::Size(new_size, new_size),
                    0, 0, CV_INTER_CUBIC);
-    } else {
+      } else {
         res = img;
       }
       encode_buf.clear();
