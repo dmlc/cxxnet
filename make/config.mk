@@ -48,6 +48,10 @@ USE_DIST_PS = 0
 PS_PATH = NONE
 PS_THIRD_PATH = NONE
 
+# whether compile with rabit
+USE_RABIT_PS = 0
+RABIT_PATH = rabit
+
 # use openmp iterator
 USE_OPENMP_ITER = 0
 # the additional link flags you want to add

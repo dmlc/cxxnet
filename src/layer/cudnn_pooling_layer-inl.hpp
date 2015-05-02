@@ -88,8 +88,8 @@ class CuDNNPoolingLayer<Reducer, mode, gpu> : public PoolingLayer<Reducer, mode,
       init_cudnn_ = false;
       dtype_ = CUDNN_DATA_FLOAT;
       switch(mode) {
-       case kMaxPooling: mode_ = CUDNN_POOLING_MAX; break;
-       case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING; break;
+        case kMaxPooling: mode_ = CUDNN_POOLING_MAX; break;
+        case kAvgPooling: mode_ = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING; break;
        default: utils::Error("This should not happen -,-"); break;
       }
       utils::Check(cudnnCreate(&handle_) == CUDNN_STATUS_SUCCESS, "cudnn failed");

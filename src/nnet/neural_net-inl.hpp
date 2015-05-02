@@ -63,6 +63,7 @@ struct NeuralNet {
       }
     }
   }
+  
   /*! \brief initial model parameters in the beginning */
   inline void InitModel(void) {
     this->InitNet();
@@ -149,6 +150,16 @@ struct NeuralNet {
       if (updaters[i - 1].size() != 0) stream->Wait();
       for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
         updaters[i - 1][j]->AfterBackprop(need_update, update_epoch);
+      }
+    }
+  }
+  /*!
+   * \brief explicitly synchronize the update   
+   */
+  inline void SyncUpdate(void) {
+    for (index_t i = 0; i < connections.size(); ++i) {
+      for (size_t j = 0; j < updaters[i].size(); ++j) {
+        updaters[i][j]->UpdateWait();
       }
     }
   }
@@ -367,6 +378,11 @@ class NeuralNetThread {
     this->ExecTask();
   }
   inline void Update(size_t epoch) {
+    iparam_epoch = epoch;
+    this->task = kUpdate;
+    this->ExecTask();
+  }
+  inline void SyncUpdate(size_t epoch) {
     iparam_epoch = epoch;
     this->task = kUpdate;
     this->ExecTask();

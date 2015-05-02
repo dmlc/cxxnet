@@ -13,8 +13,13 @@
 #include "nnet/nnet.h"
 #include "io/data.h"
 #include "utils/config.h"
+
 #if MSHADOW_DIST_PS
 #include "ps.h"
+#endif
+
+#if MSHADOW_RABIT_PS
+#include <rabit.h>
 #endif
 
 namespace cxxnet{
@@ -55,7 +60,6 @@ class CXXNetLearnTask {
       // shut down tensor engine if it is GPU based
       //if (device == "gpu") mshadow::ShutdownTensorEngine();
     }
-
     if (itr_train != NULL)   delete itr_train;
     if (itr_pred  != NULL)   delete itr_pred;
     for (size_t i = 0; i < itr_evals.size(); ++ i) {
@@ -68,6 +72,22 @@ class CXXNetLearnTask {
       printf("Usage: <config>\n");
       return 0;
     }
+#if MSHADOW_RABIT_PS
+    rabit::Init(argc, argv);
+    if (rabit::GetRank() != 0) {
+      this->SetParam("silent", "1");
+    }
+    {
+      std::ostringstream os;
+      os << rabit::GetRank();
+      this->SetParam("dist_worker_rank", os.str().c_str());
+    }
+    {
+      std::ostringstream os;
+      os << rabit::GetWorldSize();
+      this->SetParam("dist_num_worker", os.str().c_str());
+    }
+#endif
     dmlc::Stream *cfg = dmlc::Stream::Create(argv[1], "r");
     {
       dmlc::istream is(cfg);
@@ -92,6 +112,9 @@ class CXXNetLearnTask {
     if (task == "pred")   this->TaskPredict();
     if (task == "extract") this->TaskExtractFeature();
     if (task == "get_weight") this->TaskGetWeight();
+#if MSHADOW_RABIT_PS
+    rabit::Finalize();
+#endif    
     return 0;
   }
 
