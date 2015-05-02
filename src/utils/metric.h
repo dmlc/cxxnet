@@ -30,7 +30,8 @@ class IMetric{
    * \param labels label
    * \param n number of instances
    */
-  virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore, const LabelRecord& labels) = 0;
+  virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore,
+                       const LabelRecord& labels) = 0;
   /*! \brief get current result */
   virtual double Get(void) const = 0;
   /*! \return name of metric */
@@ -38,22 +39,24 @@ class IMetric{
 };
 
 /*! \brief simple metric Base */
-struct MetricBase : public IMetric{
+struct MetricBase : public IMetric {
  public:
   virtual ~MetricBase(void) {}
   virtual void Clear(void) {
     sum_metric = 0.0; cnt_inst = 0;
   }
-  virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore, const LabelRecord& labels) {
+  virtual void AddEval(const mshadow::Tensor<cpu,2> &predscore,
+                       const LabelRecord& labels) {
     for (index_t i = 0; i < predscore.size(0); ++ i) {
       sum_metric += CalcMetric(predscore[i], labels.label[i]);
       cnt_inst+= 1;
     }
   }
-  virtual double Get(void) const{
+  virtual double Get(void) const {
+    
     return sum_metric / cnt_inst;
   }
-  virtual const char *Name(void) const{
+  virtual const char *Name(void) const {
     return name.c_str();
   }
  protected:
@@ -62,7 +65,7 @@ struct MetricBase : public IMetric{
     this->Clear();
   }
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &predscore,
-    const mshadow::Tensor<cpu,1> &label) = 0;
+                           const mshadow::Tensor<cpu,1> &label) = 0;
  private:
   double sum_metric;
   long   cnt_inst;
@@ -72,14 +75,14 @@ struct MetricBase : public IMetric{
 /*! \brief RMSE */
 struct MetricRMSE : public MetricBase{
  public:
-  MetricRMSE(void):MetricBase("rmse") {
+  MetricRMSE(void) : MetricBase("rmse") {
   }
   virtual ~MetricRMSE(void) {}
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &predscore,
-    const mshadow::Tensor<cpu,1> &label) {
+                           const mshadow::Tensor<cpu,1> &label) {
     utils::Check(predscore.size(0) == label.size(0),
-      "Metric: In RMSE metric, the size of prediction and label must be same.");
+                 "Metric: In RMSE metric, the size of prediction and label must be same.");
     float diff = 0;
     for (index_t i = 0; i < label.size(0); ++i) {
       diff += (predscore[i] - label[i]) * (predscore[i] - label[i]);
@@ -91,7 +94,7 @@ struct MetricRMSE : public MetricBase{
 /*! \brief Error */
 struct MetricError : public MetricBase{
  public:
-  MetricError(void):MetricBase("error") {
+  MetricError(void) : MetricBase("error") {
   }
   virtual ~MetricError(void) {}
  protected:
@@ -112,7 +115,7 @@ struct MetricError : public MetricBase{
 /*! \brief Logloss */
 struct MetricLogloss : public MetricBase{
  public:
-  MetricLogloss(void):MetricBase("logloss") {
+  MetricLogloss(void) : MetricBase("logloss") {
   }
   virtual ~MetricLogloss(void) {}
  protected:
@@ -121,7 +124,7 @@ struct MetricLogloss : public MetricBase{
     int target = static_cast<int>(label[0]);
     if (pred.size(0) != 1) {
       return - std::log(std::max(std::min(pred[target], 1.0f - 1e-15f), 1e-15f));
-    }else{
+    } else {
       const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
       const float y = label[0];
       const float res = - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
@@ -132,17 +135,17 @@ struct MetricLogloss : public MetricBase{
 };
 
 /*! \brief Recall@n */
-struct MetricRecall : public MetricBase{
+struct MetricRecall : public MetricBase {
  public:
-  MetricRecall(const char *name): MetricBase(name) {
+  MetricRecall(const char *name) : MetricBase(name) {
     CHECK(sscanf(name, "rec@%d", &topn) == 1) << "must specify n for rec@n";
   }
   virtual ~MetricRecall(void) {}
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &pred,
-    const mshadow::Tensor<cpu,1> &label) {
+                           const mshadow::Tensor<cpu,1> &label) {
     utils::Check(pred.size(0) >= (index_t)topn,
-      "it is meaningless to take rec@n for list shorter than n, evaluating rec@%d, list=%u\n",
+                 "it is meaningless to take rec@n for list shorter than n, evaluating rec@%d, list=%u\n",
       topn, pred.size(0));
     vec.resize(pred.size(0));
     for (index_t i = 0; i < pred.size(0); ++ i) {
@@ -162,7 +165,8 @@ struct MetricRecall : public MetricBase{
     return (float)hit / label.size(0);
   }
  private:
-  inline static bool CmpScore(const std::pair<float,index_t> &a, const std::pair<float,index_t> &b) {
+  inline static bool CmpScore(const std::pair<float,index_t> &a,
+                              const std::pair<float,index_t> &b) {
     return a.first > b.first;
   }
 
