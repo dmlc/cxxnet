@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   }
   if (argc > 5) label_width = atoi(argv[5]);
   using namespace dmlc;
-  const static size_t kBufferSize = 1 << 20UL;
+  const static size_t kBufferSize = 16 << 20UL;
   std::string root = argv[2];
   cxxnet::ImageRecordIO rec;
   size_t imcnt = 0;
@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
       size_t nread = fi->Read(BeginPtr(decode_buf), kBufferSize);
       decode_buf.resize(nread);
       cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
+      CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
       cv::Mat res;
       if (new_size > 0) {
         cv::resize(img, res, cv::Size(new_size, new_size), 0, 0, CV_INTER_CUBIC);
