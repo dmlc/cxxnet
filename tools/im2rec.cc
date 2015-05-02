@@ -66,26 +66,33 @@ int main(int argc, char *argv[]) {
     while (true) {
       decode_buf.resize(imsize + kBufferSize);
       size_t nread = fi->Read(BeginPtr(decode_buf) + imsize, kBufferSize);      
-      decode_buf.resize(imsize + nread);
+      imsize += nread;
+      decode_buf.resize(imsize);
       if (nread != kBufferSize) break;
-    }    
-    delete fi;
-
-    cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
-    CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
-    cv::Mat res;
-    if (new_size > 0) {
-      cv::resize(img, res, cv::Size(new_size, new_size),
-                 0, 0, CV_INTER_CUBIC);
-    } else {
-      res = img;
     }
-    encode_buf.clear();
-    CHECK(cv::imencode(".jpg", res, encode_buf, encode_params));
-    size_t bsize = blob.size();
-    blob.resize(bsize + encode_buf.size());
-    memcpy(BeginPtr(blob) + bsize,
-           BeginPtr(encode_buf), encode_buf.size());
+    delete fi;
+    if (new_size > 0) {  
+      cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
+      CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
+      cv::Mat res;
+      if (new_size > 0) {
+        cv::resize(img, res, cv::Size(new_size, new_size),
+                   0, 0, CV_INTER_CUBIC);
+    } else {
+        res = img;
+      }
+      encode_buf.clear();
+      CHECK(cv::imencode(".jpg", res, encode_buf, encode_params));
+      size_t bsize = blob.size();
+      blob.resize(bsize + encode_buf.size());
+      memcpy(BeginPtr(blob) + bsize,
+             BeginPtr(encode_buf), encode_buf.size());
+    } else {
+      size_t bsize = blob.size();
+      blob.resize(bsize + decode_buf.size());
+      memcpy(BeginPtr(blob) + bsize,
+             BeginPtr(decode_buf), decode_buf.size());
+    }
     writer.WriteRecord(BeginPtr(blob), blob.size());
     // write header
     ++imcnt;
