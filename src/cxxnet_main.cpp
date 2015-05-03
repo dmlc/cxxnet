@@ -22,8 +22,7 @@
 #include <rabit.h>
 #endif
 
-namespace cxxnet{
-
+namespace cxxnet {
 class CXXNetLearnTask {
  public:
   CXXNetLearnTask(void) {
@@ -237,7 +236,7 @@ class CXXNetLearnTask {
     if (device == "gpu:rank") {
       std::ostringstream os;
       os << "gpu:" << rank;
-      this->SetParam("dev", os.c_str());
+      this->SetParam("dev", os.str().c_str());
     }
     if (!strncmp(device.c_str(), "gpu", 3)) {
 #if MSHADOW_USE_CUDA
