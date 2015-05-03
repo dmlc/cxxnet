@@ -90,11 +90,6 @@ class CXXNetLearnTask {
       os << rabit::GetWorldSize();
       this->SetParam("dist_num_worker", os.str().c_str());
     }
-    if (device == "gpu:rank") {
-      std::ostringstream os;
-      os << "gpu:" << rabit::GetRank();
-      device = os.str();
-    }
 #endif
     dmlc::Stream *cfg = dmlc::Stream::Create(argv[1], "r");
     {
@@ -231,7 +226,16 @@ class CXXNetLearnTask {
     if (reset_net_type != -1) {
       net_type = reset_net_type;
     }
+    int rank = 0;
+#if MSHADOW_RABIT_PS
+    rank = rabit::GetRank();
+#endif    
     nnet::INetTrainer *net;
+    if (device == "gpu:rank") {
+      std::ostringstream os;
+      os << "gpu:" << rank;
+      device = os.str();
+    }
     if (!strncmp(device.c_str(), "gpu", 3)) {
 #if MSHADOW_USE_CUDA
       net = nnet::CreateNet<mshadow::gpu>(net_type);
