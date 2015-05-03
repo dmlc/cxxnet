@@ -90,6 +90,11 @@ class CXXNetLearnTask {
       os << rabit::GetWorldSize();
       this->SetParam("dist_num_worker", os.str().c_str());
     }
+    if (device == "gpu:rank") {
+      std::ostringstream os;
+      os << "gpu:" << rabit::GetRank();
+      device = os.str();
+    }
 #endif
     dmlc::Stream *cfg = dmlc::Stream::Create(argv[1], "r");
     {
