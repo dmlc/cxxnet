@@ -14,7 +14,7 @@ parser.add_argument('--partition_size', default="256", help="max size of single 
 parser.add_argument('--shuffle', default='0', help="Shuffle the list or not")
 parser.add_argument('--prefix', required=True, help="Prefix of output image lists and bins")
 parser.add_argument('--out', required=True, help="Output folder for image bins and lists")
-parser.add_argument('--new_size', required=True, help="New size of image (-1 for do nothing)")
+parser.add_argument('--resize', required=True, help="New size of image (-1 for do nothing)")
 parser.add_argument('--makefile', default="Gen.mk", help="name of generated Makefile")
 
 
@@ -22,7 +22,7 @@ args = parser.parse_args()
 # im2bin path
 IM2BIN = args.im2rec
 
-new_size = args.new_size
+new_size = "resize=" + args.new_size
 
 fi = file(args.img_list)
 lst = [line for line in fi]

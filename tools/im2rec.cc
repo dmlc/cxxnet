@@ -20,12 +20,20 @@
 #include "../src/io/image_recordio.h"
 
 int main(int argc, char *argv[]) {
-  if (argc < 4) {
-    fprintf(stderr, "Usage: <image.lst> <image_root_dir> <output_file> <new_img_size/-1(do nothing)]> [label_width=1]\n");
+  if (argc < 3) {
+    fprintf(stderr, "Usage: <image.lst> <image_root_dir> <output_file> [resize=new_size] [label_width=1]\n");
     return 0;
   }
   int label_width = 1;
-  int new_size = atoi(argv[4]);
+  int new_size = -1;
+  for (int i = 0; i < argc; ++i) {
+    char key[64];
+    char val[64];
+    if (sscanf(argv[i], "%[^=]=%s", key, val) == 2) {
+      if (!strcmp(key, "resize")) new_size = atoi(val);
+      if (!strcmp(key, "label_width")) label_width = atoi(val);
+    }
+  }
   if (new_size > 0) {
     LOG(INFO) << "New Image Size: " << new_size << "x" << new_size;
   } else {
@@ -33,7 +41,7 @@ int main(int argc, char *argv[]) {
   }
   if (argc > 5) label_width = atoi(argv[5]);
   using namespace dmlc;
-  const static size_t kBufferSize = 16 << 20UL;
+  const static size_t kBufferSize = 1 << 20UL;
   std::string root = argv[2];
   cxxnet::ImageRecordIO rec;
   size_t imcnt = 0;
@@ -41,6 +49,7 @@ int main(int argc, char *argv[]) {
   dmlc::Stream *flist = dmlc::Stream::Create(argv[1], "r");
   dmlc::istream is(flist);
   dmlc::Stream *fo = dmlc::Stream::Create(argv[3], "w");
+  LOG(INFO) << "Output: " << argv[3];
   dmlc::RecordIOWriter writer(fo);
   std::string fname, path, blob;
   std::vector<unsigned char> decode_buf;
@@ -65,13 +74,13 @@ int main(int argc, char *argv[]) {
     size_t imsize = 0;
     while (true) {
       decode_buf.resize(imsize + kBufferSize);
-      size_t nread = fi->Read(BeginPtr(decode_buf) + imsize, kBufferSize);      
+      size_t nread = fi->Read(BeginPtr(decode_buf) + imsize, kBufferSize);
       imsize += nread;
       decode_buf.resize(imsize);
       if (nread != kBufferSize) break;
     }
     delete fi;
-    if (new_size > 0) {  
+    if (new_size > 0) {
       cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
       CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
       cv::Mat res;
@@ -100,6 +109,7 @@ int main(int argc, char *argv[]) {
       LOG(INFO) << imcnt << " images processed, " << GetTime() - tstart << " sec elapsed";
     }
   }
+  LOG(INFO) << "Total: " << imcnt << " images processed, " << GetTime() - tstart << " sec elapsed";
   delete fo;
   delete flist;
   return 0;

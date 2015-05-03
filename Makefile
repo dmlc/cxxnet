@@ -63,7 +63,7 @@ ifneq ($(ADD_LDFLAGS), NONE)
 endif
 
 # specify tensor path
-BIN = bin/cxxnet bin/im2rec
+BIN = bin/cxxnet bin/im2rec tools/bin2rec
 SLIB = wrapper/libcxxnetwrapper.so
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o main.o nnet_ps_server.o
 OBJCXX11 = data.o
@@ -103,9 +103,10 @@ data.o: src/io/data.cpp src/io/*.hpp
 main.o: src/cxxnet_main.cpp
 
 wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(OBJCXX11) $(CUDEP)
-bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(DMLC_CORE)/libdmlc.a $(CUDEP) 
+bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(DMLC_CORE)/libdmlc.a $(CUDEP)
 bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(DMLC_CORE)/libdmlc.a $(PS_LIB)
 bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
+tools/bin2rec: tools/bin2rec.cc $(DMLC_CORE)/libdmlc.a
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS)
