@@ -70,6 +70,11 @@ OBJCXX11 = data.o
 CUOBJ = layer_gpu.o  updater_gpu.o nnet_gpu.o
 CUBIN =
 
+LIB_DEP = $(DMLC_CORE)/libdmlc.a
+ifeq ($(USE_RABIT_PS), 1)
+	LIB_DEP += $(RABIT_PATH)/lib/librabit_base.a
+endif
+
 ifeq ($(USE_CUDA), 0)
 	CUDEP =
 else
@@ -87,6 +92,9 @@ all: $(BIN) $(SLIB)
 $(DMLC_CORE)/libdmlc.a:
 	+ cd $(DMLC_CORE); make libdmlc.a config=$(ROOTDIR)/$(config); cd $(ROOTDIR)
 
+$(RABIT_PATH)/lib/librabit_base.a:
+	+ cd $(RABIT_PATH); make; cd $(ROOTDIR)
+
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu\
 	src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
 
@@ -103,8 +111,8 @@ data.o: src/io/data.cpp src/io/*.hpp
 main.o: src/cxxnet_main.cpp
 
 wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(OBJCXX11) $(CUDEP)
-bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(DMLC_CORE)/libdmlc.a $(CUDEP)
-bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(DMLC_CORE)/libdmlc.a $(PS_LIB)
+bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
+bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP) $(PS_LIB)
 bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
 tools/bin2rec: tools/bin2rec.cc $(DMLC_CORE)/libdmlc.a
 

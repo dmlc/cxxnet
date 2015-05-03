@@ -4,6 +4,9 @@ if [ ! -d mshadow ]; then
     git clone https://github.com/dmlc/mshadow.git
 fi
 
+if [ ! -d rabit ]; then
+    git clone https://github.com/dmlc/rabit.git
+fi
 
 if [ ! -d dmlc-core ]; then
     git clone https://github.com/dmlc/dmlc-core.git

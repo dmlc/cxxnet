@@ -28,6 +28,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     eval_train = 1;
     epoch_counter = 0;
     seed = 0;
+    silent = 0;
     pserver = NULL;
     type_pserver = "UNSPECIFIED";
   }
@@ -238,25 +239,39 @@ class CXXNetThreadTrainer : public INetTrainer {
     *out_preds = req[0].second;
   }
   virtual std::string Evaluate(IIterator<DataBatch> *iter_eval, const char *data_name) {
+    // explicitly sync parameters
+    for (size_t i = 0; i < nets_.size(); ++i) {
+      nets_[i]->SyncParam();
+    }
+    this->WaitAllJobs();
+    // safe guard for safely use allreduce in eval
+    if (pserver != NULL) {
+      pserver->SetParam("msg:disable_allreduce", "1");
+    }    
     std::string ret;
     if (eval_train != 0) {
       ret += train_metric.Print("train");
       train_metric.Clear();
     }
-    if (iter_eval == NULL) return ret;
-    metric.Clear();
-    iter_eval->BeforeFirst();
-    while (iter_eval->Next()) {
-      const DataBatch& batch = iter_eval->Value();
-      this->ForwardTo(eval_req, batch);
-      std::vector<mshadow::Tensor<cpu, 2> > scores;
-      for (index_t i = 0; i < eval_req.size(); ++i) {
-        scores.push_back(eval_req[i].second.Slice(
-          0, eval_req[i].second.size(0) - batch.num_batch_padd).FlatTo2D());
+    if (iter_eval != NULL) {
+      metric.Clear();
+      iter_eval->BeforeFirst();
+      while (iter_eval->Next()) {
+        const DataBatch& batch = iter_eval->Value();
+        this->ForwardTo(eval_req, batch);
+        std::vector<mshadow::Tensor<cpu, 2> > scores;
+        for (index_t i = 0; i < eval_req.size(); ++i) {
+          scores.push_back(eval_req[i].second.Slice(
+              0, eval_req[i].second.size(0) - batch.num_batch_padd).FlatTo2D());
+        }
+        metric.AddEval(scores, GetLabelInfo(batch));
       }
-      metric.AddEval(scores, GetLabelInfo(batch));
+      ret += metric.Print(data_name);
     }
-    ret += metric.Print(data_name);
+    // rabit related code for safe guard
+    if (pserver != NULL) {
+      pserver->SetParam("msg:disable_allreduce", "0");
+    }
     return ret;
   }
   virtual void SetWeight(mshadow::Tensor<mshadow::cpu, 2> weight,

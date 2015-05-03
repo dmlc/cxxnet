@@ -154,9 +154,15 @@ struct NeuralNet {
     }
   }
   /*!
-   * \brief explicitly synchronize the update   
+   * \brief explicitly synchronize the model parameters
    */
-  inline void SyncUpdate(void) {
+  inline void SyncParam(void) {
+    // do a psedo update
+    for (size_t i = connections.size(); i != 0; --i) {
+      for (size_t j = 0; j < updaters[i - 1].size(); ++j) {
+        updaters[i - 1][j]->BeforeAllForward();
+      }
+    }
     for (index_t i = 0; i < connections.size(); ++i) {
       for (size_t j = 0; j < updaters[i].size(); ++j) {
         updaters[i][j]->UpdateWait();
@@ -392,6 +398,10 @@ class NeuralNetThread {
     this->task = kStartRound;
     this->ExecTask();
   }
+  inline void SyncParam(void) {
+    this->task = kSyncParam;
+    this->ExecTask();
+  }
   /*! \brief run a training forward backprop pass */
   inline void TrainForwardBackprop(mshadow::Tensor<cpu,4> batch,
                                    const std::vector<mshadow::Tensor<mshadow::cpu, 4> >& extra_data,
@@ -476,7 +486,8 @@ class NeuralNetThread {
     kCopyNode,
     kCopyLayer,
     kSetWeight,
-    kGetWeight
+    kGetWeight,
+    kSyncParam
   };
   // thread related code
   inline static CXXNET_THREAD_PREFIX ThreadEntry(void *pthread) {
@@ -528,6 +539,7 @@ class NeuralNetThread {
       case kSaveModel: net_->SaveModel(*iparam_fp); return;
       case kUpdate: net_->Update(iparam_epoch); return;
       case kStartRound: net_->StartRound(static_cast<int>(iparam_epoch)); return;
+      case kSyncParam: net_->SyncParam(); return;
       case kTrainProp: {
         if (iparam_batch.size(0) == 0) return;
         net_->Forward(true, iparam_batch, iparam_extra_data, iparam_need_sync);

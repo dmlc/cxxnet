@@ -36,7 +36,7 @@ USE_CUDNN_PATH = NONE
 # choose the version of blas you want to use
 # can be: mkl, blas, atlas, openblas
 USE_STATIC_MKL = NONE
-USE_BLAS = mkl
+USE_BLAS = blas
 #
 # add path to intel libary, you may need it
 # for MKL, if you did not add the path to enviroment variable
@@ -53,7 +53,7 @@ USE_RABIT_PS = 0
 RABIT_PATH = rabit
 
 # use openmp iterator
-USE_OPENMP_ITER = 0
+USE_OPENMP_ITER = 1
 # the additional link flags you want to add
 ADD_LDFLAGS = -ljpeg
 

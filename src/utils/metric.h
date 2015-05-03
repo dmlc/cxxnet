@@ -12,6 +12,11 @@
 #include <sstream>
 #include "./random.h"
 #include "../layer/layer.h"
+
+#if MSHADOW_RABIT_PS
+#include <rabit.h>
+#endif
+
 namespace cxxnet {
 namespace utils {
 
@@ -53,8 +58,13 @@ struct MetricBase : public IMetric {
     }
   }
   virtual double Get(void) const {
-    
-    return sum_metric / cnt_inst;
+    double tmp[2];
+    tmp[0] = sum_metric;
+    tmp[1] = static_cast<double>(cnt_inst);
+#if MSHADOW_RABIT_PS    
+    rabit::Allreduce<rabit::op::Sum>(tmp, 2);
+#endif    
+    return tmp[0] / tmp[1];
   }
   virtual const char *Name(void) const {
     return name.c_str();

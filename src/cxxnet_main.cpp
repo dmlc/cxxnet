@@ -77,6 +77,9 @@ class CXXNetLearnTask {
     if (rabit::GetRank() != 0) {
       this->SetParam("silent", "1");
     }
+    if (rabit::IsDistributed()) {
+      this->SetParam("param_server", "local");
+    }
     {
       std::ostringstream os;
       os << rabit::GetRank();
@@ -106,7 +109,7 @@ class CXXNetLearnTask {
     }
     this->Init();
     if (!silent) {
-      printf("initializing end, start working\n");
+      utils::TrackerPrint("initializing end, start working\n");
     }
     if (task == "train" || task == "finetune") this->TaskTrain();
     if (task == "pred")   this->TaskPredict();
@@ -405,6 +408,7 @@ class CXXNetLearnTask {
     fclose(fm);
     printf("finished prediction, write into %s\n", name_pred.c_str());
   }
+
   inline void TaskTrain(void) {
     bool is_root = true;
 #if MSHADOW_DIST_PS
@@ -412,6 +416,10 @@ class CXXNetLearnTask {
     silent = !is_root;
 #endif
 
+#if MSHADOW_RABIT_PS
+    is_root = rabit::GetRank() == 0;
+#endif
+    silent = !is_root;
     time_t start    = time(NULL);
     unsigned long elapsed = 0;
     if (continue_training == 0 && name_model_in == "NULL") {
@@ -421,12 +429,13 @@ class CXXNetLearnTask {
         printf("continuing from round %d", start_counter-1);
         fflush(stdout);
       }
+      std::ostringstream os;
+      os << '[' << start_counter << ']';
       for (size_t i = 0; i < itr_evals.size(); ++i) {
-        std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
-        fprintf(stderr, "%s", res.c_str());
+        os << net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
       }
-      fprintf(stderr, "\n");
-      fflush(stderr);
+      os << '\n';
+      utils::TrackerPrint(os.str());
     }
 
     if (itr_train != NULL) {
@@ -456,20 +465,18 @@ class CXXNetLearnTask {
           }
         }
 
-        if (test_io == 0 && is_root) {
-          // code handling evaluation
-          fprintf(stderr, "[%d]", start_counter);
+        if (test_io == 0) {
+          std::ostringstream os;
+          os << '[' << start_counter << ']';
           // handle only with eval_train = 1, but not val data
           if (itr_evals.size() == 0) {
-            std::string res = net_trainer->Evaluate(NULL, "train");
-            fprintf(stderr, "%s", res.c_str());
+            os << net_trainer->Evaluate(NULL, "train");
           }
           for (size_t i = 0; i < itr_evals.size(); ++i) {
-            std::string res = net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
-            fprintf(stderr, "%s", res.c_str());
+            os << net_trainer->Evaluate(itr_evals[i], eval_names[i].c_str());
           }
-          fprintf(stderr, "\n");
-          fflush(stderr);
+          os << '\n';
+          utils::TrackerPrint(os.str());
         }
         elapsed = (unsigned long)(time(NULL) - start);
         this->SaveModel();

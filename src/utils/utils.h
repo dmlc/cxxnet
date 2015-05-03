@@ -12,6 +12,10 @@
 #include <cstdarg>
 #include <dmlc/base.h>
 #include <dmlc/logging.h>
+#if MSHADOW_RABIT_PS
+#include <rabit.h>
+#endif
+
 #define CUDA_CHECK(ARGS) CHECK(ARGS==0);
 
 namespace cxxnet {
@@ -96,6 +100,17 @@ inline std::FILE *FopenCheck(const char *fname, const char *flag) {
   std::FILE *fp = fopen64(fname, flag);
   Check(fp != NULL, "can not open file \"%s\"\n", fname);
   return fp;
+}
+// print message to tracker
+inline void TrackerPrint(const std::string msg, bool root_only = true) {
+#if MSHADOW_RABIT_PS
+  if (!root_only || rabit::GetRank() == 0) {
+    rabit::TrackerPrint(msg);
+  }
+#else
+  fprintf(stderr, "%s", msg.c_str());
+  fflush(stderr);
+#endif
 }
 }  // namespace utils
 }  // namespace cxxnet

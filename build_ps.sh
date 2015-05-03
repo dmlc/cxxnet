@@ -8,6 +8,10 @@ if [ ! -d ps-lite ]; then
     make -j 4 -C ps-lite
 fi
 
+if [ ! -d rabit ]; then
+    git clone https://github.com/dmlc/rabit.git
+fi
+
 if [ ! -d mshadow ]; then
     git clone https://github.com/dmlc/mshadow.git
 fi
