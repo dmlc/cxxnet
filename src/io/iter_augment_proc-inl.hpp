@@ -148,7 +148,7 @@ private:
       } else {
         // substract mean image
         if ((rand_mirror_ != 0 && rnd.NextDouble() < 0.5f) || mirror_ == 1) {
-          if (data.shape_ == meanimg_.shape_){
+          if (data.shape_ == meanimg_.shape_) {
             img_ = mirror(crop((data - meanimg_) * contrast + illumination, img_[0].shape_, yy, xx)) * scale_;
           } else {
             img_ = (mirror(crop(data, img_[0].shape_, yy, xx) - meanimg_) * contrast + illumination) * scale_;

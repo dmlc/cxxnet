@@ -422,6 +422,7 @@ class CXXNetLearnTask {
 
   inline void TaskTrain(void) {
     bool is_root = true;
+    bool print_tracker = false;
 #if MSHADOW_DIST_PS
     is_root = ::ps::MyRank() == 0;
     silent = !is_root;
@@ -429,6 +430,7 @@ class CXXNetLearnTask {
 
 #if MSHADOW_RABIT_PS
     is_root = rabit::GetRank() == 0;
+    print_tracker = rabit::IsDistributed();
 #endif
     silent = !is_root;
     time_t start    = time(NULL);
@@ -468,10 +470,16 @@ class CXXNetLearnTask {
           if (++ sample_counter  % print_step == 0) {
             elapsed = (long)(time(NULL) - start);
             if (!silent) {
-              printf("\r                                                               \r");
-              printf("round %8d:[%8d] %ld sec elapsed", start_counter-1,
-                     sample_counter, elapsed);
-              fflush(stdout);
+	      std::ostringstream os;
+	      os << "round " << std::setw(8) << start_counter - 1
+		 << ":[" << std::setw(8) << sample_counter << "] " << elapsed << " sec elapsed";
+	      if (print_tracker) {
+		utils::TrackerPrint(os.str().c_str());
+	      } else {
+		printf("\r                                                               \r");
+		printf("%s", os.str().c_str());
+		fflush(stdout);
+	      }
             }
           }
         }
@@ -490,7 +498,9 @@ class CXXNetLearnTask {
           utils::TrackerPrint(os.str());
         }
         elapsed = (unsigned long)(time(NULL) - start);
-        this->SaveModel();
+	if (is_root) {
+	  this->SaveModel();
+	}
       }
 
       if (!silent) {

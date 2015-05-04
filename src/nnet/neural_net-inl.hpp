@@ -70,9 +70,9 @@ struct NeuralNet {
     this->ConfigConntions();
     for (size_t i = 0; i < connections.size(); ++i) {
       if (this->cfg.layers[i].name != "") {
-        printf("Initializing layer: %s\n", this->cfg.layers[i].name.c_str());
+	utils::TrackerPrintf("Initializing layer: %s\n", this->cfg.layers[i].name.c_str());
       } else {
-        printf("Initializing layer: %d\n", static_cast<int>(i));
+	utils::TrackerPrintf("Initializing layer: %d\n", static_cast<int>(i));
       }
       layer::Connection<xpu> &c = connections[i];
       c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
@@ -225,8 +225,9 @@ struct NeuralNet {
     for (size_t i = 0; i < nodes.size(); ++ i) {
       mshadow::Shape<4> s = nodes[i].data.shape_;
       nodes[i].AllocSpace();
-      printf("node[%s].shape: %u,%u,%u,%u\n", this->cfg.node_names[i].c_str(),
-        s[0], s[1], s[2], s[3]);
+      utils::TrackerPrintf("node[%s].shape: %u,%u,%u,%u\n",
+			   this->cfg.node_names[i].c_str(),
+			   s[0], s[1], s[2], s[3]);
     }
   }
  private:

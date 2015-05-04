@@ -35,7 +35,7 @@ class SGDUpdater : public IUpdater<xpu> {
   virtual ~SGDUpdater(void) {}
   virtual void Init(void) {
     if (param.silent == 0) {
-      printf("SGDUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum);
+      utils::TrackerPrintf("SGDUpdater: eta=%f, mom=%f\n", param.base_lr_, param.momentum);
     }
     m_w.Resize(w.shape_, 0.0f);
   }

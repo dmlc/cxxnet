@@ -16,3 +16,5 @@ example
 *.log
 ps-lite
 dmlc-core
+bin
+rabit

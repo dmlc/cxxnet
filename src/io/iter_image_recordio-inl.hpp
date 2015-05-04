@@ -102,7 +102,7 @@ class ImageRecordIOParser {
     int maxthread;
     #pragma omp parallel
     {
-      maxthread = std::max(omp_get_num_procs() / 2 - 2, 1);
+      maxthread = std::max(omp_get_num_procs() / 2 - 1, 1);
     }
     nthread_ = std::min(maxthread, nthread_);
     #pragma omp parallel num_threads(nthread_)
@@ -184,7 +184,7 @@ inline void ImageRecordIOParser::Init(void) {
       (path_imgrec_.c_str(), dist_worker_rank_,
        dist_num_worker_, "recordio");
   // use 64 MB chunk when possible
-  source_->HintChunkSize(64 << 20UL);
+  source_->HintChunkSize(8 << 20UL);
 }
 inline void ImageRecordIOParser::
 SetParam(const char *name, const char *val) {
@@ -275,6 +275,7 @@ class ImageRecordIOIterator : public IIterator<DataInst> {
   }
   virtual void Init(void) {
     parser_.Init();
+    iter_.set_max_capacity(4);
     iter_.Init([this](std::vector<InstVector> **dptr) {
         if (*dptr == NULL) {
           *dptr = new std::vector<InstVector>();
