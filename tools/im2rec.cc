@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     }
   }
   if (new_size > 0) {
-    LOG(INFO) << "New Image Size: " << new_size << "x" << new_size;
+    LOG(INFO) << "New Image Size: Short Edge " << new_size;
   } else {
     LOG(INFO) << "Keep origin image size";
   }
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   std::vector<unsigned char> encode_buf;
   std::vector<int> encode_params;
   encode_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-  encode_params.push_back(100);
+  encode_params.push_back(80);
   while (is >> rec.header.image_id[0] >> rec.header.label) {
     for (int k = 1; k < label_width; ++ k) {
       float tmp;
@@ -85,8 +85,13 @@ int main(int argc, char *argv[]) {
       CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
       cv::Mat res;
       if (new_size > 0) {
-        cv::resize(img, res, cv::Size(new_size, new_size),
-                   0, 0, CV_INTER_CUBIC);
+        if (img.rows > img.cols) {
+          cv::resize(img, res, cv::Size(img.rows * new_size / img.cols, 
+                    new_size), 0, 0, CV_INTER_LINEAR);
+        } else {
+          cv::resize(img, res, cv::Size(new_size, new_size * img.cols
+            / img.rows), 0, 0, CV_INTER_LINEAR);
+       d }
       } else {
         res = img;
       }
