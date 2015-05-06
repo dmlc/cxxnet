@@ -84,16 +84,12 @@ int main(int argc, char *argv[]) {
       cv::Mat img = cv::imdecode(decode_buf, CV_LOAD_IMAGE_COLOR);
       CHECK(img.data != NULL) << "OpenCV decode fail:" << path;
       cv::Mat res;
-      if (new_size > 0) {
-        if (img.rows > img.cols) {
-          cv::resize(img, res, cv::Size(img.rows * new_size / img.cols, 
-                    new_size), 0, 0, CV_INTER_LINEAR);
-        } else {
-          cv::resize(img, res, cv::Size(new_size, new_size * img.cols
-            / img.rows), 0, 0, CV_INTER_LINEAR);
-       d }
+      if (img.rows > img.cols) {
+        cv::resize(img, res, cv::Size(img.rows * new_size / img.cols, 
+                  new_size), 0, 0, CV_INTER_LINEAR);
       } else {
-        res = img;
+        cv::resize(img, res, cv::Size(new_size, new_size * img.cols
+          / img.rows), 0, 0, CV_INTER_LINEAR);
       }
       encode_buf.clear();
       CHECK(cv::imencode(".jpg", res, encode_buf, encode_params));
