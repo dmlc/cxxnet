@@ -11,6 +11,8 @@
 #include <cctype>
 #include <cstring>
 #include <vector>
+#include <iomanip>
+#include <sstream>
 #include <dmlc/base.h>
 #include <dmlc/io.h>
 #include <dmlc/timer.h>
@@ -20,18 +22,26 @@
 #include "../src/io/image_recordio.h"
 
 int main(int argc, char *argv[]) {
-  if (argc < 3) {
-    fprintf(stderr, "Usage: <image.lst> <image_root_dir> <output_file> [resize=new_size] [label_width=1]\n");
+  if (argc < 4) {
+    printf("Usage: <image.lst> <image_root_dir> <output.rec> [additional parameters in form key=value]\n"\
+           "Possible additional parameters:\n"\
+           "\tresize=newsize resize the shorter edge of image to the newsize, original images will be packed by default\n"\
+           "\tlabel_width=WIDTH[default=1] specify the label_width in the list, by default set to 1\n"\
+           "\tnsplit=NSPLIT[default=1] used for part generation, logically split the image.list to NSPLIT parts by position\n"\
+           "\tpart=PART[default=0] used for part generation, pack the images from the specific part in image.list\n");
     return 0;
   }
   int label_width = 1;
   int new_size = -1;
-  for (int i = 0; i < argc; ++i) {
-    char key[64];
-    char val[64];
+  int nsplit = 1;
+  int partid = 0;
+  for (int i = 4; i < argc; ++i) {
+    char key[128], val[128];
     if (sscanf(argv[i], "%[^=]=%s", key, val) == 2) {
       if (!strcmp(key, "resize")) new_size = atoi(val);
       if (!strcmp(key, "label_width")) label_width = atoi(val);
+      if (!strcmp(key, "nsplit")) nsplit = atoi(val);
+      if (!strcmp(key, "part")) partid = atoi(val);
     }
   }
   if (new_size > 0) {
@@ -39,16 +49,23 @@ int main(int argc, char *argv[]) {
   } else {
     LOG(INFO) << "Keep origin image size";
   }
-  if (argc > 5) label_width = atoi(argv[5]);
+  
   using namespace dmlc;
   const static size_t kBufferSize = 1 << 20UL;
   std::string root = argv[2];
   cxxnet::ImageRecordIO rec;
   size_t imcnt = 0;
   double tstart = dmlc::GetTime();
-  dmlc::Stream *flist = dmlc::Stream::Create(argv[1], "r");
-  dmlc::istream is(flist);
-  dmlc::Stream *fo = dmlc::Stream::Create(argv[3], "w");
+  dmlc::InputSplit *flist = dmlc::InputSplit::
+      Create(argv[1], partid, nsplit, "text");  
+  std::ostringstream os;
+  if (nsplit == 1) {
+    os << argv[3];
+  } else {
+    os << argv[3] << ".part" << std::setw(3) << std::setfill('0') << partid;
+  }
+  LOG(INFO) << "Write to output: " << os.str();
+  dmlc::Stream *fo = dmlc::Stream::Create(os.str().c_str(), "w");
   LOG(INFO) << "Output: " << argv[3];
   dmlc::RecordIOWriter writer(fo);
   std::string fname, path, blob;
@@ -57,7 +74,12 @@ int main(int argc, char *argv[]) {
   std::vector<int> encode_params;
   encode_params.push_back(CV_IMWRITE_JPEG_QUALITY);
   encode_params.push_back(80);
-  while (is >> rec.header.image_id[0] >> rec.header.label) {
+  dmlc::InputSplit::Blob line;
+
+  while (flist->NextRecord(&line)) {
+    std::string sline(static_cast<char*>(line.dptr), line.size);
+    std::istringstream is(sline);
+    if (!(is >> rec.header.image_id[0] >> rec.header.label)) continue;
     for (int k = 1; k < label_width; ++ k) {
       float tmp;
       CHECK(is >> tmp)
