@@ -343,6 +343,7 @@ inline LayerType GetLayerType(const char *type) {
   if (!strcmp(type, "maxout")) return kMaxout;
   if (!strcmp(type, "split")) return kSplit;
   if (!strcmp(type, "insanity")) return kInsanity;
+  if (!strcmp(type, "rrelu")) return kInsanity;
   if (!strcmp(type, "insanity_max_pooling")) return kInsanityPooling;
   if (!strcmp(type, "lp_loss") || !strcmp(type, "l2_loss")) return kLpLoss;
   if (!strcmp(type, "multi_logistic")) return kMultiLogistic;
