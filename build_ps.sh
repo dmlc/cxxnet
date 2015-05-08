@@ -1,7 +1,8 @@
 #! /bin/bash
 
 if [ ! -d ps-lite ]; then
-    git clone https://github.com/dmlc/ps-lite
+    git clone https://github.com/dmlc/ps-lite 
+    cd ps-lite && git reset --hard 2930ac6 && cd ..
     echo "Install third-party libraries for PS"
     ./ps-lite/make/install_third.sh 1>install_ps.log
     echo "Compile PS"
