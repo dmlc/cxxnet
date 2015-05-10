@@ -110,7 +110,7 @@ data.o: src/io/data.cpp src/io/*.hpp
 
 main.o: src/cxxnet_main.cpp
 
-wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(OBJCXX11) $(CUDEP)
+wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJCXX11) $(LIB_DEP) $(CUDEP)
 bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
 bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP) $(PS_LIB)
 bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
