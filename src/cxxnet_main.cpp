@@ -116,7 +116,7 @@ class CXXNetLearnTask {
     if (task == "get_weight") this->TaskGetWeight();
 #if MSHADOW_RABIT_PS
     rabit::Finalize();
-#endif    
+#endif
     return 0;
   }
 
@@ -188,10 +188,10 @@ class CXXNetLearnTask {
          << std::setw(4) << s_counter++ << ".model";
       fi = dmlc::Stream::Create(os.str().c_str(), "r", true);
     } while (fi != NULL);
-    
+
     if (last != NULL) {
       CHECK(last->Read(&net_type, sizeof(int)) != 0) << "invalid model format";
-      net_trainer = this->CreateNet();      
+      net_trainer = this->CreateNet();
       net_trainer->LoadModel(*last);
       start_counter = s_counter - 1;
       delete last;
@@ -207,7 +207,7 @@ class CXXNetLearnTask {
       printf("WARNING: Cannot infer start_counter from model name. Specify it in config if needed\n");
     }
     dmlc::Stream *fi = dmlc::Stream::Create(name_model_in.c_str(), "r");
-    CHECK(fi->Read(&net_type, sizeof(int) != 0)) << "invalid model format";
+    CHECK(fi->Read(&net_type, sizeof(int)) != 0) << "invalid model format";
     net_trainer = this->CreateNet();
     net_trainer->LoadModel(*fi);
     delete fi;
@@ -231,7 +231,7 @@ class CXXNetLearnTask {
     int rank = 0;
 #if MSHADOW_RABIT_PS
     rank = rabit::GetRank();
-#endif    
+#endif
     nnet::INetTrainer *net;
     if (device == "gpu:rank") {
       std::ostringstream os;
