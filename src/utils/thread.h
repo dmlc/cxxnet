@@ -84,7 +84,7 @@ class Semaphore {
       perror("sem_open");
       exit(1);
     }
-    utils::Assert(semPtr != NULL, "create Semaphore error");
+    mshadow::utils::Assert(semPtr != NULL, "create Semaphore error");
   }
   inline void Destroy(void) {
     if (sem_close(semPtr) == -1) {

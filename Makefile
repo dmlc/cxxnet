@@ -12,10 +12,15 @@ ifndef DMLC_CORE
 	DMLC_CORE = dmlc-core
 endif
 
+ifneq ($(USE_OPENMP_ITER),1)
+	export NO_OPENMP = 1
+endif
+
 # use customized config file
 include $(config)
 include mshadow/make/mshadow.mk
 include $(DMLC_CORE)/make/dmlc.mk
+unexport NO_OPENMP
 
 # all tge possible warning tread
 WARNFLAGS= -Wall
@@ -63,7 +68,10 @@ ifneq ($(ADD_LDFLAGS), NONE)
 endif
 
 # specify tensor path
-BIN = bin/cxxnet bin/im2rec bin/bin2rec
+BIN = bin/cxxnet 
+ifeq ($(USE_OPENCV),1)
+	BIN += bin/im2rec bin/bin2rec
+endif
 SLIB = wrapper/libcxxnetwrapper.so
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o main.o nnet_ps_server.o
 OBJCXX11 = data.o
