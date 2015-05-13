@@ -166,7 +166,7 @@ class Net:
             if not isinstance(label, numpy.ndarray):
                 raise Exception('Net.update: label need to be ndarray')
             if label.ndim == 1:
-                label = label.reshape((label.size(0),1))
+                label = label.reshape(label.shape[0], 1)
             if label.ndim != 2:
                 raise Exception('Net.update: label need to be 2 dimension or one dimension ndarray')
             if label.shape[0] != data.shape[0]:
