@@ -12,9 +12,9 @@ import numpy.ctypeslib
 # set this line correctly
 if os.name == 'nt':
     # TODO windows
-    CXXNET_PATH = os.path.dirname(__file__) + '/libcxxnetwrapper.dll'
+    CXXNET_PATH = os.path.join(os.path.dirname(__file__), 'libcxxnetwrapper.dll')
 else:
-    CXXNET_PATH = os.path.dirname(__file__) + '/libcxxnetwrapper.so'
+    CXXNET_PATH = os.path.join(os.path.dirname(__file__), 'libcxxnetwrapper.so')
 
 # load in xgboost library
 cxnlib = ctypes.cdll.LoadLibrary(CXXNET_PATH)
