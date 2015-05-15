@@ -127,7 +127,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     std::string old_model;
     fi.Read(&old_model);
     utils::MemoryBufferStream os(&old_model);
-    old_net.LoadModel(os);
+    old_net.LoadModel(os, false);
 
     // Compare original net and current net
     for (index_t i = 0; i < old_cfg.layers.size(); ++i){

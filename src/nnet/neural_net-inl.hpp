@@ -85,7 +85,7 @@ struct NeuralNet {
     }
   }
   /*! \brief load model from stream */
-  inline void LoadModel(utils::IStream &fi) {
+  inline void LoadModel(utils::IStream &fi, bool init_connection = true) {
     this->FreeSpace();
     this->InitNet();
     this->ConfigConntions();
@@ -95,10 +95,12 @@ struct NeuralNet {
         connections[i].layer->LoadModel(fi);
       }
     }
-    for (size_t i = 0; i < connections.size(); ++i) {
-      layer::Connection<xpu> &c = connections[i];
-      c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
-      c.SetStream(stream);
+    if (init_connection) {
+      for (size_t i = 0; i < connections.size(); ++i) {
+        layer::Connection<xpu> &c = connections[i];
+        c.layer->InitConnection(c.nodes_in, c.nodes_out, &c.state);
+        c.SetStream(stream);
+      }
     }
   }
   /*!

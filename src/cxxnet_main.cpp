@@ -514,6 +514,7 @@ class CXXNetLearnTask {
     CHECK(fi->Read(&net_type, sizeof(int)) != 0) << " invalid model file";
     net_trainer = this->CreateNet();
     net_trainer->CopyModelFrom(*fi);
+    start_counter = 1;
     delete fi;
   }
  private:
