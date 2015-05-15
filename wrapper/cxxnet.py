@@ -171,6 +171,10 @@ class Net:
                 raise Exception('Net.update: label need to be 2 dimension or one dimension ndarray')
             if label.shape[0] != data.shape[0]:
                 raise Exception('Net.update: data size mismatch')
+            if data.dtype != numpy.float32:
+                raise Exception('Net.update: data must be of type numpy.float32')
+            if label.dtype != numpy.float32:
+                raise Exception('Net.update: label must be of type numpy.float32')
             cxnlib.CXNNetUpdateBatch(self.handle,
                                      data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
                                      shape2ctypes(data),
@@ -278,7 +282,7 @@ class Net:
             return None
         return ctypes2numpyT(ret, [oshape[i] for i in range(odim.value)], 'float32')
 
-def train(cfg, data, num_round, param, eval_data = None):
+def train(cfg, data, label, num_round, param, eval_data = None):
     net = Net(cfg = cfg)
     if isinstance(param, dict):
         param = param.items()
