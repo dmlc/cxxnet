@@ -35,7 +35,8 @@ def ctypes2numpy(cptr, length, dtype=numpy.float32):
     """convert a ctypes pointer array to numpy array """
     #assert isinstance(cptr, ctypes.POINTER(ctypes.c_float))
     res = numpy.zeros(length, dtype=dtype)
-    assert ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0])
+    if not ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0]):
+        raise AssertionError('ctypes.memmove failed')
     return res
 
 def ctypes2numpyT(cptr, shape, dtype=numpy.float32, stride = None):
@@ -45,11 +46,13 @@ def ctypes2numpyT(cptr, shape, dtype=numpy.float32, stride = None):
         size *= x
     if stride is None:
         res = numpy.zeros(size, dtype=dtype)
-        assert ctypes.memmove(res.ctypes.data, cptr, size * res.strides[0])
+        if not ctypes.memmove(res.ctypes.data, cptr, size * res.strides[0]):
+            raise AssertionError('ctypes.memmove failed')
     else:
         dsize = size / shape[-1] * stride
         res = numpy.zeros(dsize, dtype=dtype)
-        assert ctypes.memmove(res.ctypes.data, cptr, dsize * res.strides[0])
+        if not ctypes.memmove(res.ctypes.data, cptr, dsize * res.strides[0]):
+            raise AssertionError('ctypes.memmove failed')
         res = res.reshape((dsize / shape[-1], shape[-1]))
         res = res[:, 0 :shape[-1]]
     return res.reshape(shape)
