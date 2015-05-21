@@ -47,6 +47,12 @@ class CuDNNConvolutionLayer<gpu> : public ConvolutionLayer<gpu> {
       else if(!strcmp(val, "balance")) use_fast_algo_ = false;
       else utils::Error("Unkown convolution algo mode");
     }
+    if (!strcmp(name, "group")) {
+        if (atoi(val) != 1) {
+            utils::Error("Currently implementation does not support group when using CuDNN.\
+                    Please disable CuDNN and try again.");
+        }
+    }
   }
   virtual void Forward(bool is_train,
                        const std::vector<Node<gpu>*> &nodes_in,
