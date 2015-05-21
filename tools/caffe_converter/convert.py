@@ -4,9 +4,9 @@ import argparse
 
 
 # caffe root folder
-caffe_root = '/home/winsty/caffe_latest/caffe/'
+caffe_root = ''
 # cxxnet root folder
-cxxnet_root = '/home/winsty/cxxnew/cxxnet/'
+cxxnet_root = ''
 sys.path.insert(0, os.path.join(caffe_root, 'python'))
 sys.path.insert(0, os.path.join(cxxnet_root, 'wrapper'))
 

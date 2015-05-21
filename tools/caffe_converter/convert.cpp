@@ -1,7 +1,7 @@
 /*!
  * \file convert.cpp
  * \brief convert caffe model to cxx model
- * \author Zehua Huang
+ * \author Zehua Huang, Naiyan Wang
  */
 
 #define _CRT_SECURE_NO_WARNINGS
@@ -73,7 +73,8 @@ namespace cxxnet {
       const vector<string> & layer_names = caffe_net_->layer_names();
 
       for (size_t i = 0; i < layer_names.size(); ++i) {
-        if (caffe::InnerProductLayer<float> *caffe_layer = dynamic_cast<caffe::InnerProductLayer<float> *>(caffe_layers[i].get())) {
+        if (caffe::InnerProductLayer<float> *caffe_layer =
+                dynamic_cast<caffe::InnerProductLayer<float> *>(caffe_layers[i].get())) {
           printf("Dumping InnerProductLayer %s\n", layer_names[i].c_str());
 
           vector<caffe::shared_ptr<caffe::Blob<float> > >& blobs = caffe_layer->blobs();
@@ -97,7 +98,8 @@ namespace cxxnet {
           net_trainer_->SetWeight(weight, layer_names[i].c_str(), "wmat");
           net_trainer_->SetWeight(bias, layer_names[i].c_str(), "bias");
 
-        } else if (caffe::ConvolutionLayer<float> *caffe_layer = dynamic_cast<caffe::ConvolutionLayer<float> *>(caffe_layers[i].get())) {
+        } else if (caffe::ConvolutionLayer<float> *caffe_layer =
+                dynamic_cast<caffe::ConvolutionLayer<float> *>(caffe_layers[i].get())) {
           printf("Dumping ConvolutionLayer %s\n", layer_names[i].c_str());
 
           vector<caffe::shared_ptr<caffe::Blob<float> > >& blobs = caffe_layer->blobs();
@@ -182,3 +184,4 @@ int main(int argc, char *argv[]) {
   converter.Convert(argc, argv);
   return 0;
 }
+
