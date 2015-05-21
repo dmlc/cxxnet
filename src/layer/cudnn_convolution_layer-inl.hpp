@@ -47,7 +47,7 @@ class CuDNNConvolutionLayer<gpu> : public ConvolutionLayer<gpu> {
       else if(!strcmp(val, "balance")) use_fast_algo_ = false;
       else utils::Error("Unkown convolution algo mode");
     }
-    if (!strcmp(name, "group")) {
+    if (!strcmp(name, "ngroup")) {
         if (atoi(val) != 1) {
             utils::Error("Currently implementation does not support group when using CuDNN.\
                     Please disable CuDNN and try again.");

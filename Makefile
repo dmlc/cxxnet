@@ -59,6 +59,16 @@ ifeq ($(USE_CUDNN), 1)
 	LDFLAGS += -lcudnn
 endif
 
+ifeq ($(USE_CAFFE_CONVERTER), 1)
+	CFLAGS += -I$(CAFFE_ROOT)/include/ -I$(CAFFE_ROOT)/build/src/
+	LDFLAGS += -L$(CAFFE_ROOT)/build/lib/ -lcaffe -pthread -lglog
+	CFLAGS += -I./src/
+	ifeq ($(USE_BLAS), mkl)
+		CFLAGS += -DUSE_MKL=1
+	endif
+endif
+
+
 ifneq ($(ADD_CFLAGS), NONE)
 	CFLAGS += $(ADD_CFLAGS)
 endif
@@ -71,6 +81,9 @@ endif
 BIN = bin/cxxnet 
 ifeq ($(USE_OPENCV),1)
 	BIN += bin/im2rec bin/bin2rec
+endif
+ifeq ($(USE_CAFFE_CONVERTER), 1)
+	BIN +=  bin/caffe_converter bin/caffe_mean_converter
 endif
 SLIB = wrapper/libcxxnetwrapper.so
 OBJ = layer_cpu.o updater_cpu.o nnet_cpu.o main.o nnet_ps_server.o
@@ -123,6 +136,8 @@ bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
 bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP) $(PS_LIB)
 bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
 bin/bin2rec: tools/bin2rec.cc $(DMLC_CORE)/libdmlc.a
+bin/caffe_converter: tools/caffe_converter/convert.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
+bin/caffe_mean_converter: tools/caffe_converter/convert_mean.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
 
 $(BIN) :
 	$(CXX) $(CFLAGS)  -o $@ $(filter %.cpp %.o %.c %.a %.cc, $^) $(LDFLAGS)
