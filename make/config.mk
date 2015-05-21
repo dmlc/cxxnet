@@ -31,7 +31,11 @@ USE_CUDNN = 0
 # add the path to CUDNN libary to link and compile flag
 # if you do not need that, or do not have that, leave it as NONE
 USE_CUDNN_PATH = NONE
-
+# whether to build caffe converter
+USE_CAFFE_CONVERTER = 0
+CAFFE_ROOT =
+CAFFE_INCLUDE =
+CAFFE_LIB =
 #
 # choose the version of blas you want to use
 # can be: mkl, blas, atlas, openblas
