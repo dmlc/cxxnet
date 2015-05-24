@@ -10,7 +10,7 @@
 namespace cxxnet {
 namespace layer {
 
-template<typename xpu>
+template<typename xpu, bool moving_avg>
 class BatchNormLayer : public ILayer<xpu> {
  public:
   BatchNormLayer(mshadow::Random<xpu> *p_rnd) : prnd_(p_rnd) {
@@ -56,28 +56,34 @@ class BatchNormLayer : public ILayer<xpu> {
     wtf_.Resize(slope_.shape_);
     bias_.Resize(slope_.shape_);
     gbias_.Resize(slope_.shape_);
-    running_exp_.Resize(slope_.shape_);
-    running_var_.Resize(slope_.shape_);
+    if (moving_avg) {
+      running_exp_.Resize(slope_.shape_);
+      running_var_.Resize(slope_.shape_);
+      running_exp_ = 0.0f;
+      running_var_ = 0.0f;
+    }
     gslope_ = 0.0f;
     gbias_ = 0.0f;
     gexp_ = 0.0f;
     gvar_ = 0.0f;
-    running_exp_ = 0.0f;
-    running_var_ = 0.0f;
     slope_ = init_slope_;
     bias_ = init_bias_;
   }
   virtual void SaveModel(utils::IStream &fo) const{
     slope_.SaveBinary(fo);
     bias_.SaveBinary(fo);
-    running_exp_.SaveBinary(fo);
-    running_var_.SaveBinary(fo);
+    if (moving_avg) {
+      running_exp_.SaveBinary(fo);
+      running_var_.SaveBinary(fo);
+    }
   }
   virtual void LoadModel(utils::IStream &fi){
     slope_.LoadBinary(fi);
     bias_.LoadBinary(fi);
-    running_exp_.LoadBinary(fi);
-    running_var_.LoadBinary(fi);
+    if (moving_avg) {
+      running_exp_.LoadBinary(fi);
+      running_var_.LoadBinary(fi);
+    }
     gslope_.Resize(slope_.shape_);
     exp_.Resize(slope_.shape_);
     gexp_.Resize(slope_.shape_);
@@ -100,8 +106,10 @@ class BatchNormLayer : public ILayer<xpu> {
     wtf_.set_stream(stream);
     bias_.set_stream(stream);
     gbias_.set_stream(stream);
-    running_exp_.set_stream(stream);
-    running_var_.set_stream(stream);
+    if (moving_avg) {
+      running_exp_.set_stream(stream);
+      running_var_.set_stream(stream);
+    }
   }
   virtual void OnBatchSizeChanged(const std::vector<Node<xpu>*> &nodes_in,
                                   const std::vector<Node<xpu>*> &nodes_out,
@@ -125,26 +133,43 @@ class BatchNormLayer : public ILayer<xpu> {
         in = (in - broadcast<1>(exp_, in.shape_)) /
           F<op::square_root>(broadcast<1>(var_ + eps_, in_shape_));
         out = in * broadcast<1>(slope_, in.shape_) + broadcast<1>(bias_, in.shape_);
-        running_exp_ = running_exp_ * bn_momentum_ + exp_ * (1 - bn_momentum_);
-        running_var_ = running_var_ * bn_momentum_ + var_ * (1 - bn_momentum_);
       } else {
         exp_ = scale * sumall_except_dim<3>(in);
         var_ = scale * sumall_except_dim<3>(F<op::square>(in - broadcast<3>(exp_, in.shape_)));
         in = (in - broadcast<3>(exp_, in.shape_)) /
           F<op::square_root>(broadcast<3>(var_ + eps_, in_shape_));
         out = in * broadcast<3>(slope_, in.shape_) + broadcast<3>(bias_, in.shape_);
+      }
+      if (moving_avg) {
         running_exp_ = running_exp_ * bn_momentum_ + exp_ * (1 - bn_momentum_);
         running_var_ = running_var_ * bn_momentum_ + var_ * (1 - bn_momentum_);
       }
     } else {
       if (in.size(1) != 1) {
-        out = broadcast<1>(slope_ / F<op::square_root>(running_var_ + eps_), in.shape_) *
-          in + broadcast<1>(bias_ - (slope_ * running_exp_) /
+        if (moving_avg) {
+          out = broadcast<1>(slope_ / F<op::square_root>(running_var_ + eps_), in.shape_) *
+            in + broadcast<1>(bias_ - (slope_ * running_exp_) /
                             F<op::square_root>(running_var_ + eps_), in.shape_);
+
+        } else {
+          exp_ = scale * sumall_except_dim<1>(in);
+          var_ = scale * sumall_except_dim<1>(F<op::square>(in - broadcast<1>(exp_, in.shape_)));
+          out = broadcast<1>(slope_ / F<op::square_root>(var_ + eps_), in.shape_) *
+            in + broadcast<1>(bias_ - (slope_ * exp_) /
+                            F<op::square_root>(var_ + eps_), in.shape_);
+        }
       } else {
-        out = broadcast<3>(slope_ / F<op::square_root>(running_var_  + eps_), in.shape_) *
-          in + broadcast<3>(bias_ - (slope_ * running_exp_) /
+        if (moving_avg) {
+          out = broadcast<3>(slope_ / F<op::square_root>(running_var_  + eps_), in.shape_) *
+            in + broadcast<3>(bias_ - (slope_ * running_exp_) /
                             F<op::square_root>(running_var_ + eps_), in.shape_);
+        } else {
+          exp_ = scale * sumall_except_dim<3>(in);
+          var_ = scale * sumall_except_dim<3>(F<op::square>(in - broadcast<3>(exp_, in.shape_)));
+          out = broadcast<3>(slope_ / F<op::square_root>(var_  + eps_), in.shape_) *
+            in + broadcast<3>(bias_ - (slope_ * exp_) /
+                            F<op::square_root>(var_ + eps_), in.shape_);
+        }
       }
     }
   }
