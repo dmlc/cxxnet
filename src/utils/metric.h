@@ -110,15 +110,27 @@ struct MetricError : public MetricBase{
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &pred,
     const mshadow::Tensor<cpu,1> &label) {
-    index_t maxidx = 0;
-    if (pred.size(0) != 1) {
-      for (index_t i = 1; i < pred.size(0); ++ i) {
-        if (pred[i] > pred[maxidx]) maxidx = i;
+    int count = 0;
+    if (label.size(0) != 1) {
+      utils::Check(pred.size(0) == label.size(0),
+                 "Metric: In error metric, if label_width is not 1, then pred and label must be of same length.");
+      for (index_t j = 0; j < label.size(0); ++j) {
+        index_t maxidx = 0;
+        maxidx = pred[j] > 0.0 ? 1 : 0;
+        count += (maxidx !=(index_t)label[j]);
       }
-    }else{
-      maxidx = pred[0] > 0.0 ? 1 : 0;
+      return (float)count / label.size(0);
+    } else {
+      index_t maxidx = 0;
+      if (pred.size(0) != 1) {
+        for (index_t i = 1; i < pred.size(0); ++ i) {
+          if (pred[i] > pred[maxidx]) maxidx = i;
+        }
+      } else {
+        maxidx = pred[0] > 0.0 ? 1 : 0;
+      }
+      return (maxidx !=(index_t)label[0]);
     }
-    return maxidx !=(index_t)label[0];
   }
 };
 
@@ -131,15 +143,24 @@ struct MetricLogloss : public MetricBase{
  protected:
   virtual float CalcMetric(const mshadow::Tensor<cpu,1> &pred,
     const mshadow::Tensor<cpu,1> &label) {
-    int target = static_cast<int>(label[0]);
-    if (pred.size(0) != 1) {
-      return - std::log(std::max(std::min(pred[target], 1.0f - 1e-15f), 1e-15f));
+    if (label.size(0) != 1) {
+      utils::Check(pred.size(0) == label.size(0),
+                 "Metric: In logloss metric, if label_width is not 1, then pred and label must be of same length.");
+      float ret = 0;
+      for (index_t j = 0; j < label.size(0); ++j) {
+        int target = static_cast<int>(label[j]);
+        const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
+        ret -= (target * std::log(py) + (1.0f - target)*std::log(1 - py));
+      }
+      return ret / label.size(0);  
     } else {
-      const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
-      const float y = label[0];
-      const float res = - (y * std::log(py) + (1.0f - y)*std::log(1 - py));
-      utils::Check(res == res, "NaN detected!");
-      return res;
+      int target = static_cast<int>(label[0]);
+      if (pred.size(0) != 1) {
+        return -std::log(std::max(std::min(pred[target], 1.0f - 1e-15f), 1e-15f));
+      } else {
+        const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
+        return -((target * std::log(py) + (1.0f - target)*std::log(1 - py)));
+      }
     }
   }
 };

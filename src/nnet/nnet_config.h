@@ -110,12 +110,15 @@ struct NetConfig {
   std::vector< std::vector< std::pair<std::string, std::string> > > layercfg;
   /*! \brief stores the shape of extra data */
   std::vector<int> extra_shape;
+  /*! \brief indicates whether label name is uninitialized*/
+  bool label_name_default;
   // constructor
   NetConfig(void) {
     updater_type = "sgd";
     sync_type = "simple";
     label_name_map["label"] = 0;
     label_range.push_back(std::make_pair(0, 1));
+    label_name_default = true;
   }
   /*!
    * \brief save network structure to output
@@ -193,6 +196,11 @@ struct NetConfig {
     {
       unsigned a, b;
       if (sscanf(name, "label_vec[%u,%u)", &a, &b) == 2) {
+        if (label_name_default) {
+          label_range.clear();
+          label_name_map.clear();
+          label_name_default = false;
+        }
         label_range.push_back(std::make_pair((index_t)a,
                                              (index_t)b));
         label_name_map[val] = label_range.size() - 1;
