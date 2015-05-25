@@ -28,7 +28,7 @@ Contributors: https://github.com/antinucleon/cxxnet/graphs/contributors
   - Matlab interface
 
 ### News
-
+* 24-May, 2015: Pretrained [Inception model](example/ImageNet/Inception-BN.conf) with 89.9% Top-5 Correctness is ready to use.
 * 09-Apr, 2015: Matlab Interface is ready to use
 
 
