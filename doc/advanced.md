@@ -14,8 +14,8 @@ This page will introduce some advanced usages in cxxnet, including:
 	```
 	- In global setting, you need to specify how each field of the labels form a label vector. For example, we are interested in a localization task. In the task, we first need to output the label for one image, and next predict its position denoted by a bounding box. The configuration can be written as:
 	```
-	label_vec[0, 1) = class
-	label_vec[1, 5) = bounding_box
+	label_vec[0,1) = class
+	label_vec[1,5) = bounding_box
 	```
 	- At last, in each loss layer, you need to specify the target of the loss:
 	```
