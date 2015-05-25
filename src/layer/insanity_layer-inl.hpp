@@ -50,7 +50,7 @@ class InsanityLayer : public ILayer<xpu> {
                        ConnectState<xpu> *p_cstate) {
     if (!init_) {
       init_ = true;
-      delta_ = (ub_ + lb_) / 2.0f;
+      delta_ = (ub_ - lb_) / (log(ub_) - log(lb_));
       delta_ = ub_ - delta_;
       delta_ /= (saturation_end_ - saturation_start_);
     }
@@ -67,7 +67,7 @@ class InsanityLayer : public ILayer<xpu> {
       nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, mask);
       mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data, nodes_out[0]->data.stream_);
     } else {
-      nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, (lb_ + ub_) / 2.0f);
+      nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, (ub_ - lb_) / (log(ub_) - log(lb_)));
       mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data, nodes_out[0]->data.stream_);
     }
   }
