@@ -12,9 +12,9 @@ import numpy.ctypeslib
 # set this line correctly
 if os.name == 'nt':
     # TODO windows
-    CXXNET_PATH = os.path.dirname(__file__) + '/libcxxnetwrapper.dll'
+    CXXNET_PATH = os.path.join(os.path.dirname(__file__), 'libcxxnetwrapper.dll')
 else:
-    CXXNET_PATH = os.path.dirname(__file__) + '/libcxxnetwrapper.so'
+    CXXNET_PATH = os.path.join(os.path.dirname(__file__), 'libcxxnetwrapper.so')
 
 # load in xgboost library
 cxnlib = ctypes.cdll.LoadLibrary(CXXNET_PATH)
@@ -35,7 +35,8 @@ def ctypes2numpy(cptr, length, dtype=numpy.float32):
     """convert a ctypes pointer array to numpy array """
     #assert isinstance(cptr, ctypes.POINTER(ctypes.c_float))
     res = numpy.zeros(length, dtype=dtype)
-    assert ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0])
+    if not ctypes.memmove(res.ctypes.data, cptr, length * res.strides[0]):
+        raise AssertionError('ctypes.memmove failed')
     return res
 
 def ctypes2numpyT(cptr, shape, dtype=numpy.float32, stride = None):
@@ -45,11 +46,13 @@ def ctypes2numpyT(cptr, shape, dtype=numpy.float32, stride = None):
         size *= x
     if stride is None:
         res = numpy.zeros(size, dtype=dtype)
-        assert ctypes.memmove(res.ctypes.data, cptr, size * res.strides[0])
+        if not ctypes.memmove(res.ctypes.data, cptr, size * res.strides[0]):
+            raise AssertionError('ctypes.memmove failed')
     else:
         dsize = size / shape[-1] * stride
         res = numpy.zeros(dsize, dtype=dtype)
-        assert ctypes.memmove(res.ctypes.data, cptr, dsize * res.strides[0])
+        if not ctypes.memmove(res.ctypes.data, cptr, dsize * res.strides[0]):
+            raise AssertionError('ctypes.memmove failed')
         res = res.reshape((dsize / shape[-1], shape[-1]))
         res = res[:, 0 :shape[-1]]
     return res.reshape(shape)
@@ -166,11 +169,15 @@ class Net:
             if not isinstance(label, numpy.ndarray):
                 raise Exception('Net.update: label need to be ndarray')
             if label.ndim == 1:
-                label = label.reshape((label.size(0),1))
+                label = label.reshape(label.shape[0], 1)
             if label.ndim != 2:
                 raise Exception('Net.update: label need to be 2 dimension or one dimension ndarray')
             if label.shape[0] != data.shape[0]:
                 raise Exception('Net.update: data size mismatch')
+            if data.dtype != numpy.float32:
+                raise Exception('Net.update: data must be of type numpy.float32')
+            if label.dtype != numpy.float32:
+                raise Exception('Net.update: label must be of type numpy.float32')
             cxnlib.CXNNetUpdateBatch(self.handle,
                                      data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
                                      shape2ctypes(data),
@@ -278,7 +285,7 @@ class Net:
             return None
         return ctypes2numpyT(ret, [oshape[i] for i in range(odim.value)], 'float32')
 
-def train(cfg, data, num_round, param, eval_data = None):
+def train(cfg, data, label, num_round, param, eval_data = None):
     net = Net(cfg = cfg)
     if isinstance(param, dict):
         param = param.items()
