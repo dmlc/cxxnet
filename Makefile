@@ -25,7 +25,7 @@ unexport NO_OPENMP
 # all tge possible warning tread
 WARNFLAGS= -Wall
 CFLAGS = -DMSHADOW_FORCE_STREAM $(WARNFLAGS)
-CFLAGS += -g -O3 -I./mshadow/ -I./dmlc-core/include -fPIC $(MSHADOW_CFLAGS)
+CFLAGS += -g -O3 -I./mshadow/ -I./dmlc-core/include -fPIC $(MSHADOW_CFLAGS) $(DMLC_CFLAGS)
 LDFLAGS = -pthread $(MSHADOW_LDFLAGS) $(DMLC_LDFLAGS)
 NVCCFLAGS = --use_fast_math -g -O3 -ccbin $(CXX) $(MSHADOW_NVCCFLAGS)
 ROOTDIR = $(CURDIR)
@@ -78,7 +78,7 @@ ifneq ($(ADD_LDFLAGS), NONE)
 endif
 
 # specify tensor path
-BIN = bin/cxxnet 
+BIN = bin/cxxnet
 ifeq ($(USE_OPENCV),1)
 	BIN += bin/im2rec bin/bin2rec
 endif
@@ -105,6 +105,8 @@ endif
 .PHONY: clean all
 
 ifeq ($(USE_DIST_PS), 1)
+include $(PS_PATH)/make/ps.mk
+	LDFLAGS += $(PS_LDFLAGS)
 	BIN=bin/cxxnet.ps
 endif
 
@@ -133,7 +135,7 @@ main.o: src/cxxnet_main.cpp
 
 wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
 bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
-bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP) $(PS_LIB)
+bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP) $(PS_PATH)/build/libps.a
 bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
 bin/bin2rec: tools/bin2rec.cc $(DMLC_CORE)/libdmlc.a
 bin/caffe_converter: tools/caffe_converter/convert.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
