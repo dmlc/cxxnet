@@ -149,7 +149,7 @@ struct MetricLogloss : public MetricBase{
       float ret = 0;
       for (index_t j = 0; j < label.size(0); ++j) {
         int target = static_cast<int>(label[j]);
-        const float py = std::max(std::min(pred[0], 1.0f - 1e-15f), 1e-15f);
+        const float py = std::max(std::min(pred[j], 1.0f - 1e-15f), 1e-15f);
         ret -= (target * std::log(py) + (1.0f - target)*std::log(1 - py));
       }
       return ret / label.size(0);  
