@@ -450,7 +450,7 @@ class CXXNetThreadTrainer : public INetTrainer {
   /*! \brief type of parameter server */
   std::string type_pserver;
   /*! \brief epoch counter */
-  long epoch_counter;
+  uint64_t epoch_counter;
   /*! \brief seed to the layers */
   int seed;
   /*! \brief silent*/
