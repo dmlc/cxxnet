@@ -4,6 +4,7 @@ This page will introduce some advanced usages in cxxnet, including:
 
 #### Multi-label Training
 * To use multi-label training, you need the following three steps in additional to the case of single label training:
+	- For multi-label training, in ```imgrec```, you need to specify ```image_list``` field to indicate the list file that contains the labels.
 	- First, you need to specify the number of labels in the network by setting ```label_width``` variable in global settings. The following setting denotes that we have 5 labels in the network.
 	```bash
 	label_width = 5

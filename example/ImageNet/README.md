@@ -35,14 +35,16 @@ A sample file is provided here
 ```
 
 ### 2.Make the binary file
-Although you can use image iterator now. the disk random seek will make the training process extremely slow. So **you'd better generate binary file for training and use imgbin iterator** .
+Although you can use image iterator now. the disk random seek will make the training process extremely slow. So **you'd better generate binary file for training and use imgrec iterator** .
 
-To generate binary image, you need to use *im2bin* in the tool folder. The im2bin will take the path of _image list file_ you generated just now, _root path_ of the images and the _output file path_ as input. These processes usually take several hours, so be patient. :)
+To generate binary image, you need to use *im2rec* in the tool folder. The im2rec will take the path of _image list file_ you generated just now, _root path_ of the images and the _output file path_ as input. These processes usually take several hours, so be patient. :)
 
 A sample command:
 ```bash
-im2bin ./train.lst ./resized256_images/ TRAIN.BIN
+./bin/im2rec image.lst image_root_dir output.bin resize=256
 ```
+More details can be found by running ```./bin/im2rec```.
+
 ### 3.Set correct configuration file
 Change the iterator path in the [ImageNet.conf](ImageNet.conf) or [kaiming.conf](kaiming.conf) to point to your _image list file_ and _image binary file_ correctly, then just run as MNIST example. After about 20 round, you can see some reasonable result. We strongly recommend to use [kaiming.conf](kaiming.conf), since it could provide much better results than Alexnet, while keeping the time cost unchanged.
 By calling
