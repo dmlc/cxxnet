@@ -10,7 +10,7 @@ This tutorial will guide you train your own super vision model. The default conf
 * If you want to still use a large batch with not enough RAM, You can set ```update_period=2``` and ```batch_size=128```, this means the parameter update is done every 2 batches, which is equivalent to ```batch_size=256```
 
 ### 0.Before you start
-Make sure you have downloaded the ImageNet training data. Resize the picture into size 256 * 256 *3 for later we will crop random 227 * 227 * 3 image while training.
+Make sure you have downloaded the ImageNet training data. You don't need to resize the images by yourself, currently ```im2rec``` could resize it automatically. You could check the promoting message of ```im2rec``` for details.
 
 ### 1.Make the image list
 After you get the data, you need to make a [image list file](../../doc/io.md#image-list-file) first.  The format is
