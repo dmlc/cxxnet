@@ -132,7 +132,7 @@ class CXXNetLearnTask {
     if (!strcmp(name,"model_dir"))          name_model_dir= val;
     if (!strcmp(name,"num_round" ))         num_round     = atoi(val);
     if (!strcmp(name,"max_round"))           max_round = atoi(val);
-    if (!strcmp(name, "silent"))            silent        = atoi(val);
+    if (!strcmp(name, "silent"))             silent        = atoi(val);
     if (!strcmp(name, "task"))  task = val;
     if (!strcmp(name, "dev")) {
       device = val;
@@ -431,8 +431,8 @@ class CXXNetLearnTask {
 #if MSHADOW_RABIT_PS
     is_root = rabit::GetRank() == 0;
     print_tracker = rabit::IsDistributed();
-#endif
     silent = !is_root;
+#endif
     time_t start    = time(NULL);
     unsigned long elapsed = 0;
     if (continue_training == 0 && name_model_in == "NULL") {
@@ -470,22 +470,26 @@ class CXXNetLearnTask {
           if (++ sample_counter  % print_step == 0) {
             elapsed = (long)(time(NULL) - start);
             if (!silent) {
-	      std::ostringstream os;
-	      os << "round " << std::setw(8) << start_counter - 1
-		 << ":[" << std::setw(8) << sample_counter << "] " << elapsed << " sec elapsed";
-	      if (print_tracker) {
-		utils::TrackerPrint(os.str().c_str());
-	      } else {
-		printf("\r                                                               \r");
-		printf("%s", os.str().c_str());
-		fflush(stdout);
-	      }
+              std::ostringstream os;
+              os << "round " << std::setw(8) << start_counter - 1
+                 << ":[" << std::setw(8) << sample_counter << "] " << elapsed << " sec elapsed";
+              if (print_tracker) {
+                utils::TrackerPrint(os.str().c_str());
+              } else {
+                printf("\r                                                               \r");
+                printf("%s", os.str().c_str());
+                fflush(stdout);
+              }
             }
           }
         }
 
         if (test_io == 0) {
           std::ostringstream os;
+          if (silent) {
+            os << "Finish " << sample_counter << " epochs in "
+               << (long)(time(NULL) - start) << " sec. ";
+          }
           os << '[' << start_counter << ']';
           // handle only with eval_train = 1, but not val data
           if (itr_evals.size() == 0) {
@@ -498,9 +502,9 @@ class CXXNetLearnTask {
           utils::TrackerPrint(os.str());
         }
         elapsed = (unsigned long)(time(NULL) - start);
-	if (is_root) {
-	  this->SaveModel();
-	}
+        if (is_root) {
+          this->SaveModel();
+        }
       }
 
       if (!silent) {
