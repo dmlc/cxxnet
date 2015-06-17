@@ -246,7 +246,7 @@ def ConvFactory(nchannel, kernel_size=1, pad=0, stride = 1, bn = True, act = "re
 
 def DFS(layer, table, seq):
     out_layers = graph[layer]
-    for l in out_layers:
+    for l in out_layers - table:
         DFS(l, table, seq)
     if layer not in table:
         table.add(layer)
