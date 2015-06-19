@@ -27,6 +27,7 @@ fi
 
 sed -i 's/USE_DIST_PS.*/USE_DIST_PS = 1/' config.mk
 sed -i 's/PS_PATH.*/PS_PATH = .\/ps-lite/' config.mk
+echo "USE_GLOG = 1" >>config.mk
 
 make -j4
 # make $1

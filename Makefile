@@ -105,6 +105,8 @@ endif
 .PHONY: clean all
 
 ifeq ($(USE_DIST_PS), 1)
+STATIC_DEPS = 1
+DEPS_PATH = $(PS_PATH)/deps
 include $(PS_PATH)/make/ps.mk
 	LDFLAGS += $(PS_LDFLAGS)
 	BIN=bin/cxxnet.ps
@@ -117,6 +119,9 @@ $(DMLC_CORE)/libdmlc.a:
 
 $(RABIT_PATH)/lib/librabit_base.a:
 	+ cd $(RABIT_PATH); make; cd $(ROOTDIR)
+
+$(PS_PATH)/build/libps.a:
+	make -C $(PS_PATH) config=$(ROOTDIR)/$(config)
 
 layer_cpu.o layer_gpu.o: src/layer/layer_impl.cpp src/layer/layer_impl.cu\
 	src/layer/*.h src/layer/*.hpp src/utils/*.h src/plugin/*.hpp
