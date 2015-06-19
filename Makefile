@@ -140,7 +140,7 @@ main.o: src/cxxnet_main.cpp
 
 wrapper/libcxxnetwrapper.so: wrapper/cxxnet_wrapper.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
 bin/cxxnet: src/local_main.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
-bin/cxxnet.ps: $(PS_PATH)/build/libps.a $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP)
+bin/cxxnet.ps: $(OBJ) $(OBJCXX11) $(CUDEP) $(LIB_DEP) $(PS_PATH)/build/libps.a
 bin/im2rec: tools/im2rec.cc $(DMLC_CORE)/libdmlc.a
 bin/bin2rec: tools/bin2rec.cc $(DMLC_CORE)/libdmlc.a
 bin/caffe_converter: tools/caffe_converter/convert.cpp $(OBJ) $(OBJCXX11) $(LIB_DEP) $(CUDEP)
