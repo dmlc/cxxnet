@@ -10,7 +10,7 @@ This tutorial will guide you train your own super vision model. The default conf
 * If you want to still use a large batch with not enough RAM, You can set ```update_period=2``` and ```batch_size=128```, this means the parameter update is done every 2 batches, which is equivalent to ```batch_size=256```
 
 ### 0.Before you start
-Make sure you have downloaded the ImageNet training data. Resize the picture into size 256 * 256 *3 for later we will crop random 227 * 227 * 3 image while training.
+Make sure you have downloaded the ImageNet training data. You don't need to resize the images by yourself, currently ```im2rec``` could resize it automatically. You could check the promoting message of ```im2rec``` for details.
 
 ### 1.Make the image list
 After you get the data, you need to make a [image list file](../../doc/io.md#image-list-file) first.  The format is
@@ -35,14 +35,16 @@ A sample file is provided here
 ```
 
 ### 2.Make the binary file
-Although you can use image iterator now. the disk random seek will make the training process extremely slow. So **you'd better generate binary file for training and use imgbin iterator** .
+Although you can use image iterator now. the disk random seek will make the training process extremely slow. So **you'd better generate binary file for training and use imgrec iterator** .
 
-To generate binary image, you need to use *im2bin* in the tool folder. The im2bin will take the path of _image list file_ you generated just now, _root path_ of the images and the _output file path_ as input. These processes usually take several hours, so be patient. :)
+To generate binary image, you need to use *im2rec* in the tool folder. The im2rec will take the path of _image list file_ you generated just now, _root path_ of the images and the _output file path_ as input. These processes usually take several hours, so be patient. :)
 
 A sample command:
 ```bash
-im2bin ./train.lst ./resized256_images/ TRAIN.BIN
+./bin/im2rec image.lst image_root_dir output.bin resize=256
 ```
+More details can be found by running ```./bin/im2rec```.
+
 ### 3.Set correct configuration file
 Change the iterator path in the [ImageNet.conf](ImageNet.conf) or [kaiming.conf](kaiming.conf) to point to your _image list file_ and _image binary file_ correctly, then just run as MNIST example. After about 20 round, you can see some reasonable result. We strongly recommend to use [kaiming.conf](kaiming.conf), since it could provide much better results than Alexnet, while keeping the time cost unchanged.
 By calling

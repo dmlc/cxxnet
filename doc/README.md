@@ -21,5 +21,7 @@ In general, cxxnet configuration file contains four kinds of configurations in a
   - This page includes all the four tasks you could try by cxxnet.
 * [Other Setting](other.md)
   - Set other parameters for neural network, related to device selection, running control.
+* [Caffe Converter](caffe_converter.md)
+  - Convert the pretrained model in Caffe to cxxnet.
 * [Advanced Usages](advanced.md)
   - Some advanced usages of cxxnet can he found here.
