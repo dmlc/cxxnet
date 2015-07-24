@@ -121,7 +121,6 @@ class ImageAugmenter {
         y /= 2; x /= 2;
       }
       cv::Rect roi(x, y, rand_crop_size, rand_crop_size);
-      res = res(roi);
       cv::resize(res(roi), res, cv::Size(shape_[1], shape_[2]));
     }
     else{
