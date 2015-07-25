@@ -18,3 +18,12 @@ ps-lite
 dmlc-core
 bin
 rabit
+*.opensdf
+*.sdf
+*.pdb
+*.user
+*.suo
+*.deps
+*.cache
+*state
+*build
