@@ -11,11 +11,10 @@ python gen_img_list.py train /home/data/bowl/sampleSubmission.csv data/train/ tr
 python gen_img_list.py test /home/data/bowl/sampleSubmission.csv data/test/ test.lst
 ```
 
-* Generate binary image file
-First build im2bin at ```../../tools```, then run
+* Generate binary image file use ```im2rec```
 ```
-../../tools/im2bin train.lst ./ train.bin
-../../tools/im2bin test.lst ./ test.bin
+../../bin/im2rec train.lst ./ train.bin
+../../bin/im2rec test.lst ./ test.bin
 ```
 
 * Run CXXNET
