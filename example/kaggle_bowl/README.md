@@ -13,8 +13,8 @@ python gen_img_list.py test /home/data/bowl/sampleSubmission.csv data/test/ test
 
 * Generate binary image file use ```im2rec```
 ```
-../../bin/im2rec train.lst ./ train.bin
-../../bin/im2rec test.lst ./ test.bin
+../../bin/im2rec train.lst ./ train.rec
+../../bin/im2rec test.lst ./ test.rec
 ```
 
 * Run CXXNET
