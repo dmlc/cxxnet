@@ -67,7 +67,9 @@ class InsanityLayer : public ILayer<xpu> {
       nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, mask);
       mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data, nodes_out[0]->data.stream_);
     } else {
-      nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, (ub_ - lb_) / (log(ub_) - log(lb_)));
+      // nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, (ub_ - lb_) / (log(ub_) - log(lb_)));
+      // better performance
+      nodes_in[0]->data = F<op::xelu>(nodes_in[0]->data, (ub_ + lb_) / 2.0f);
       mshadow::Copy(nodes_out[0]->data, nodes_in[0]->data, nodes_out[0]->data.stream_);
     }
   }
