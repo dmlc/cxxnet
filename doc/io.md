@@ -14,7 +14,7 @@ options 2 =
 ...
 iter = end
 ```
-* The basic iterator type is **mnist** , **image** , **imgrec**, **csv**
+* The basic iterator type is **mnist** , **img** , **imgrec**, **csv**
 * To use thread buffer, declare in this form
 ```bash
 iter = iterator_type
