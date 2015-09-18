@@ -27,9 +27,9 @@ struct InsanityPoolingExp :
       ksize_y_(ksize_y), ksize_x_(ksize_x), kstride_(kstride), p_keep_(p_keep) {
       Shape<srcdim> sshape = ShapeCheck<srcdim, SrcExp>::Check(src_);
       Shape<srcdim> smshape = ShapeCheck<srcdim, MaskExp>::Check(mask_);
-      utils::Check(sshape == smshape, "Incorrect shape");
-      utils::Check(sshape[srcdim - 1] >= ksize_x && sshape[srcdim - 2] >= ksize_y,
-                   "InsanityPoolingExp: kernel must be smaller than image");
+      CHECK(sshape == smshape) << "Incorrect shape";
+      CHECK(sshape[srcdim - 1] >= ksize_x && sshape[srcdim - 2] >= ksize_y)
+          <<"InsanityPoolingExp: kernel must be smaller than image";
       this->src_height_ = sshape[srcdim - 2];
       this->src_width_  = sshape[srcdim - 1];
       this->shape_ = sshape;
@@ -131,14 +131,12 @@ struct InsanityUnPoolingExp:
     : data_src_(data_src), data_pooled_(data_pooled), grad_pooled_(grad_pooled),
       mask_(mask), ksize_y_(ksize_y), ksize_x_(ksize_x), kstride_(kstride), p_keep_(p_keep) {
     Shape<srcdim> pshape = ShapeCheck<srcdim, SrcExp>::Check(grad_pooled);
-    utils::Check(pshape == ShapeCheck<srcdim, SrcExp>::Check(data_pooled),
-                 "UnPoolingExp: pooled shape mismatch");
     Shape<srcdim> sshape = ShapeCheck<srcdim, SrcExp>::Check(data_src);
     Shape<srcdim> smshape = ShapeCheck<srcdim, MaskExp>::Check(mask_);
-    utils::Check(sshape == smshape, "Incorrect shape");
+    CHECK(sshape == smshape) << "Incorrect shape";
     for (int k = 0;  k < srcdim - 2; ++k) {
-      utils::Check(pshape[k] == sshape[k],
-                  "UnPoolingExp: pool and src shape mismatch");
+      CHECK(pshape[k] == sshape[k])
+          << "UnPoolingExp: pool and src shape mismatch";
     }
     pshape_x_ = pshape[srcdim - 1];
     pshape_y_ = pshape[srcdim - 2];
@@ -168,6 +166,7 @@ struct Plan<InsanityUnPoolingExp<Reducer, SrcExp, MaskExp, DType, srcdim>, DType
         ksize_y_(e.ksize_y_), ksize_x_(e.ksize_x_), kstride_(e.kstride_),
         p_keep_(e.p_keep_), delta_((1.0f - p_keep_) / 4.0f) {}
     MSHADOW_XINLINE DType Eval(index_t i, index_t j) const {
+      using namespace cxxnet;
       using namespace std;
       const index_t x = j;
       const index_t y = i % sshape_y_;
