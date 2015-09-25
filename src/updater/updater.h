@@ -156,7 +156,9 @@ static const int kDataKeyStep = 4;
 inline int EncodeDataKey(int layer_index, const char *tag) {
   if (!strcmp(tag, "bias")) return layer_index * kDataKeyStep + 1;
   if (!strcmp(tag, "wmat")) return layer_index * kDataKeyStep + 0;
-  utils::Error("EncodeDataKey: only support weight tag: wmat or bias");
+  if (!strcmp(tag, "gamma")) return layer_index * kDataKeyStep + 0;
+  if (!strcmp(tag, "beta")) return layer_index * kDataKeyStep + 1;
+  // utils::Error("EncodeDataKey: only support weight tag: wmat or bias");
   return 0;
 }
 /*!

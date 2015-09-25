@@ -74,7 +74,7 @@ class GetWeightVisitor : public ILayer<xpu>::IVisitor {
   // local visiting function
   template<int dim>
   inline void Visit_(const char *field_name,
-                     mshadow::Tensor<xpu, dim> weight,                     
+                     mshadow::Tensor<xpu, dim> weight,
                      mshadow::Tensor<xpu, dim> grad) {
     if (strncmp(prefix_.c_str(), field_name, prefix_.length()) != 0) return;
     fields.push_back(std::string(field_name));

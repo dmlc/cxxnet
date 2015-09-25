@@ -273,8 +273,6 @@ class Net:
 
         """
 
-        if tag != 'bias' and tag != 'wmat':
-            raise Exception('tag must be bias or wmat')
         oshape = (ctypes.c_uint * 4)()
         odim = ctypes.c_uint()
         ret = cxnlib.CXNNetGetWeight(self.handle,

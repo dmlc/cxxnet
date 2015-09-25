@@ -63,7 +63,7 @@ struct NeuralNet {
       }
     }
   }
-  
+
   /*! \brief initial model parameters in the beginning */
   inline void InitModel(void) {
     this->InitNet();

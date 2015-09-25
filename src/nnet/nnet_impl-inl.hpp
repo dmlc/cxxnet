@@ -247,7 +247,7 @@ class CXXNetThreadTrainer : public INetTrainer {
     // safe guard for safely use allreduce in eval
     if (pserver != NULL) {
       pserver->SetParam("msg:disable_allreduce", "1");
-    }    
+    }
     std::string ret;
     if (eval_train != 0) {
       ret += train_metric.Print("train");
@@ -277,9 +277,6 @@ class CXXNetThreadTrainer : public INetTrainer {
   virtual void SetWeight(mshadow::Tensor<mshadow::cpu, 2> weight,
                          const char *layer_name,
                          const char *weight_tag) {
-    utils::Check(!strcmp(weight_tag, "bias") ||
-                 !strcmp(weight_tag, "wmat"),
-                 "NNet.SetWeight: weight tag can only be bias or wmat");
     int layer_index = net_cfg.GetLayerIndex(layer_name);
     for (size_t i = 0; i < nets_.size(); ++i) {
       nets_[i]->SetWeight(layer_index, weight, weight_tag);
@@ -290,9 +287,6 @@ class CXXNetThreadTrainer : public INetTrainer {
                          std::vector<index_t> *out_shape,
                          const char *layer_name,
                          const char *weight_tag) {
-    utils::Check(!strcmp(weight_tag, "bias") ||
-                 !strcmp(weight_tag, "wmat"),
-                 "NNet.GetWeight: weight tag can only be bias or wmat");
     int layer_index = net_cfg.GetLayerIndex(layer_name);
     nets_[0]->GetWeight(layer_index, out_weight, out_shape, weight_tag);
     nets_[0]->WaitJob();
