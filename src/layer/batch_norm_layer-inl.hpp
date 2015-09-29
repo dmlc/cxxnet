@@ -26,8 +26,12 @@ class BatchNormLayer : public ILayer<xpu> {
     if (!strcmp(name, "bn_momentum")) bn_momentum_ = atof(val);
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
-    pvisitor->Visit("wmat", slope_, gslope_);
+    pvisitor->Visit("weight", slope_, gslope_);
     pvisitor->Visit("bias", bias_, gbias_);
+    pvisitor->Visit("gamma", slope_, gslope_);
+    pvisitor->Visit("beta", bias_, gbias_);
+    pvisitor->Visit("moving_mean", running_exp_, running_exp_);
+    pvisitor->Visit("moving_var", running_var_, running_var_);
   }
   virtual void InitConnection(const std::vector<Node<xpu>*> &nodes_in,
                               const std::vector<Node<xpu>*> &nodes_out,

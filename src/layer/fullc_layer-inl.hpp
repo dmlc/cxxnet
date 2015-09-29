@@ -28,6 +28,7 @@ class FullConnectLayer : public ILayer<xpu> {
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("wmat", wmat_, gwmat_);
+    pvisitor->Visit("weight", wmat_, gwmat_);
     if (param_.no_bias == 0) {
       pvisitor->Visit("bias", bias_, gbias_);
     }
@@ -50,7 +51,7 @@ class FullConnectLayer : public ILayer<xpu> {
   }
   virtual void LoadModel(utils::IStream &fi) {
     utils::Check(fi.Read(&param_, sizeof(LayerParam)) != 0,
-                  "FullConnectLayer:LoadModel invalid model file");    
+                  "FullConnectLayer:LoadModel invalid model file");
     wmat_.LoadBinary(fi);
     bias_.LoadBinary(fi);
     // setup gradient weight
@@ -139,7 +140,7 @@ class FullConnectLayer : public ILayer<xpu> {
   mshadow::TensorContainer<xpu,1> bias_;
   /*! \brief accumulates the gradient of weight matrix */
   mshadow::TensorContainer<xpu,2> gwmat_;
-  /*! \brief accumulates the gradient of bias */  
+  /*! \brief accumulates the gradient of bias */
   mshadow::TensorContainer<xpu,1> gbias_;
   /*! \brief use gather to do fullc */
   int fullc_gather;

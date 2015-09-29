@@ -68,7 +68,7 @@ class WrapperIterator {
       lshape[i] = batch.label.size(i);
     }
     *p_stride = batch.label.stride_;
-    return batch.label.dptr_;    
+    return batch.label.dptr_;
   }
 
  private:
@@ -81,7 +81,7 @@ class WrapperNet {
   WrapperNet(const char *device, const char *s_cfg)
       : res_pred(false), temp2(false),
         temp4(false), net_(NULL) {
-    device = "gpu";
+    device = "cpu";
     net_type = 0;
     silent = 0;
     print_step = 100;
@@ -334,14 +334,14 @@ extern "C" {
     batch.batch_size = dshape[0];
     batch.data = mshadow::Tensor<cpu, 4>
         (p_data, mshadow::Shape4(dshape[0], dshape[1], dshape[2], dshape[3]));
-    return static_cast<WrapperNet*>(handle)->Extract(batch, node_name, oshape);    
+    return static_cast<WrapperNet*>(handle)->Extract(batch, node_name, oshape);
   }
   const cxx_real_t *CXNNetExtractIter(void *handle,
                                       void *data_handle,
                                       const char *node_name,
                                       cxx_uint oshape[4]) {
     return static_cast<WrapperNet*>(handle)->Extract
-        (static_cast<WrapperIterator*>(data_handle), node_name, oshape);    
+        (static_cast<WrapperIterator*>(data_handle), node_name, oshape);
   }
   const char *CXNNetEvaluate(void *handle,
                              void *data_handle,

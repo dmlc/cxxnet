@@ -20,6 +20,7 @@ class ConvolutionLayer : public ILayer<xpu> {
   }
   virtual void ApplyVisitor(typename ILayer<xpu>::IVisitor *pvisitor) {
     pvisitor->Visit("wmat", wmat_, gwmat_);
+    pvisitor->Visit("weight", wmat_, gwmat_);
     if (param_.no_bias == 0) {
       pvisitor->Visit("bias", bias_, gbias_);
     }
@@ -97,7 +98,7 @@ class ConvolutionLayer : public ILayer<xpu> {
       out.Slice(i, i + step) =
           swapaxis<1,0>(reshape(temp_dst_,
                                 mshadow::Shape4(param_.num_channel, step, out.size(2), out.size(3))));
-      
+
     }
     if (param_.no_bias == 0) {
       // add bias, broadcast bias to dim 1: channel
